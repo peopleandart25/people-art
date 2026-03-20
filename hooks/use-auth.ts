@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+type Profile = Database["public"]["Tables"]["profiles"]["Row"] & { points?: number | null }
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -39,12 +39,8 @@ export function useAuth() {
   }, [])
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single()
-    setProfile(data)
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single()
+    setProfile(data ? { ...data, points: 0 } : null)
     setLoading(false)
   }
 

@@ -239,7 +239,7 @@ export function useProfile() {
         await supabase.from("career_items").insert(
           data.careerList.map((c, i) => ({
             user_id: user.id,
-            category: c.category as Database["public"]["Enums"]["career_category"] ?? c.category,
+            category: c.category,
             year: c.year,
             title: c.title,
             role: c.role,

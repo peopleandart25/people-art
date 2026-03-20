@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronRight } from "lucide-react"
 import { ReviewTable } from "@/components/review-table"
-import { useReviewsSafe, Review } from "@/contexts/review-context"
+import { Review, toReview, maskAuthorId, categoryColors } from "@/contexts/review-context"
 import {
   Dialog,
   DialogContent,
@@ -14,26 +14,29 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { maskAuthorId, categoryColors } from "@/contexts/review-context"
-
-/**
- * [메인 페이지 후기 섹션]
- * 
- * ReviewContext에서 데이터를 가져와 상위 5개만 표시합니다.
- * ReviewTable 공통 컴포넌트를 사용하여 일관된 디자인을 유지합니다.
- */
+import { createClient } from "@/lib/supabase/client"
 
 export function ReviewSection() {
-  const { reviews } = useReviewsSafe()
+  const [reviews, setReviews] = useState<Review[]>([])
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
-  
-  // 상위 5개만 표시
-  const previewReviews = reviews.slice(0, 5)
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("is_hidden", false)
+        .order("created_at", { ascending: false })
+        .limit(5)
+      setReviews((data ?? []).map(toReview))
+    }
+    fetchReviews()
+  }, [])
 
   return (
     <section id="review" className="py-16 lg:py-24 bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
-        {/* Section Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-foreground lg:text-3xl">REVIEW</h2>
@@ -48,13 +51,11 @@ export function ReviewSection() {
           </Link>
         </div>
 
-        {/* Reviews Table - 공통 컴포넌트 사용 */}
-        <ReviewTable 
-          data={previewReviews} 
+        <ReviewTable
+          data={reviews}
           onRowClick={(review) => setSelectedReview(review)}
         />
 
-        {/* Review Detail Dialog */}
         <Dialog open={!!selectedReview} onOpenChange={() => setSelectedReview(null)}>
           <DialogContent className="sm:max-w-lg">
             {selectedReview && (

@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Noto_Sans_KR, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { UserProvider } from '@/contexts/user-context'
-import { ReviewProvider } from '@/contexts/review-context'
 import { ArtistProvider } from '@/contexts/artist-context'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
@@ -49,7 +48,6 @@ export default function RootLayout({
     <html lang="ko">
       <body className={`${notoSansKR.variable} font-sans antialiased`}>
         <UserProvider>
-          <ReviewProvider>
             <ArtistProvider>
               <div className="min-h-screen flex flex-col bg-background">
                 <Header />
@@ -61,7 +59,6 @@ export default function RootLayout({
                 <Toaster />
               </div>
             </ArtistProvider>
-          </ReviewProvider>
         </UserProvider>
         <Analytics />
       </body>

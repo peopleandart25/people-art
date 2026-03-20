@@ -1000,10 +1000,10 @@ export default function OnboardingPage() {
                   <div className="p-4 rounded-lg bg-muted/50">
                     <p className="text-sm font-medium text-foreground mb-2">참고된 경력</p>
                     <ul className="space-y-1">
-                      {formData.career.filter(c => c.trim()).map((career, index) => (
+                      {formData.career.filter(c => c.title.trim()).map((career, index) => (
                         <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
                           <span className="text-primary">•</span>
-                          {career}
+                          {career.title}
                         </li>
                       ))}
                     </ul>

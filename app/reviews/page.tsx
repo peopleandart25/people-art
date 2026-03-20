@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,31 +24,26 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PenLine, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ReviewTable } from "@/components/review-table"
-import { 
-  useReviewsSafe, 
-  Review, 
-  reviewCategories, 
+import {
+  Review,
+  reviewCategories,
   categoryColors,
-  maskAuthorId 
+  maskAuthorId,
+  toReview,
 } from "@/contexts/review-context"
-
-/**
- * [관리자 안내]
- * 후기 게시판 전체 페이지
- * - ReviewContext에서 데이터를 가져와 표시
- * - ReviewTable 공통 컴포넌트 사용
- * - 카테고리: 전체, 매거진, 후기, 공지사항
- */
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function ReviewsPage() {
   const { toast } = useToast()
-  const { reviews, addReview } = useReviewsSafe()
+  const { isLoggedIn, user } = useAuth()
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
   const [isWriteDialogOpen, setIsWriteDialogOpen] = useState(false)
-  
-  // 작성 폼 상태
+
   const [newCategory, setNewCategory] = useState("")
   const [newTitle, setNewTitle] = useState("")
   const [newContent, setNewContent] = useState("")
@@ -56,36 +51,55 @@ export default function ReviewsPage() {
 
   const itemsPerPage = 10
 
-  // 카테고리 필터링
-  const filteredReviews = selectedCategory === "all"
-    ? reviews
-    : reviews.filter((review) => review.category === selectedCategory)
+  const fetchReviews = async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("reviews")
+      .select("*")
+      .eq("is_hidden", false)
+      .order("created_at", { ascending: false })
+    setReviews((data ?? []).map(toReview))
+    setLoading(false)
+  }
 
-  // 페이지네이션
+  useEffect(() => {
+    fetchReviews()
+  }, [])
+
+  const filteredReviews =
+    selectedCategory === "all"
+      ? reviews
+      : reviews.filter((r) => r.category === selectedCategory)
+
   const totalPages = Math.ceil(filteredReviews.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const currentItems = filteredReviews.slice(startIndex, startIndex + itemsPerPage)
 
-  // 페이지 번호 배열 생성
   const getPageNumbers = () => {
     const maxVisible = 10
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2))
     const end = Math.min(totalPages, start + maxVisible - 1)
-    
-    if (end - start + 1 < maxVisible) {
-      start = Math.max(1, end - maxVisible + 1)
-    }
-    
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1)
     return Array.from({ length: end - start + 1 }, (_, i) => start + i)
   }
 
-  // 카테고리 변경 시 첫 페이지로 이동
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
     setCurrentPage(1)
   }
 
-  // 후기 등록
+  const handleWriteClick = () => {
+    if (!isLoggedIn) {
+      toast({
+        title: "로그인 필요",
+        description: "후기 작성은 로그인 후 이용할 수 있습니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    setIsWriteDialogOpen(true)
+  }
+
   const handleSubmitReview = async () => {
     if (!newCategory || !newTitle.trim() || !newContent.trim()) {
       toast({
@@ -95,23 +109,29 @@ export default function ReviewsPage() {
       })
       return
     }
+    if (!user) return
 
     setIsSubmitting(true)
-    
-    // 서버 요청 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const categoryLabel = reviewCategories.find(c => c.value === newCategory)?.label || newCategory
-
-    addReview({
+    const supabase = createClient()
+    const { error } = await supabase.from("reviews").insert({
       category: newCategory,
-      categoryLabel: categoryLabel,
       title: newTitle.trim(),
       content: newContent.trim(),
-      author: "user_demo123", // 실제로는 로그인된 사용자 아이디
-      date: new Date().toISOString().split('T')[0],
+      user_id: user.id,
+      is_hidden: false,
     })
 
+    if (error) {
+      toast({
+        title: "등록 실패",
+        description: "후기 등록 중 오류가 발생했습니다.",
+        variant: "destructive",
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    await fetchReviews()
     setIsWriteDialogOpen(false)
     setNewCategory("")
     setNewTitle("")
@@ -126,7 +146,6 @@ export default function ReviewsPage() {
     })
   }
 
-  // 폼 초기화
   const resetForm = () => {
     setNewCategory("")
     setNewTitle("")
@@ -136,19 +155,16 @@ export default function ReviewsPage() {
   return (
     <section className="py-16 lg:py-24 bg-background">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
-        {/* Page Header */}
         <div className="flex flex-col gap-6 mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground lg:text-4xl">
-                후기 게시판
-              </h1>
+              <h1 className="text-3xl font-bold text-foreground lg:text-4xl">후기 게시판</h1>
               <p className="text-muted-foreground mt-2">
                 피플앤아트 서비스를 이용한 회원들의 생생한 후기를 확인해보세요.
               </p>
             </div>
             <Button
-              onClick={() => setIsWriteDialogOpen(true)}
+              onClick={handleWriteClick}
               className="hidden sm:flex items-center gap-2"
             >
               <PenLine className="h-4 w-4" />
@@ -156,7 +172,6 @@ export default function ReviewsPage() {
             </Button>
           </div>
 
-          {/* Category Tabs - 전체 / 매거진 / 후기 / 공지사항 */}
           <div className="flex items-center justify-between gap-4">
             <Tabs value={selectedCategory} onValueChange={handleCategoryChange} className="w-full">
               <TabsList className="h-auto p-1 flex-wrap">
@@ -173,9 +188,8 @@ export default function ReviewsPage() {
             </Tabs>
           </div>
 
-          {/* Mobile Write Button */}
           <Button
-            onClick={() => setIsWriteDialogOpen(true)}
+            onClick={handleWriteClick}
             className="sm:hidden w-full flex items-center justify-center gap-2"
           >
             <PenLine className="h-4 w-4" />
@@ -183,25 +197,23 @@ export default function ReviewsPage() {
           </Button>
         </div>
 
-        {/* Review Table - 공통 컴포넌트 사용 */}
-        {currentItems.length > 0 ? (
-          <ReviewTable 
-            data={currentItems} 
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <span className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : currentItems.length > 0 ? (
+          <ReviewTable
+            data={currentItems}
             onRowClick={(review) => setSelectedReview(review)}
           />
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-border bg-card">
             <MessageSquare className="h-16 w-16 text-muted-foreground/30 mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">
-              등록된 후기가 없습니다.
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              첫 번째 후기를 작성해보세요!
-            </p>
+            <p className="text-lg font-medium text-muted-foreground">등록된 후기가 없습니다.</p>
+            <p className="text-sm text-muted-foreground mt-1">첫 번째 후기를 작성해보세요!</p>
           </div>
         )}
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-1 mt-12">
             {getPageNumbers().map((pageNum) => (
@@ -220,7 +232,7 @@ export default function ReviewsPage() {
           </div>
         )}
 
-        {/* Review Detail Dialog */}
+        {/* 후기 상세 다이얼로그 */}
         <Dialog open={!!selectedReview} onOpenChange={() => setSelectedReview(null)}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             {selectedReview && (
@@ -256,9 +268,9 @@ export default function ReviewsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Write Review Dialog */}
-        <Dialog 
-          open={isWriteDialogOpen} 
+        {/* 후기 작성 다이얼로그 */}
+        <Dialog
+          open={isWriteDialogOpen}
           onOpenChange={(open) => {
             setIsWriteDialogOpen(open)
             if (!open) resetForm()
@@ -275,7 +287,6 @@ export default function ReviewsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              {/* 카테고리 선택 */}
               <div className="space-y-2">
                 <Label htmlFor="category">카테고리</Label>
                 <Select value={newCategory} onValueChange={setNewCategory}>
@@ -283,16 +294,16 @@ export default function ReviewsPage() {
                     <SelectValue placeholder="카테고리를 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
-                    {reviewCategories.filter((cat) => cat.value !== "all").map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
+                    {reviewCategories
+                      .filter((cat) => cat.value !== "all")
+                      .map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              {/* 제목 입력 */}
               <div className="space-y-2">
                 <Label htmlFor="title">제목</Label>
                 <Input
@@ -303,8 +314,6 @@ export default function ReviewsPage() {
                   maxLength={50}
                 />
               </div>
-
-              {/* 내용 입력 */}
               <div className="space-y-2">
                 <Label htmlFor="content">내용</Label>
                 <Textarea

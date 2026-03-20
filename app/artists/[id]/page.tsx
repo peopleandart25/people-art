@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import React, { useState, useEffect, use } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -221,6 +221,12 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
   const birthYear = artist.birthDate 
     ? new Date(artist.birthDate).getFullYear()
     : null
+
+  // 전체 이미지 배열 (메인 + 서브)
+  const allImages = [
+    ...(artist.profileImage ? [artist.profileImage] : []),
+    ...artist.subImages,
+  ]
 
   // 갤러리 이전/다음 이미지
   const handlePrevImage = () => {
@@ -752,20 +758,15 @@ function VideoCard({ video, isAdmin }: VideoCardProps) {
       
       {/* ReactPlayer */}
       <div className="aspect-video bg-gray-900">
-        <ReactPlayer
-          url={video.url}
-          width="100%"
-          height="100%"
-          controls
-          playing={false}
-          config={{
-            file: {
-              attributes: {
-                controlsList: isAdmin ? undefined : "nodownload",
-              }
-            }
-          }}
-        />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {React.createElement(ReactPlayer as any, {
+          url: video.url,
+          width: "100%",
+          height: "100%",
+          controls: true,
+          playing: false,
+          config: { file: { attributes: { controlsList: isAdmin ? undefined : "nodownload" } } },
+        })}
       </div>
       
       {/* 관리자 다운로드 버튼 (MP4 파일인 경우에만) */}
