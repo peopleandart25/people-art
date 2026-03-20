@@ -15,6 +15,7 @@ const menuItems = [
   { label: "투어 관리", href: "/admin/tours" },
   { label: "파트너 관리", href: "/admin/partners" },
   { label: "후기 관리", href: "/admin/reviews" },
+  { label: "지원기관 관리", href: "/admin/agencies" },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
