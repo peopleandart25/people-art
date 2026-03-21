@@ -764,6 +764,7 @@ export const footerData = {
   },
   links: [
     { label: "이용약관", href: "/terms", isExternal: false },
+    { label: "환불정책", href: "/refund", isExternal: false },
     { label: "개인정보처리방침", href: "/privacy", isExternal: false },
     { label: "고객센터", href: KAKAO_SUPPORT_URL, isExternal: true },
     { label: "제휴문의", href: "/partnership", isExternal: false },
