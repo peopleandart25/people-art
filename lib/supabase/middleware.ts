@@ -30,10 +30,7 @@ export async function updateSession(request: NextRequest) {
   // /admin 경로 보호 - 관리자만 접근 가능
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('redirectTo', request.nextUrl.pathname)
-      return NextResponse.redirect(url)
+      return NextResponse.redirect(new URL('/login?redirectTo=/admin', 'https://people-art.co.kr'))
     }
 
     // DB에서 role 확인
