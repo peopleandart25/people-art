@@ -25,7 +25,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading && !isAdmin) {
-      router.replace("/")
+      // admin 서브도메인에서 접근 시 메인 사이트로 리다이렉트
+      if (typeof window !== "undefined" && window.location.hostname.startsWith("admin.")) {
+        window.location.href = "https://people-art.co.kr/login"
+      } else {
+        router.replace("/")
+      }
     }
   }, [loading, isAdmin, router])
 
