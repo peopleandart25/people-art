@@ -29,7 +29,6 @@ import {
 import {
   useArtistsSafe,
   genderOptions,
-  statusTagOptions,
   schoolOptions,
   AGE_MIN,
   AGE_MAX,
@@ -267,6 +266,7 @@ const FilterSidebar = memo(function FilterSidebar({ isMobile = false }: FilterSi
     selectAllTags,
     deselectAllTags,
     ageRange,
+    statusTagOptions,
   } = useArtistsSafe()
 
   const [isFilterExpanded, setIsFilterExpanded] = useState(true)
@@ -444,6 +444,7 @@ export default function ArtistsPage() {
     toggleSchool,
     toggleTag,
     deselectAllSchools,
+    statusTagOptions,
   } = useArtistsSafe()
   const { isLoggedIn } = useAuth()
   const { toast } = useToast()

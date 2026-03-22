@@ -76,21 +76,6 @@ export interface CareerItem {
 
 export const genderOptions = ["전체", "남성", "여성"]
 
-export const statusTagOptions: StatusTag[] = [
-  "아이돌 연습생 출신",
-  "아이돌",
-  "외국인",
-  "모델",
-  "인플루언서",
-  "유튜버",
-  "뮤지컬 배우",
-  "가수",
-  "성우",
-  "개그맨",
-  "아나운서",
-  "MC",
-  "나레이터",
-]
 
 export const AGE_MIN = 5
 export const AGE_MAX = 90
@@ -104,6 +89,7 @@ interface ArtistContextType {
   filteredArtists: ArtistProfile[]
   loading: boolean
   getArtistById: (id: string) => ArtistProfile | undefined
+  statusTagOptions: StatusTag[]
   searchQuery: string
   selectedGender: string
   selectedTags: StatusTag[]
@@ -141,6 +127,7 @@ const ArtistContext = createContext<ArtistContextType | undefined>(undefined)
 
 export function ArtistProvider({ children }: { children: ReactNode }) {
   const [artists, setArtists] = useState<ArtistProfile[]>([])
+  const [statusTagOptions, setStatusTagOptions] = useState<StatusTag[]>([])
   const [loading, setLoading] = useState(true)
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -175,6 +162,7 @@ export function ArtistProvider({ children }: { children: ReactNode }) {
       const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]))
       const photoMap = new Map((mainPhotos ?? []).map(p => [p.user_id, p.url]))
       const tagMap = new Map((allStatusTags ?? []).map(t => [t.id, t.name as string]))
+      setStatusTagOptions((allStatusTags ?? []).map(t => t.name as string))
 
       const artistTagsMap = new Map<string, string[]>()
       for (const join of (statusTagJoins ?? [])) {
@@ -256,7 +244,7 @@ export function ArtistProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const selectAllTags = () => setSelectedTags([...statusTagOptions])
+  const selectAllTags = () => setSelectedTags(statusTagOptions)
   const deselectAllTags = () => setSelectedTags([])
 
   const toggleSchool = (school: string) => {
@@ -285,6 +273,7 @@ export function ArtistProvider({ children }: { children: ReactNode }) {
         filteredArtists,
         loading,
         getArtistById,
+        statusTagOptions,
         searchQuery,
         selectedGender,
         selectedTags,
@@ -327,6 +316,7 @@ export function useArtistsSafe() {
       filteredArtists: [] as ArtistProfile[],
       loading: false,
       getArtistById: () => undefined,
+      statusTagOptions: [] as StatusTag[],
       searchQuery: "",
       selectedGender: "전체",
       selectedTags: [] as StatusTag[],
