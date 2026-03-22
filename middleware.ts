@@ -7,11 +7,9 @@ export async function middleware(request: NextRequest) {
 
   if (isAdminSubdomain) {
     const pathname = request.nextUrl.pathname
-    if (!pathname.startsWith('/admin')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/admin' + (pathname === '/' ? '' : pathname)
-      return NextResponse.rewrite(url)
-    }
+    const adminPath = '/admin' + (pathname === '/' ? '' : pathname)
+    const redirectUrl = new URL(`https://people-art.co.kr${adminPath}${request.nextUrl.search}`)
+    return NextResponse.redirect(redirectUrl)
   }
 
   return await updateSession(request)
