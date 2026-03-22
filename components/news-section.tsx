@@ -8,19 +8,32 @@ import { ChevronRight, ChevronLeft, Newspaper } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useEmblaCarousel from "embla-carousel-react"
 import Autoplay from "embla-carousel-autoplay"
-import { newsData } from "@/data/content"
+import { createClient } from "@/lib/supabase/client"
 
-/**
- * [관리자 안내]
- * NEWS 섹션 데이터는 data/content.ts의 newsData에서 관리합니다.
- * - 뉴스 항목: newsData.items (이미지, 제목, 날짜, 링크)
- * - 섹션 제목: newsData.sectionTitle, newsData.sectionSubtitle
- * - 전체보기 링크: newsData.viewAllLink
- */
+type NewsItem = {
+  id: string
+  title: string
+  image_url: string | null
+  published_at: string | null
+}
 
 export function NewsSection() {
   const [isPaused, setIsPaused] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from("news")
+      .select("id, title, image_url, published_at")
+      .eq("is_published", true)
+      .order("published_at", { ascending: false })
+      .limit(12)
+      .then(({ data }) => {
+        if (data) setNewsItems(data)
+      })
+  }, [])
 
   const autoplayPlugin = Autoplay({
     delay: 3500,
@@ -62,19 +75,19 @@ export function NewsSection() {
     }
   }, [emblaApi, onSelect])
 
+  if (newsItems.length === 0) return null
+
   return (
     <section id="news" className="py-16 lg:py-24 bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
         {/* Section Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-foreground lg:text-3xl">
-              {newsData.sectionTitle}
-            </h2>
-            <p className="text-muted-foreground mt-1">{newsData.sectionSubtitle}</p>
+            <h2 className="text-2xl font-bold text-foreground lg:text-3xl">NEWS</h2>
+            <p className="text-muted-foreground mt-1">소식</p>
           </div>
           <Link
-            href={newsData.viewAllLink ? newsData.viewAllLink : "#"}
+            href="/news"
             className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
             전체보기
@@ -90,26 +103,18 @@ export function NewsSection() {
         >
           <div ref={emblaRef} className="overflow-hidden rounded-2xl">
             <div className="flex -ml-4">
-              {newsData.items.map((item, index) => {
-                const itemId = item?.id ? item.id : `news-item-${index}`
-                const itemLink = item?.id ? `/news/${item.id.replace("news-", "")}` : "#"
-                const itemTitle = item?.title ? item.title : "제목 없음"
-                const itemDate = item?.date ? item.date : ""
-                const itemImage = item?.image ? item.image : ""
-                
-                return (
+              {newsItems.map((item, index) => (
                 <div
-                  key={itemId}
+                  key={item.id}
                   className="flex-[0_0_100%] min-w-0 pl-4 md:flex-[0_0_33.333%]"
                 >
-                  <Link href={itemLink}>
+                  <Link href={`/news/${item.id}`}>
                     <Card className="group cursor-pointer border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1 overflow-hidden h-full">
-                      {/* 이미지 영역 */}
                       <div className="relative aspect-[4/3] bg-muted overflow-hidden">
-                        {itemImage ? (
+                        {item.image_url ? (
                           <Image
-                            src={itemImage}
-                            alt={itemTitle}
+                            src={item.image_url}
+                            alt={item.title}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                           />
@@ -121,15 +126,16 @@ export function NewsSection() {
                       </div>
                       <CardContent className="p-4">
                         <h3 className="font-semibold text-foreground line-clamp-2 mb-2 group-hover:text-primary transition-colors">
-                          {itemTitle}
+                          {item.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground">{itemDate}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.published_at ? item.published_at.slice(0, 10) : ""}
+                        </p>
                       </CardContent>
                     </Card>
                   </Link>
                 </div>
-              )
-              })}
+              ))}
             </div>
           </div>
 
@@ -144,7 +150,7 @@ export function NewsSection() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div className="flex gap-2">
-              {newsData.items.map((_, index) => (
+              {newsItems.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => emblaApi?.scrollTo(index)}

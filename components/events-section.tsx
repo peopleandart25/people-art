@@ -1,122 +1,58 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { ChevronRight, Calendar, Clock, Crown, LogIn, UserPlus } from "lucide-react"
+import { ChevronRight, Calendar, Crown, LogIn, UserPlus } from "lucide-react"
 import { useUser } from "@/contexts/user-context"
+import { createClient } from "@/lib/supabase/client"
 
-type EventType = "오디션" | "특강"
-type EventStatus = "진행중" | "마감"
-
-interface Event {
-  id: number
-  type: EventType
+type Event = {
+  id: string
   title: string
-  deadline: string
-  status: EventStatus
-  description?: string
-  location?: string
-  time?: string
-  isMemberOnly?: boolean
+  type: string
+  status: string
+  deadline: string | null
+  is_member_only: boolean | null
 }
-
-const events: Event[] = [
-  {
-    id: 1,
-    type: "오디션",
-    title: "이상길 대표 오디션",
-    deadline: "2026-03-01",
-    status: "진행중",
-    description: "영화 '보통사람들' 캐스팅을 위한 내부 오디션입니다.",
-    location: "서울특별시 강남구",
-    time: "14:00 - 18:00",
-    isMemberOnly: true,
-  },
-  {
-    id: 2,
-    type: "특강",
-    title: '연기특강 "오디션 피드백"',
-    deadline: "2026-03-01",
-    status: "마감",
-    description: "현업 배우가 직접 진행하는 오디션 피드백 특강입니다.",
-    location: "서울특별시 성북구",
-    time: "10:00 - 13:00",
-    isMemberOnly: true,
-  },
-  {
-    id: 3,
-    type: "오디션",
-    title: "넷플릭스 드라마 오디션",
-    deadline: "2026-03-15",
-    status: "진행중",
-    description: "넷플릭스 오리지널 드라마 조연 캐스팅 오디션입니다.",
-    location: "서울특별시 마포구",
-    time: "09:00 - 17:00",
-    isMemberOnly: true,
-  },
-  {
-    id: 4,
-    type: "오디션",
-    title: "영화 '새벽의 약속' 오디션",
-    deadline: "2026-03-20",
-    status: "진행중",
-    description: "장편 영화 주연 및 조연 캐스팅 오디션입니다.",
-    location: "서울특별시 종로구",
-    time: "13:00 - 18:00",
-    isMemberOnly: true,
-  },
-  {
-    id: 5,
-    type: "특강",
-    title: "카메라 연기 워크샵",
-    deadline: "2026-03-25",
-    status: "진행중",
-    description: "카메라 앞에서의 자연스러운 연기를 배우는 실전 워크샵입니다.",
-    location: "서울특별시 강남구",
-    time: "15:00 - 19:00",
-    isMemberOnly: false,
-  },
-  {
-    id: 6,
-    type: "오디션",
-    title: "광고 모델 오디션",
-    deadline: "2026-04-01",
-    status: "진행중",
-    description: "대기업 광고 모델 캐스팅 오디션입니다.",
-    location: "서울특별시 서초구",
-    time: "10:00 - 16:00",
-    isMemberOnly: true,
-  },
-]
 
 export function EventsSection() {
   const router = useRouter()
   const { status } = useUser()
+  const [events, setEvents] = useState<Event[]>([])
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from("events")
+      .select("id, title, type, status, deadline, is_member_only")
+      .order("created_at", { ascending: false })
+      .limit(6)
+      .then(({ data }) => {
+        if (data) setEvents(data)
+      })
+  }, [])
+
   const handleApply = (event: Event) => {
     setSelectedEvent(event)
 
-    // 1. 비로그인 상태
     if (status === "guest") {
       setShowLoginModal(true)
       return
     }
 
-    // 2. 로그인했지만 멤버십 전용 이벤트에 비멤버십 회원이 접근
-    if (event.isMemberOnly && status === "basic") {
+    if (event.is_member_only && status === "basic") {
       setShowMembershipModal(true)
       return
     }
 
-    // 3. 멤버십 회원이거나, 멤버십 전용이 아닌 이벤트
-    router.push(`/audition/${event.id}`)
+    router.push(`/events/${event.id}`)
   }
 
   const handleLoginRedirect = () => {
@@ -128,6 +64,8 @@ export function EventsSection() {
     setShowMembershipModal(false)
     router.push("/membership")
   }
+
+  if (events.length === 0) return null
 
   return (
     <section id="events" className="py-16 lg:py-24 bg-background">
@@ -180,9 +118,9 @@ export function EventsSection() {
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>{event.deadline} 마감</span>
+                  <span>{event.deadline ? event.deadline.slice(0, 10) : ""} 마감</span>
                 </div>
-                {event.isMemberOnly ? (
+                {event.is_member_only ? (
                   <div className="flex items-center gap-2 text-sm text-primary mt-2">
                     <Crown className="h-4 w-4" />
                     <span>멤버십 전용</span>

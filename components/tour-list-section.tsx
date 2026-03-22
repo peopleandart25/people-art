@@ -1,63 +1,42 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, Film, Tv, Sparkles } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
-interface TourItem {
-  id: number
-  category: "영화" | "드라마"
+type Tour = {
+  id: string
   title: string
-  deadline: string
-  isNew: boolean
+  category: string | null
+  status: string
+  created_at: string | null
 }
 
-const tourItems: TourItem[] = [
-  {
-    id: 1,
-    category: "영화",
-    title: "넷플릭스 오리지널 1996년생~2000년생 남자 배우 모집",
-    deadline: "2026.02.28",
-    isNew: true,
-  },
-  {
-    id: 2,
-    category: "영화",
-    title: "장편영화 '새벽의 약속' 20대 초반 여자 배우 모집",
-    deadline: "2026.03.05",
-    isNew: true,
-  },
-  {
-    id: 3,
-    category: "드라마",
-    title: "KBS 미니시리즈 30대 남자 조연 모집",
-    deadline: "2026.03.10",
-    isNew: true,
-  },
-  {
-    id: 4,
-    category: "드라마",
-    title: "tvN 새 드라마 20대 후반 여자 배우 모집",
-    deadline: "2026.03.15",
-    isNew: true,
-  },
-  {
-    id: 5,
-    category: "영화",
-    title: "독립영화 '첫 번째 겨울' 10대 후반 배우 모집",
-    deadline: "2026.03.20",
-    isNew: false,
-  },
-  {
-    id: 6,
-    category: "드라마",
-    title: "SBS 주말드라마 40대 남자 조연 모집",
-    deadline: "2026.03.25",
-    isNew: false,
-  },
-]
+function isNew(createdAt: string | null): boolean {
+  if (!createdAt) return false
+  const diffMs = Date.now() - new Date(createdAt).getTime()
+  return diffMs < 7 * 24 * 60 * 60 * 1000
+}
 
 export function TourListSection() {
+  const [tours, setTours] = useState<Tour[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from("tours")
+      .select("id, title, category, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(6)
+      .then(({ data }) => {
+        if (data) setTours(data)
+      })
+  }, [])
+
+  if (tours.length === 0) return null
+
   return (
     <section id="tourlist" className="py-16 lg:py-24 bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
@@ -87,7 +66,7 @@ export function TourListSection() {
 
         {/* Tour Items Grid */}
         <div className="grid gap-4 md:grid-cols-2">
-          {tourItems.map((item) => (
+          {tours.map((item) => (
             <Card
               key={item.id}
               className="group cursor-pointer border border-border transition-all hover:shadow-md hover:border-primary/30"
@@ -113,9 +92,9 @@ export function TourListSection() {
                             : "bg-blue-50 text-blue-600"
                         }
                       >
-                        {item.category}
+                        {item.category ?? "기타"}
                       </Badge>
-                      {item.isNew && (
+                      {isNew(item.created_at) && (
                         <Badge className="bg-red-500 text-white">
                           <Sparkles className="h-3 w-3 mr-1" />
                           NEW
@@ -125,7 +104,7 @@ export function TourListSection() {
                     <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {item.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">{item.deadline} 마감</p>
+                    <p className="text-sm text-muted-foreground mt-1">{item.status}</p>
                   </div>
                 </div>
               </CardContent>

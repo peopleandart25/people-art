@@ -65,11 +65,10 @@ function LoginContent() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       toast({ title: "로그인 실패", description: "이메일 또는 비밀번호를 확인해주세요.", variant: "destructive" })
+      setIsLoading(false)
     } else {
-      router.push(redirectTo)
-      router.refresh()
+      window.location.href = redirectTo
     }
-    setIsLoading(false)
   }
 
   const handleEmailSignup = async (e: React.FormEvent<HTMLFormElement>) => {

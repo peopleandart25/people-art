@@ -36,7 +36,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 export default function ReviewsPage() {
   const { toast } = useToast()
-  const { isLoggedIn, user } = useAuth()
+  const { isLoggedIn, user, loading: authLoading } = useAuth()
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -89,6 +89,7 @@ export default function ReviewsPage() {
   }
 
   const handleWriteClick = () => {
+    if (authLoading) return
     if (!isLoggedIn) {
       toast({
         title: "로그인 필요",

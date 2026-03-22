@@ -8,18 +8,31 @@ import { ChevronRight, ChevronLeft, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useEmblaCarousel from "embla-carousel-react"
 import Autoplay from "embla-carousel-autoplay"
-import { partnersData } from "@/data/content"
+import { createClient } from "@/lib/supabase/client"
 
-/**
- * [관리자 안내]
- * PARTNERSHIP 섹션 데이터는 data/content.ts의 partnersData에서 관리합니다.
- * - 제휴업체 항목: partnersData.items (이미지, 이름, 카테고리, 링크)
- * - 섹션 제목: partnersData.sectionTitle, partnersData.sectionSubtitle
- * - 전체보기 링크: partnersData.viewAllLink
- */
+type Partner = {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+  link: string | null
+}
 
 export function PartnershipSection() {
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [partners, setPartners] = useState<Partner[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from("partners")
+      .select("id, name, description, image_url, link")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => {
+        if (data) setPartners(data)
+      })
+  }, [])
 
   const autoplayPlugin = Autoplay({
     delay: 4000,
@@ -58,16 +71,16 @@ export function PartnershipSection() {
     }
   }, [emblaApi, onSelect])
 
+  if (partners.length === 0) return null
+
   return (
     <section id="partnership" className="py-20 lg:py-28 bg-background">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
         {/* Section Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-foreground lg:text-3xl">
-              {partnersData.sectionTitle}
-            </h2>
-            <p className="text-muted-foreground mt-1">{partnersData.sectionSubtitle}</p>
+            <h2 className="text-2xl font-bold text-foreground lg:text-3xl">PARTNERSHIP</h2>
+            <p className="text-muted-foreground mt-1">제휴업체</p>
           </div>
           <Link
             href="/partners"
@@ -78,32 +91,24 @@ export function PartnershipSection() {
           </Link>
         </div>
 
-        <p className="text-muted-foreground mb-10">{partnersData.description}</p>
+        <p className="text-muted-foreground mb-10">피플앤아트 공식 제휴 업체입니다.</p>
 
         {/* Partners Carousel */}
         <div className="relative">
           <div ref={emblaRef} className="overflow-hidden rounded-2xl">
             <div className="flex -ml-4">
-              {partnersData.items.map((partner, index) => {
-                const partnerId = partner?.id ? partner.id : `partner-${index}`
-                const partnerLink = partner?.link ? partner.link : "#"
-                const partnerName = partner?.name ? partner.name : "업체명"
-                const partnerCategory = partner?.category ? partner.category : ""
-                const partnerImage = partner?.image ? partner.image : ""
-                
-                return (
+              {partners.map((partner) => (
                 <div
-                  key={partnerId}
+                  key={partner.id}
                   className="flex-[0_0_100%] min-w-0 pl-4 md:flex-[0_0_33.333%]"
                 >
-                  <a href={partnerLink} target="_blank" rel="noopener noreferrer">
+                  <a href={partner.link ?? "#"} target="_blank" rel="noopener noreferrer">
                     <Card className="group cursor-pointer border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1 overflow-hidden h-full">
-                      {/* 이미지 영역 */}
                       <div className="relative aspect-[4/3] bg-muted overflow-hidden">
-                        {partnerImage ? (
+                        {partner.image_url ? (
                           <Image
-                            src={partnerImage}
-                            alt={partnerName}
+                            src={partner.image_url}
+                            alt={partner.name}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                           />
@@ -115,15 +120,14 @@ export function PartnershipSection() {
                       </div>
                       <CardContent className="p-4 text-center">
                         <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                          {partnerName}
+                          {partner.name}
                         </h3>
-                        <p className="text-sm text-primary">{partnerCategory}</p>
+                        <p className="text-sm text-primary">{partner.description ?? ""}</p>
                       </CardContent>
                     </Card>
                   </a>
                 </div>
-              )
-              })}
+              ))}
             </div>
           </div>
 
@@ -138,7 +142,7 @@ export function PartnershipSection() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div className="flex gap-2">
-              {partnersData.items.map((_, index) => (
+              {partners.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => emblaApi?.scrollTo(index)}
