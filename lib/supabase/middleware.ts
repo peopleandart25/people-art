@@ -33,8 +33,18 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?redirectTo=/admin', 'https://people-art.co.kr'))
     }
 
-    // DB에서 role 확인
-    const { data: profile } = await supabase
+    // DB에서 role 확인 (RLS 우회를 위해 service role 사용)
+    const serviceClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() { return [] },
+          setAll() {},
+        },
+      }
+    )
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
