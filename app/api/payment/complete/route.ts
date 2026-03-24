@@ -68,10 +68,10 @@ export async function POST(request: Request) {
     membership_id: membership.id,
     amount: MEMBERSHIP_PRICE,
     points_used: pointsUsed,
-    status: "paid",
+    status: "completed",
     pg_provider: payment.channel?.pgProvider ?? "kakaopay",
     pg_transaction_id: paymentId,
-    payment_method: "EASY_PAY",
+    payment_method: "kakao_pay",
   })
   if (paymentError) {
     return NextResponse.json({ error: "결제 내역 저장 실패" }, { status: 500 })
