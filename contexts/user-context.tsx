@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 export type UserStatus = "guest" | "basic" | "premium" | "admin"
 
@@ -140,19 +141,54 @@ const defaultProfile: UserProfile = {
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<UserStatus>("premium") // 데모: 멤버십 회원으로 시작
-  const [points, setPoints] = useState(15000)
+  const [status, setStatus] = useState<UserStatus>("guest")
+  const [points, setPoints] = useState(0)
   const [profile, setProfile] = useState<UserProfile>(defaultProfile)
-  
+
   // 멤버십 구독 상태
-  const [membershipState, setMembershipState] = useState<MembershipState>("active")
-  const [membershipExpiryDate, setMembershipExpiryDate] = useState<Date | null>(() => {
-    // 데모: 30일 후 만료
-    const expiryDate = new Date()
-    expiryDate.setDate(expiryDate.getDate() + 30)
-    return expiryDate
-  })
+  const [membershipState, setMembershipState] = useState<MembershipState>("cancelled")
+  const [membershipExpiryDate, setMembershipExpiryDate] = useState<Date | null>(null)
   const [pointRenewalReservation, setPointRenewalReservation] = useState<PointRenewalReservation | null>(null)
+
+  // Supabase 세션과 동기화
+  useEffect(() => {
+    const supabase = createClient()
+
+    async function syncFromSession() {
+      const res = await fetch("/api/profile")
+      if (!res.ok) {
+        setStatus("guest")
+        setPoints(0)
+        return
+      }
+      const data = await res.json()
+      if (!data) {
+        setStatus("guest")
+        setPoints(0)
+        return
+      }
+      const role: string = data.role ?? "user"
+      if (role === "admin") setStatus("admin")
+      else if (role === "premium") setStatus("premium")
+      else setStatus("basic")
+      setPoints(data.points ?? 0)
+    }
+
+    syncFromSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setStatus("guest")
+        setPoints(0)
+        setMembershipState("cancelled")
+        setMembershipExpiryDate(null)
+      } else {
+        syncFromSession()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const updateProfile = (updates: Partial<UserProfile>) => {
     setProfile((prev) => ({ ...prev, ...updates }))
