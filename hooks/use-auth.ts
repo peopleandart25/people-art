@@ -42,7 +42,7 @@ export function useAuth() {
     try {
       const res = await fetch("/api/profile")
       const data = await res.json()
-      setProfile(data ? { ...data, points: 0 } : null)
+      setProfile(data ? { ...data, points: data.points ?? 0 } : null)
     } catch {
       setProfile(null)
     } finally {

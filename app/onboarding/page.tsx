@@ -400,7 +400,7 @@ export default function OnboardingPage() {
     setUncertainFields([])
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     // 경력 데이터를 careerList 형식으로 변환
     const careerList = formData.career
       .filter(c => c.title.trim() !== "")
@@ -412,6 +412,35 @@ export default function OnboardingPage() {
         role: c.role,
       }))
 
+    // DB 저장
+    try {
+      const res = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          birthDate: formData.isBirthYearOnly ? `${formData.birthYear}-01-01` : formData.birthDate,
+          gender: formData.gender,
+          height: formData.height,
+          weight: formData.weight,
+          bio: formData.bio,
+          etcInfo: formData.etcInfo,
+          careerList,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        toast({ title: "저장 실패", description: err.error ?? "잠시 후 다시 시도해주세요.", variant: "destructive" })
+        return
+      }
+    } catch {
+      toast({ title: "저장 실패", description: "네트워크 오류가 발생했습니다.", variant: "destructive" })
+      return
+    }
+
+    // UserContext 업데이트 (UI 즉시 반영용)
     updateProfile({
       name: formData.name,
       phone: formData.phone,

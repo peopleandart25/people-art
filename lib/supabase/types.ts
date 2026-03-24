@@ -541,6 +541,7 @@ export type Database = {
           id: string
           name: string | null
           phone: string | null
+          points: number
           role: string
           updated_at: string | null
         }
@@ -550,6 +551,7 @@ export type Database = {
           id: string
           name?: string | null
           phone?: string | null
+          points?: number
           role?: string
           updated_at?: string | null
         }
@@ -559,6 +561,7 @@ export type Database = {
           id?: string
           name?: string | null
           phone?: string | null
+          points?: number
           role?: string
           updated_at?: string | null
         }

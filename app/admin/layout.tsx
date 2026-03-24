@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 const menuItems = [
   { label: "대시보드", href: "/admin" },
   { label: "회원 관리", href: "/admin/users" },
+  { label: "배우 관리", href: "/admin/artists" },
   { label: "이벤트 관리", href: "/admin/events" },
   { label: "뉴스 관리", href: "/admin/news" },
   { label: "투어 관리", href: "/admin/tours" },
