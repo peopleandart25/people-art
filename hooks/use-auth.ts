@@ -38,10 +38,16 @@ export function useAuth() {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function fetchProfile(userId: string) {
-    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single()
-    setProfile(data ? { ...data, points: 0 } : null)
-    setLoading(false)
+  async function fetchProfile(_userId: string) {
+    try {
+      const res = await fetch("/api/profile")
+      const data = await res.json()
+      setProfile(data ? { ...data, points: 0 } : null)
+    } catch {
+      setProfile(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function signInWithKakao() {
