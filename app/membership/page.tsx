@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import * as PortOne from "@portone/browser-sdk/v2"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useUserSafe } from "@/contexts/user-context"
+import { useAuth } from "@/hooks/use-auth"
 import { 
   Check, Crown, ChevronDown, ChevronUp, CalendarDays, CheckCircle2, 
   Sparkles, Gift, Send, FileText, Megaphone, Users, Film, CreditCard, Coins, AlertCircle, XCircle
@@ -278,6 +280,7 @@ const topBenefits = [
 export default function MembershipPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { user } = useAuth()
   
   /**
    * [중앙 집중식 포인트 관리 - Single Source of Truth]
@@ -357,24 +360,8 @@ export default function MembershipPage() {
   const [terminationReasonDetail, setTerminationReasonDetail] = useState("")
   const [isTerminating, setIsTerminating] = useState(false)
 
-  // 카드 결제 폼 상태
-  const [cardNumber, setCardNumber] = useState("")
-  const [cardName, setCardName] = useState("")
-  const [birthDate, setBirthDate] = useState("")
-  const [expiryMonth, setExpiryMonth] = useState("")
-  const [expiryYear, setExpiryYear] = useState("")
-  const [password, setPassword] = useState("")
   const [referralCode, setReferralCode] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
-
-  // 폼 에러 상태
-  const [errors, setErrors] = useState({
-    cardNumber: "",
-    cardName: "",
-    birthDate: "",
-    expiry: "",
-    password: "",
-  })
 
   useEffect(() => {
     // 초기 로딩 시뮬레이션 (실제 API 연동 시 데이터 로딩)
@@ -385,111 +372,78 @@ export default function MembershipPage() {
     return () => clearTimeout(timer)
   }, [])
 
-  // 카드번호 포맷팅 (4자리씩 구분)
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
-    const matches = v.match(/\d{4,16}/g)
-    const match = (matches && matches[0]) || ""
-    const parts = []
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4))
-    }
-    return parts.length ? parts.join(" ") : value
-  }
-
-  // 유효성 검사
-  const validateForm = () => {
-    const newErrors = {
-      cardNumber: "",
-      cardName: "",
-      birthDate: "",
-      expiry: "",
-      password: "",
-    }
-
-    const cardDigits = cardNumber.replace(/\s/g, "")
-    if (cardDigits.length !== 16) {
-      newErrors.cardNumber = "카드번호를 올바르게 입력해 주세요."
-    }
-
-    if (!cardName || !/^[A-Z\s]+$/.test(cardName)) {
-      newErrors.cardName = "카드 이름을 영문 대문자로 입력해 주세요."
-    }
-
-    if (!birthDate || birthDate.length !== 6) {
-      newErrors.birthDate = "생년월일을 6자리로 입력해 주세요."
-    }
-
-    if (!expiryMonth || !expiryYear) {
-      newErrors.expiry = "유효기간을 선택해 주세요."
-    }
-
-    if (!password || password.length !== 2) {
-      newErrors.password = "비밀번호 앞 두자리를 입력해 주세요."
-    }
-
-    setErrors(newErrors)
-    return !Object.values(newErrors).some(error => error !== "")
-  }
-
   // 실제 결제 금액 계산 (신규 가입용) - userPoints 사용
   const usablePoints = usePointsForPayment ? Math.min(userPoints, MEMBERSHIP_PRICE) : 0
   const finalPaymentAmount = MEMBERSHIP_PRICE - usablePoints
 
-  // 결제 처리
+  // 결제 처리 (포트원 V2 카카오페이)
   const handlePayment = async () => {
-    if (!validateForm()) return
+    if (!user) {
+      toast({ title: "로그인이 필요합니다.", variant: "destructive" })
+      router.push("/login?redirectTo=/membership")
+      return
+    }
 
     setIsProcessing(true)
-    
-    // 결제 처리 시뮬레이션 (실제 구현 시 PG사 연동)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    
-    // 1. 포인트 사용 시 차감 (토스트 메시지 없이)
-    let pointsUsed = 0
-    if (usePointsForPayment && usablePoints > 0) {
-      pointsUsed = usablePoints
-      deductPoints(usablePoints, false) // 토스트 없이 차감
-    }
-    
-    // 2. 멤버십 업그레이드
-    upgradeToPremium()
-    
-    // 3. 추천인 포인트 지급 로직
-    const REFERRAL_BONUS = membershipData.referralBonus
-    const SIGNUP_BONUS = membershipData.signupBonus
-    
-    // 4. 최종 포인트 계산: 기존 잔액 - 사용 포인트 + 가입 보너스
-    const remainingPoints = userPoints - pointsUsed
-    
-    if (referralCode.trim()) {
-      // 추천인이 있는 경우: 가입자 25,000P (15,000 + 10,000), 추천인 10,000P
-      const finalPoints = remainingPoints + SIGNUP_BONUS + REFERRAL_BONUS
-      setUserPoints(finalPoints) // 중앙 포인트 업데이트
-      
-      toast({
-        title: "멤버십 가입 완료",
-        description: pointsUsed > 0 
-          ? `${pointsUsed.toLocaleString()}P 사용 후 추천인 보너스 포함 ${(SIGNUP_BONUS + REFERRAL_BONUS).toLocaleString()}P가 지급되었습니다. (잔액: ${finalPoints.toLocaleString()}P)`
-          : `환영합니다! 추천인 보너스 포함 ${(SIGNUP_BONUS + REFERRAL_BONUS).toLocaleString()}P가 지급되었습니다.`,
+
+    try {
+      const paymentId = `payment-${user.id}-${Date.now()}`
+
+      const response = await PortOne.requestPayment({
+        storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
+        channelKey: "channel-key-a5fe2a5a-2289-4f9a-8dc3-030a5651d753",
+        paymentId,
+        orderName: "피플앤아트 멤버십 1개월",
+        totalAmount: finalPaymentAmount,
+        currency: "KRW",
+        payMethod: "EASY_PAY",
+        customer: {
+          customerId: user.id,
+          email: user.email ?? undefined,
+        },
       })
-    } else {
-      // 추천인이 없는 경우: 가입자 15,000P
-      const finalPoints = remainingPoints + SIGNUP_BONUS
-      setUserPoints(finalPoints) // 중앙 포인트 업데이트
-      
-      toast({
-        title: "멤버십 가입 완료",
-        description: pointsUsed > 0 
-          ? `${pointsUsed.toLocaleString()}P 사용 후 가입 축하 ${SIGNUP_BONUS.toLocaleString()}P가 지급되었습니다. (잔액: ${finalPoints.toLocaleString()}P)`
-          : `환영합니다! 가입 축하 ${SIGNUP_BONUS.toLocaleString()}P가 지급되었습니다.`,
+
+      if (response?.code !== undefined) {
+        toast({ title: "결제 실패", description: response.message ?? "결제가 취소되었습니다.", variant: "destructive" })
+        return
+      }
+
+      // 서버에서 결제 검증 및 DB 저장
+      const completeRes = await fetch("/api/payment/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId, pointsUsed: usablePoints }),
       })
+
+      if (!completeRes.ok) {
+        const err = await completeRes.json()
+        toast({ title: "결제 검증 실패", description: err.error, variant: "destructive" })
+        return
+      }
+
+      // 포인트 차감
+      if (usablePoints > 0) {
+        deductPoints(usablePoints, false)
+      }
+      upgradeToPremium()
+
+      const SIGNUP_BONUS = membershipData.signupBonus
+      const REFERRAL_BONUS = membershipData.referralBonus
+      const bonusPoints = referralCode.trim() ? SIGNUP_BONUS + REFERRAL_BONUS : SIGNUP_BONUS
+      const finalPoints = userPoints - usablePoints + bonusPoints
+      setUserPoints(finalPoints)
+
+      toast({
+        title: "멤버십 가입 완료!",
+        description: `환영합니다! 가입 축하 ${bonusPoints.toLocaleString()}P가 지급되었습니다.`,
+      })
+
+      router.refresh()
+    } catch {
+      toast({ title: "결제 중 오류가 발생했습니다.", variant: "destructive" })
+    } finally {
+      setIsProcessing(false)
     }
-    
-    setIsProcessing(false)
-    
-    // 페이지 새로고침하여 대시보드 표시
-    router.refresh()
   }
 
   // 다음 결제일 계산
@@ -1428,132 +1382,15 @@ export default function MembershipPage() {
                   <CardTitle className="text-lg">멤버십 결제</CardTitle>
                 </div>
                 <CardDescription>
-                  카드 정보를 입력하여 멤버십에 가입하세요
+                  카카오페이로 간편하게 결제하세요
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                {/* 카드 미리보기 */}
-                <div className="relative h-44 rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 p-5 text-white shadow-lg">
-                  <div className="absolute top-4 right-4">
-                    <div className="flex gap-1">
-                      <div className="h-6 w-6 rounded-full bg-red-500/80" />
-                      <div className="h-6 w-6 -ml-2 rounded-full bg-yellow-500/80" />
-                    </div>
-                  </div>
-                  <div className="mt-8 font-mono text-lg tracking-wider">
-                    {cardNumber || "#### #### #### ####"}
-                  </div>
-                  <div className="mt-4 flex justify-between text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">CARDHOLDER NAME</p>
-                      <p className="font-medium">{cardName || "YOUR NAME"}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">생년월일</p>
-                      <p className="font-medium">{birthDate || "######"}</p>
-                    </div>
-                  </div>
-                  <div className="absolute bottom-4 right-5 text-xs text-gray-400">
-                    유효기간 {expiryMonth || "MM"} / {expiryYear || "YY"}
-                  </div>
-                </div>
-
-                {/* 카드번호 */}
-                <div className="space-y-2">
-                  <Label htmlFor="cardNumber">카드번호</Label>
-                  <Input
-                    id="cardNumber"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                    placeholder="0000 0000 0000 0000"
-                    maxLength={19}
-                    className={errors.cardNumber ? "border-destructive" : ""}
-                  />
-                  {errors.cardNumber && (
-                    <p className="text-xs text-destructive">{errors.cardNumber}</p>
-                  )}
-                </div>
-
-                {/* 카드 이름 */}
-                <div className="space-y-2">
-                  <Label htmlFor="cardName">카드 이름 (영문 대문자)</Label>
-                  <Input
-                    id="cardName"
-                    value={cardName}
-                    onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                    placeholder="HONG GIL DONG"
-                    className={errors.cardName ? "border-destructive" : ""}
-                  />
-                  {errors.cardName && (
-                    <p className="text-xs text-destructive">{errors.cardName}</p>
-                  )}
-                </div>
-
-                {/* 생년월일 */}
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate">생년월일 (주민등록번호 앞 6자리)</Label>
-                  <Input
-                    id="birthDate"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="950315"
-                    maxLength={6}
-                    className={errors.birthDate ? "border-destructive" : ""}
-                  />
-                  {errors.birthDate && (
-                    <p className="text-xs text-destructive">{errors.birthDate}</p>
-                  )}
-                </div>
-
-                {/* 유효기간 */}
-                <div className="space-y-2">
-                  <Label>유효기간</Label>
-                  <div className="flex gap-3">
-                    <select
-                      value={expiryMonth}
-                      onChange={(e) => setExpiryMonth(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="">MM</option>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                        <option key={m} value={String(m).padStart(2, "0")}>
-                          {String(m).padStart(2, "0")}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={expiryYear}
-                      onChange={(e) => setExpiryYear(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="">YY</option>
-                      {Array.from({ length: 10 }, (_, i) => 26 + i).map((y) => (
-                        <option key={y} value={String(y)}>
-                          {y}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.expiry && (
-                    <p className="text-xs text-destructive">{errors.expiry}</p>
-                  )}
-                </div>
-
-                {/* 비밀번호 */}
-                <div className="space-y-2">
-                  <Label htmlFor="password">비밀번호 (앞 두자리)</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                    placeholder="**"
-                    maxLength={2}
-                    className={`w-20 ${errors.password ? "border-destructive" : ""}`}
-                  />
-                  {errors.password && (
-                    <p className="text-xs text-destructive">{errors.password}</p>
-                  )}
+                {/* 결제 금액 안내 */}
+                <div className="rounded-xl bg-muted/50 p-4 text-center space-y-1">
+                  <p className="text-sm text-muted-foreground">멤버십 이용료 (1개월)</p>
+                  <p className="text-3xl font-bold text-primary">{MEMBERSHIP_PRICE.toLocaleString()}원</p>
+                  <p className="text-xs text-muted-foreground">결제 후 30일간 멤버십 혜택 제공</p>
                 </div>
 
                 {/* 추천인 코드 */}
@@ -1621,16 +1458,16 @@ export default function MembershipPage() {
                 <Button
                   onClick={handlePayment}
                   disabled={isProcessing}
-                  className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 text-base"
+                  className="w-full h-12 bg-[#FEE500] text-[#3C1E1E] hover:bg-[#FEE500]/90 text-base font-semibold"
                 >
-                  {isProcessing 
-                    ? "결제 처리 중..." 
-                    : `${finalPaymentAmount.toLocaleString()}원 결제하기`
+                  {isProcessing
+                    ? "결제 처리 중..."
+                    : `카카오페이로 ${finalPaymentAmount.toLocaleString()}원 결제하기`
                   }
                 </Button>
                 {usePointsForPayment && usablePoints > 0 && (
                   <p className="text-xs text-center text-muted-foreground">
-                    {usablePoints.toLocaleString()}P 사용 + {finalPaymentAmount.toLocaleString()}원 카드 결제
+                    {usablePoints.toLocaleString()}P 사용 + {finalPaymentAmount.toLocaleString()}원 결제
                   </p>
                 )}
               </CardFooter>
