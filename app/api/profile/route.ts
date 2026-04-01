@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json(null)
   }
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
   const { data: profile } = await serviceClient
     .from("profiles")
     .select("*")

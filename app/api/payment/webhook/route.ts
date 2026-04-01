@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
 
   // 이미 처리된 결제인지 확인 (중복 방지)
   const { data: existing } = await serviceClient

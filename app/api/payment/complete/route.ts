@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "결제 금액이 일치하지 않습니다." }, { status: 400 })
   }
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
 
   // 4. memberships 테이블 upsert (user당 1개)
   const now = new Date()

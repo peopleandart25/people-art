@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const body = await request.json()
   const { name, phone, email, birthDate, gender, height, weight, bio, etcInfo, careerList } = body
 
-  const serviceClient = await createServiceClient()
+  const serviceClient = createServiceClient()
 
   // 1. profiles 기본 정보 업데이트
   const { error: profileError } = await serviceClient
