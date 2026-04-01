@@ -29,12 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user)
-      if (user) fetchProfile(user.id)
-      else setLoading(false)
-    })
-
+    // onAuthStateChange가 마운트 시 INITIAL_SESSION 이벤트를 발행하므로
+    // 별도 getUser() 호출 불필요 (중복 fetch 방지)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null)

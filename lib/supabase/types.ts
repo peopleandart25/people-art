@@ -367,6 +367,7 @@ export type Database = {
       memberships: {
         Row: {
           auto_renew: boolean | null
+          billing_key: string | null
           created_at: string | null
           expires_at: string
           id: string
@@ -378,6 +379,7 @@ export type Database = {
         }
         Insert: {
           auto_renew?: boolean | null
+          billing_key?: string | null
           created_at?: string | null
           expires_at: string
           id?: string
@@ -389,6 +391,7 @@ export type Database = {
         }
         Update: {
           auto_renew?: boolean | null
+          billing_key?: string | null
           created_at?: string | null
           expires_at?: string
           id?: string

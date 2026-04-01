@@ -7,11 +7,12 @@ Deno.serve(async (_req) => {
 
   const now = new Date().toISOString()
 
-  // 1. 만료된 active 멤버십 조회
+  // 1. 만료된 active 멤버십 조회 (자동갱신 + 빌링키 있는 것은 renewal 함수가 처리)
   const { data: expiredActive, error: e1 } = await supabase
     .from("memberships")
     .select("id, user_id")
     .eq("status", "active")
+    .eq("auto_renew", false)
     .lte("expires_at", now)
 
   // 2. 해지 예약 후 만료된 멤버십 조회

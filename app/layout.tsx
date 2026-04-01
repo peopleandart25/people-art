@@ -40,13 +40,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${notoSansKR.variable} font-sans antialiased`}>
-        <UserProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <UserProvider>
             <RootLayoutShell>
               {children}
             </RootLayoutShell>
-          </AuthProvider>
-        </UserProvider>
+          </UserProvider>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

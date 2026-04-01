@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 
 export type UserStatus = "guest" | "basic" | "premium" | "admin"
 
@@ -150,45 +150,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [membershipExpiryDate, setMembershipExpiryDate] = useState<Date | null>(null)
   const [pointRenewalReservation, setPointRenewalReservation] = useState<PointRenewalReservation | null>(null)
 
-  // Supabase 세션과 동기화
+  const { profile: authProfile } = useAuth()
+
+  // AuthContext의 profile 변경을 구독해 status/points 동기화
+  // (독립적인 /api/profile fetch 제거 - 중복 호출 방지)
   useEffect(() => {
-    const supabase = createClient()
-
-    async function syncFromSession() {
-      const res = await fetch("/api/profile")
-      if (!res.ok) {
-        setStatus("guest")
-        setPoints(0)
-        return
-      }
-      const data = await res.json()
-      if (!data) {
-        setStatus("guest")
-        setPoints(0)
-        return
-      }
-      const role: string = data.role ?? "user"
-      if (role === "admin") setStatus("admin")
-      else if (role === "premium") setStatus("premium")
-      else setStatus("basic")
-      setPoints(data.points ?? 0)
+    if (!authProfile) {
+      setStatus("guest")
+      setPoints(0)
+      setMembershipState("cancelled")
+      setMembershipExpiryDate(null)
+      return
     }
-
-    syncFromSession()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        setStatus("guest")
-        setPoints(0)
-        setMembershipState("cancelled")
-        setMembershipExpiryDate(null)
-      } else {
-        syncFromSession()
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    const role: string = authProfile.role ?? "user"
+    if (role === "admin") setStatus("admin")
+    else if (role === "premium") setStatus("premium")
+    else setStatus("basic")
+    setPoints(authProfile.points ?? 0)
+  }, [authProfile])
 
   const updateProfile = (updates: Partial<UserProfile>) => {
     setProfile((prev) => ({ ...prev, ...updates }))

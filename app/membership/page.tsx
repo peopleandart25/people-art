@@ -354,6 +354,9 @@ export default function MembershipPage() {
   const [showPointCancelConfirm, setShowPointCancelConfirm] = useState(false)
   const [isCancellingPoints, setIsCancellingPoints] = useState(false)
 
+  // 자동갱신 토글 상태
+  const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false)
+
   // 멤버십 해지 팝업 상태 (서비스 탈퇴)
   const [showTerminationDialog, setShowTerminationDialog] = useState(false)
   const [terminationReason, setTerminationReason] = useState("")
@@ -376,6 +379,33 @@ export default function MembershipPage() {
   const usablePoints = usePointsForPayment ? Math.min(userPoints, MEMBERSHIP_PRICE) : 0
   const finalPaymentAmount = MEMBERSHIP_PRICE - usablePoints
 
+  // 자동갱신 토글 처리
+  const handleAutoRenewToggle = async () => {
+    const isCurrentlyActive = membershipState !== "pending_cancellation"
+    setIsTogglingAutoRenew(true)
+    try {
+      const res = await fetch("/api/billing/issue", {
+        method: isCurrentlyActive ? "DELETE" : "PATCH",
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        toast({ title: "처리 실패", description: err.error, variant: "destructive" })
+        return
+      }
+      if (isCurrentlyActive) {
+        setMembershipState("pending_cancellation")
+        toast({ title: "자동갱신이 해지되었습니다.", description: "현재 기간 만료 후 자동 결제가 중단됩니다." })
+      } else {
+        setMembershipState("active")
+        toast({ title: "자동갱신이 재활성화되었습니다.", description: "매월 자동으로 갱신됩니다." })
+      }
+    } catch {
+      toast({ title: "오류가 발생했습니다.", variant: "destructive" })
+    } finally {
+      setIsTogglingAutoRenew(false)
+    }
+  }
+
   // 결제 처리 (포트원 V2 카카오페이)
   const handlePayment = async () => {
     if (!user) {
@@ -387,42 +417,42 @@ export default function MembershipPage() {
     setIsProcessing(true)
 
     try {
-      const paymentId = `payment-${user.id}-${Date.now()}`
-
-      const response = await PortOne.requestPayment({
+      // 빌링키 발급 (정기결제용 카카오페이 채널)
+      const billingKeyResponse = await PortOne.requestIssueBillingKey({
         storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
-        channelKey: "channel-key-a5fe2a5a-2289-4f9a-8dc3-030a5651d753",
-        paymentId,
-        orderName: "피플앤아트 멤버십 1개월",
-        totalAmount: finalPaymentAmount,
-        currency: "KRW",
-        payMethod: "EASY_PAY",
+        channelKey: "channel-key-6cb34a6a-ff25-4297-a3ad-036bdadfd2aa",
+        billingKeyMethod: "EASY_PAY",
         customer: {
           customerId: user.id,
           email: user.email ?? undefined,
         },
       })
 
-      if (response?.code !== undefined) {
-        toast({ title: "결제 실패", description: response.message ?? "결제가 취소되었습니다.", variant: "destructive" })
+      if (billingKeyResponse?.code !== undefined) {
+        toast({ title: "결제 실패", description: billingKeyResponse.message ?? "결제가 취소되었습니다.", variant: "destructive" })
         return
       }
 
-      // 서버에서 결제 검증 및 DB 저장
-      const completeRes = await fetch("/api/payment/complete", {
+      const billingKey = billingKeyResponse?.billingKey
+      if (!billingKey) {
+        toast({ title: "빌링키 발급 실패", variant: "destructive" })
+        return
+      }
+
+      // 서버에서 첫 결제 실행 + 빌링키 저장
+      const issueRes = await fetch("/api/billing/issue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentId, pointsUsed: usablePoints }),
+        body: JSON.stringify({ billingKey, pointsUsed: usablePoints }),
       })
 
-      if (!completeRes.ok) {
-        const err = await completeRes.json()
-        toast({ title: "결제 검증 실패", description: err.error, variant: "destructive" })
+      if (!issueRes.ok) {
+        const err = await issueRes.json()
+        toast({ title: "결제 실패", description: err.error, variant: "destructive" })
         return
       }
 
-      // 서버에서 계산된 최종 포인트로 UI 업데이트 (차감 + 가입 보너스 포함)
-      const { newPoints } = await completeRes.json()
+      const { newPoints } = await issueRes.json()
       upgradeToPremium()
       setUserPoints(newPoints)
 
@@ -432,7 +462,7 @@ export default function MembershipPage() {
 
       toast({
         title: "멤버십 가입 완료!",
-        description: `환영합니다! 가입 축하 ${bonusPoints.toLocaleString()}P가 지급되었습니다.`,
+        description: `환영합니다! 가입 축하 ${bonusPoints.toLocaleString()}P가 지급되었습니다. 매월 자동갱신됩니다.`,
       })
 
       router.refresh()
@@ -672,7 +702,8 @@ export default function MembershipPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setMembershipState("active")}
+                      onClick={handleAutoRenewToggle}
+                      disabled={isTogglingAutoRenew}
                       className="mt-3 text-amber-700 border-amber-300 hover:bg-amber-100"
                     >
                       해지 취소하고 멤버십 유지하기
@@ -766,12 +797,35 @@ export default function MembershipPage() {
                   </div>
                   <span className="font-medium text-foreground">{getNextPaymentDate()}</span>
                 </div>
-                <div className="flex items-center justify-between py-3">
+                <div className="flex items-center justify-between py-3 border-b border-border">
                   <div className="flex items-center gap-3">
                     <Gift className="h-5 w-5 text-primary" />
                     <span className="text-sm text-muted-foreground">월 이용료</span>
                   </div>
                   <span className="font-medium text-foreground">{membershipData.price.toLocaleString()}원</span>
+                </div>
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <span className="text-sm text-muted-foreground">결제수단</span>
+                  </div>
+                  <span className="font-medium text-foreground">카카오페이</span>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                    <div>
+                      <span className="text-sm text-muted-foreground">자동갱신</span>
+                      <p className="text-xs text-muted-foreground/70">
+                        {membershipState === "pending_cancellation" ? "현재 기간 만료 후 종료" : "매월 자동 결제"}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={membershipState !== "pending_cancellation"}
+                    onCheckedChange={handleAutoRenewToggle}
+                    disabled={isTogglingAutoRenew}
+                  />
                 </div>
 
                 {/* 혜택 요약 */}
@@ -807,19 +861,11 @@ export default function MembershipPage() {
                   마이페이지로 이동
                 </Button>
 
-                {/* 멤버십 해지 버튼 - 명확한 분리 */}
-                {membershipState !== "pending_cancellation" && (
+                {/* 자동갱신 해지 안내 (pending_cancellation 상태일 때) */}
+                {membershipState === "pending_cancellation" && (
                   <div className="w-full pt-4 border-t border-border mt-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowTerminationDialog(true)}
-                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/5 hover:border-destructive/50"
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      멤버십 해지
-                    </Button>
-                    <p className="text-xs text-center text-muted-foreground mt-2">
-                      해지 시 {getNextPaymentDate()}까지 혜택이 유지됩니다.
+                    <p className="text-xs text-center text-muted-foreground">
+                      {getNextPaymentDate()}까지 프리미엄 혜택이 유지됩니다.
                     </p>
                   </div>
                 )}
