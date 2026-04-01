@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   ArrowLeft, Camera, Upload, X, Plus, Trash2, Star, FileText, Video,
-  Link2, Sparkles, Check, ChevronsUpDown, ExternalLink, Crown,
+  Link2, Sparkles, Check, ChevronsUpDown, ExternalLink, Crown, Shield,
   Instagram, Youtube, AlertCircle, GraduationCap, Save,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
@@ -331,10 +331,19 @@ export default function MyPage() {
                 )}
               </div>
             </div>
-            <Button onClick={handleSave} disabled={isSaving} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-              <Save className="h-4 w-4" />
-              {isSaving ? "저장 중..." : "저장하기"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {authProfile?.role === "admin" && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Shield className="h-4 w-4" />관리자 패널
+                  </Button>
+                </Link>
+              )}
+              <Button onClick={handleSave} disabled={isSaving} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                <Save className="h-4 w-4" />
+                {isSaving ? "저장 중..." : "저장하기"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
