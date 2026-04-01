@@ -129,12 +129,12 @@ function LoginContent() {
             <div className="px-6 pt-6 space-y-3">
               <Button
                 type="button"
-                className="w-full h-12 bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#3C1E1E] font-semibold gap-2"
+                className="w-full h-12 bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#3C1E1E] font-semibold gap-2 active:scale-95 transition-transform"
                 onClick={handleKakaoLogin}
                 disabled={!!oauthLoading}
               >
                 {oauthLoading === "kakao" ? (
-                  <span className="animate-spin h-4 w-4 border-2 border-[#3C1E1E] border-t-transparent rounded-full" />
+                  <div className="w-5 h-5 border-2 border-[#3C1E1E]/30 border-t-[#3C1E1E] rounded-full animate-spin" />
                 ) : (
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <path fillRule="evenodd" clipRule="evenodd" d="M9 0C4.029 0 0 3.164 0 7.07c0 2.52 1.669 4.73 4.187 6.007l-1.068 3.98a.29.29 0 0 0 .447.313L8.1 14.64c.297.034.6.052.9.052 4.971 0 9-3.164 9-7.07C18 3.164 13.971 0 9 0z" fill="#3C1E1E"/>
@@ -145,12 +145,12 @@ function LoginContent() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full h-12 gap-2 border-border"
+                className="w-full h-12 gap-2 border-border active:scale-95 transition-transform"
                 onClick={handleGoogleLogin}
                 disabled={!!oauthLoading}
               >
                 {oauthLoading === "google" ? (
-                  <span className="animate-spin h-4 w-4 border-2 border-foreground border-t-transparent rounded-full" />
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                 ) : (
                   <svg width="18" height="18" viewBox="0 0 18 18">
                     <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
@@ -206,7 +206,7 @@ function LoginContent() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pt-4">
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "로그인 중..." : "로그인"}
                   </Button>
@@ -262,7 +262,7 @@ function LoginContent() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex flex-col gap-3">
+                <CardFooter className="pt-4 flex flex-col gap-3">
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "가입 중..." : "회원가입"}
                   </Button>
