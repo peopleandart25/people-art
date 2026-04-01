@@ -17,26 +17,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 })
   }
 
-  // 2. 포트원 결제 검증
-  const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
-    headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
-  })
-  if (!portoneRes.ok) {
-    return NextResponse.json({ error: "결제 정보 조회 실패" }, { status: 400 })
-  }
-  const payment = await portoneRes.json()
-
-  // 3. 결제 상태 및 금액 검증
   const MEMBERSHIP_PRICE = 44000
   const expectedAmount = MEMBERSHIP_PRICE - Math.min(pointsUsed, MEMBERSHIP_PRICE)
-  if (payment.status !== "PAID") {
-    return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 })
-  }
-  if (payment.amount.total !== expectedAmount) {
-    return NextResponse.json({ error: "결제 금액이 일치하지 않습니다." }, { status: 400 })
-  }
 
   const serviceClient = createServiceClient()
+
+  // 2. DB에서 현재 포인트 조회 및 선검증
+  const { data: currentProfile } = await serviceClient
+    .from("profiles")
+    .select("points")
+    .eq("id", user.id)
+    .single()
+
+  const currentPoints = currentProfile?.points ?? 0
+
+  if (pointsUsed > currentPoints) {
+    return NextResponse.json({ error: "보유 포인트가 부족합니다." }, { status: 400 })
+  }
+
+  // 3. 포트원 결제 검증 (0원 결제는 PG 호출 없이 포인트만으로 처리)
+  let pgProvider = "kakaopay"
+  if (expectedAmount > 0) {
+    const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
+      headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
+    })
+    if (!portoneRes.ok) {
+      return NextResponse.json({ error: "결제 정보 조회 실패" }, { status: 400 })
+    }
+    const payment = await portoneRes.json()
+
+    if (payment.status !== "PAID") {
+      return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 })
+    }
+    if (payment.amount.total !== expectedAmount) {
+      return NextResponse.json({ error: "결제 금액이 일치하지 않습니다." }, { status: 400 })
+    }
+    pgProvider = payment.channel?.pgProvider ?? "kakaopay"
+  }
 
   // 4. memberships 테이블 upsert (user당 1개)
   const now = new Date()
@@ -69,7 +86,7 @@ export async function POST(request: Request) {
     amount: MEMBERSHIP_PRICE,
     points_used: pointsUsed,
     status: "completed",
-    pg_provider: payment.channel?.pgProvider ?? "kakaopay",
+    pg_provider: pgProvider,
     pg_transaction_id: paymentId,
     payment_method: "kakao_pay",
   })
@@ -78,19 +95,16 @@ export async function POST(request: Request) {
   }
 
   // 6. profiles 테이블 role → premium, points 업데이트 (포인트 차감 + 15,000P 지급)
-  const { data: currentProfile } = await serviceClient
-    .from("profiles")
-    .select("points")
-    .eq("id", user.id)
-    .single()
-
-  const currentPoints = currentProfile?.points ?? 0
   const newPoints = Math.max(0, currentPoints - pointsUsed) + 15000
 
-  await serviceClient
+  const { error: profileError } = await serviceClient
     .from("profiles")
     .update({ role: "premium", points: newPoints })
     .eq("id", user.id)
 
-  return NextResponse.json({ success: true, expiresAt: expiresAt.toISOString() })
+  if (profileError) {
+    return NextResponse.json({ error: "프로필 업데이트 실패", details: profileError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true, expiresAt: expiresAt.toISOString(), newPoints })
 }

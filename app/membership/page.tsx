@@ -421,17 +421,14 @@ export default function MembershipPage() {
         return
       }
 
-      // 포인트 차감
-      if (usablePoints > 0) {
-        deductPoints(usablePoints, false)
-      }
+      // 서버에서 계산된 최종 포인트로 UI 업데이트 (차감 + 가입 보너스 포함)
+      const { newPoints } = await completeRes.json()
       upgradeToPremium()
+      setUserPoints(newPoints)
 
       const SIGNUP_BONUS = membershipData.signupBonus
       const REFERRAL_BONUS = membershipData.referralBonus
       const bonusPoints = referralCode.trim() ? SIGNUP_BONUS + REFERRAL_BONUS : SIGNUP_BONUS
-      const finalPoints = userPoints - usablePoints + bonusPoints
-      setUserPoints(finalPoints)
 
       toast({
         title: "멤버십 가입 완료!",

@@ -206,7 +206,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const upgradeToPremium = () => {
     setStatus("premium")
-    setPoints(15000)
     setMembershipState("active")
     // 30일 후 만료일 설정
     const expiryDate = new Date()

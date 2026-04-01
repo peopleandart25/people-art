@@ -105,10 +105,14 @@ export async function POST(request: Request) {
   const currentPoints = currentProfile?.points ?? 0
   const newPoints = Math.max(0, currentPoints - pointsUsed) + 15000
 
-  await serviceClient
+  const { error: profileError } = await serviceClient
     .from("profiles")
     .update({ role: "premium", points: newPoints })
     .eq("id", userId)
+
+  if (profileError) {
+    return NextResponse.json({ error: "프로필 업데이트 실패" }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }
