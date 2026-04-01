@@ -190,8 +190,7 @@ export function HeroBanner() {
       
       // 로그인 상태: 프로그래매틱 다운로드 실행
       const downloadLink = document.createElement("a")
-      downloadLink.href = "/download/배우_프로필_양식.pptx"
-      downloadLink.download = "배우_프로필_양식.pptx"
+      downloadLink.href = "https://ywokkwjetjyagqzvcepz.supabase.co/storage/v1/object/public/templates/profile-form.pptx?download=%EB%B0%B0%EC%9A%B0%20%ED%94%84%EB%A1%9C%ED%95%84%20%EC%96%91%EC%8B%9D.pptx"
       document.body.appendChild(downloadLink)
       downloadLink.click()
       document.body.removeChild(downloadLink)
