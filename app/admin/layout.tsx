@@ -76,16 +76,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         className={`${isCollapsed ? "w-14" : "w-56"} bg-gray-900 text-white flex flex-col fixed top-0 left-0 h-full z-10 transition-all duration-300`}
       >
         {/* 로고 */}
-        <div className="px-3 py-6 border-b border-gray-700 flex items-center justify-between">
+        <div className="px-3 py-5 border-b border-gray-700 flex items-center justify-between gap-2">
           {!isCollapsed && (
-            <div>
-              <h1 className="text-base font-bold text-white leading-tight">피플앤아트</h1>
+            <div className="min-w-0">
+              <h1 className="text-base font-bold text-white leading-tight truncate">피플앤아트</h1>
               <p className="text-xs text-gray-400 mt-0.5">관리자 패널</p>
             </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="ml-auto p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            className="shrink-0 flex items-center justify-center w-7 h-7 rounded-md bg-gray-700 text-white hover:bg-orange-500 transition-colors"
+            title={isCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
