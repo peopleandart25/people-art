@@ -14,7 +14,7 @@ Deno.serve(async (_req) => {
 
   const { data: renewals, error } = await supabase
     .from("memberships")
-    .select("id, user_id, billing_key")
+    .select("id, user_id, billing_key, expires_at")
     .eq("status", "active")
     .eq("auto_renew", true)
     .not("billing_key", "is", null)
@@ -89,8 +89,10 @@ Deno.serve(async (_req) => {
         continue
       }
 
-      // 2. memberships 만료일 30일 연장
-      const newExpiry = new Date(now)
+      // 2. memberships 만료일: 현재 만료일 기준 +30일 (잔여 기간 보존)
+      const currentExpiry = new Date(membership.expires_at)
+      const baseDate = currentExpiry > now ? currentExpiry : now
+      const newExpiry = new Date(baseDate)
       newExpiry.setDate(newExpiry.getDate() + 30)
 
       await supabase

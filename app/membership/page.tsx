@@ -301,11 +301,12 @@ export default function MembershipPage() {
     addPoints,
   } = usePoints()
   
-  const { 
-    status, 
-    upgradeToPremium, 
+  const {
+    status,
+    upgradeToPremium,
     membershipState,
     membershipExpiryDate,
+    setMembershipExpiryDate,
     pointRenewalReservation,
     setMembershipState,
     reservePointRenewal,
@@ -417,29 +418,33 @@ export default function MembershipPage() {
     setIsProcessing(true)
 
     try {
-      // 빌링키 발급 (정기결제용 카카오페이 채널)
-      const billingKeyResponse = await PortOne.requestIssueBillingKey({
-        storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
-        channelKey: "channel-key-6cb34a6a-ff25-4297-a3ad-036bdadfd2aa",
-        billingKeyMethod: "EASY_PAY",
-        customer: {
-          customerId: user.id,
-          email: user.email ?? undefined,
-        },
-      })
+      let billingKey: string | null = null
 
-      if (billingKeyResponse?.code !== undefined) {
-        toast({ title: "결제 실패", description: billingKeyResponse.message ?? "결제가 취소되었습니다.", variant: "destructive" })
-        return
+      // 포인트 전액 결제가 아닌 경우만 빌링키 발급
+      if (finalPaymentAmount > 0) {
+        const billingKeyResponse = await PortOne.requestIssueBillingKey({
+          storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
+          channelKey: "channel-key-6cb34a6a-ff25-4297-a3ad-036bdadfd2aa",
+          billingKeyMethod: "EASY_PAY",
+          customer: {
+            customerId: user.id,
+            email: user.email ?? undefined,
+          },
+        })
+
+        if (billingKeyResponse?.code !== undefined) {
+          toast({ title: "결제 실패", description: billingKeyResponse.message ?? "결제가 취소되었습니다.", variant: "destructive" })
+          return
+        }
+
+        billingKey = billingKeyResponse?.billingKey ?? null
+        if (!billingKey) {
+          toast({ title: "빌링키 발급 실패", variant: "destructive" })
+          return
+        }
       }
 
-      const billingKey = billingKeyResponse?.billingKey
-      if (!billingKey) {
-        toast({ title: "빌링키 발급 실패", variant: "destructive" })
-        return
-      }
-
-      // 서버에서 첫 결제 실행 + 빌링키 저장
+      // 서버에서 첫 결제 실행 + 빌링키 저장 (0원 결제 시 billingKey=null)
       const issueRes = await fetch("/api/billing/issue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -473,11 +478,12 @@ export default function MembershipPage() {
     }
   }
 
-  // 다음 결제일 계산
+  // 다음 결제일 계산 (DB에서 불러온 실제 만료일 사용)
   const getNextPaymentDate = () => {
-    const nextDate = new Date()
-    nextDate.setDate(nextDate.getDate() + 30)
-    return nextDate.toLocaleDateString("ko-KR", {
+    const baseDate = membershipExpiryDate ?? (() => {
+      const d = new Date(); d.setDate(d.getDate() + 30); return d
+    })()
+    return baseDate.toLocaleDateString("ko-KR", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -486,9 +492,9 @@ export default function MembershipPage() {
 
   // 다음 결제일 Date 객체
   const getNextPaymentDateObj = () => {
-    const nextDate = new Date()
-    nextDate.setDate(nextDate.getDate() + 30)
-    return nextDate
+    return membershipExpiryDate ?? (() => {
+      const d = new Date(); d.setDate(d.getDate() + 30); return d
+    })()
   }
 
   // D-7 정책: 결제일까지 남은 일수 계산
@@ -642,41 +648,42 @@ export default function MembershipPage() {
 
     setIsRenewing(true)
 
-    // 서버 요청 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const usedPoints = lastUsedPoints
+      const renewRes = await fetch("/api/membership/renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pointsUsed: usedPoints }),
+      })
 
-    // 포인트 결제 처리 (lastUsedPoints 값 사용)
-    const usedPoints = lastUsedPoints
-    const finalAmount = MEMBERSHIP_PRICE - usedPoints
+      if (!renewRes.ok) {
+        const err = await renewRes.json()
+        toast({ title: "갱신 실패", description: err.error, variant: "destructive" })
+        return
+      }
 
-    if (usedPoints > 0) {
-      // 포인트 즉시 차감 → 상단바 포인트 실시간 반영
-      const newPoints = userPoints - usedPoints
+      const { newPoints, expiresAt } = await renewRes.json()
       setUserPoints(newPoints)
-      
-      reservePointRenewal({
-        pointsToUse: usedPoints,
-        finalPaymentAmount: finalAmount,
-        reservedAt: new Date().toISOString(),
-      })
+      // 만료일 업데이트
+      if (expiresAt) setMembershipExpiryDate(new Date(expiresAt))
 
       toast({
-        title: "포인트 결제 완료",
-        description: `${usedPoints.toLocaleString()}P 사용 완료. 잔여 포인트: ${newPoints.toLocaleString()}P`,
+        title: "멤버십 갱신 완료",
+        description: usedPoints > 0
+          ? `${usedPoints.toLocaleString()}P 사용. 잔여 포인트: ${newPoints.toLocaleString()}P`
+          : "멤버십이 갱신되었습니다.",
       })
-    } else {
-      toast({
-        title: "결제 예약 완료",
-        description: `다음 결제일(${getNextPaymentDate()})에 ${MEMBERSHIP_PRICE.toLocaleString()}원이 자동 결제됩니다.`,
-      })
+
+      setRenewalPointInput("")
+      setUsePointsForRenewal(false)
+      setIsPaid(true)
+      setIsPointApplied(false)
+      setLastUsedPoints(0)
+    } catch {
+      toast({ title: "오류가 발생했습니다.", variant: "destructive" })
+    } finally {
+      setIsRenewing(false)
     }
-
-    // 상태 초기화 (lastUsedPoints는 유지 - 취소 시 필요)
-    setRenewalPointInput("")
-    setUsePointsForRenewal(false)
-    setIsRenewing(false)
-    setIsPaid(true) // 결제 완료 상태로 변경
-    setIsPointApplied(false)
   }
 
   // 로딩 중 스켈레톤 표시

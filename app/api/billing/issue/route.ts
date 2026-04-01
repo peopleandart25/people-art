@@ -8,7 +8,10 @@ const BILLING_CHANNEL_KEY = "channel-key-6cb34a6a-ff25-4297-a3ad-036bdadfd2aa"
 export async function POST(request: Request) {
   const { billingKey, pointsUsed = 0 } = await request.json()
 
-  if (!billingKey) {
+  const finalAmount = MEMBERSHIP_PRICE - Math.min(pointsUsed, MEMBERSHIP_PRICE)
+
+  // 포인트 전액 결제가 아닌 경우 빌링키 필수
+  if (!billingKey && finalAmount > 0) {
     return NextResponse.json({ error: "billingKey가 필요합니다." }, { status: 400 })
   }
 
@@ -33,19 +36,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "보유 포인트가 부족합니다." }, { status: 400 })
   }
 
-  // 3. PortOne 빌링키 검증
-  const billingKeyRes = await fetch(`https://api.portone.io/billing-keys/${billingKey}`, {
-    headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
-  })
-  if (!billingKeyRes.ok) {
-    return NextResponse.json({ error: "빌링키 검증 실패" }, { status: 400 })
+  // 3. 빌링키가 있는 경우 PortOne 검증
+  if (billingKey) {
+    const billingKeyRes = await fetch(`https://api.portone.io/billing-keys/${billingKey}`, {
+      headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
+    })
+    if (!billingKeyRes.ok) {
+      return NextResponse.json({ error: "빌링키 검증 실패" }, { status: 400 })
+    }
   }
 
-  // 4. 첫 결제 실행 (포인트로 전액 커버 시 스킵)
-  const finalAmount = MEMBERSHIP_PRICE - Math.min(pointsUsed, MEMBERSHIP_PRICE)
+  // 4. 첫 결제 실행 (빌링키 있고 잔여 금액 > 0인 경우만)
   const paymentId = `billing-${user.id}-${Date.now()}`
 
-  if (finalAmount > 0) {
+  if (finalAmount > 0 && billingKey) {
     const payRes = await fetch(`https://api.portone.io/payments/${paymentId}/billing-key`, {
       method: "POST",
       headers: {
@@ -85,8 +89,8 @@ export async function POST(request: Request) {
         status: "active",
         started_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
-        auto_renew: true,
-        billing_key: billingKey,
+        auto_renew: !!billingKey,  // 빌링키 없는 포인트 전액 결제는 자동갱신 미설정
+        billing_key: billingKey ?? null,
       },
       { onConflict: "user_id" }
     )

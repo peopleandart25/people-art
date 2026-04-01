@@ -99,6 +99,7 @@ interface UserContextType {
   upgradeToPremium: () => void
   // 멤버십 관리 함수
   setMembershipState: (state: MembershipState) => void
+  setMembershipExpiryDate: (date: Date | null) => void
   reservePointRenewal: (reservation: PointRenewalReservation) => void
   cancelPointRenewal: () => void
   cancelMembership: () => void
@@ -152,7 +153,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const { profile: authProfile } = useAuth()
 
-  // AuthContext의 profile 변경을 구독해 status/points 동기화
+  // AuthContext의 profile 변경을 구독해 status/points/membership 동기화
   // (독립적인 /api/profile fetch 제거 - 중복 호출 방지)
   useEffect(() => {
     if (!authProfile) {
@@ -167,6 +168,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     else if (role === "premium") setStatus("premium")
     else setStatus("basic")
     setPoints(authProfile.points ?? 0)
+
+    // 멤버십 만료일 & 자동갱신 상태 동기화
+    if (authProfile.membership_expires_at) {
+      setMembershipExpiryDate(new Date(authProfile.membership_expires_at))
+      const autoRenew = authProfile.membership_auto_renew ?? false
+      setMembershipState(autoRenew ? "active" : "pending_cancellation")
+    }
   }, [authProfile])
 
   const updateProfile = (updates: Partial<UserProfile>) => {
@@ -287,6 +295,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         logout,
         upgradeToPremium,
         setMembershipState,
+        setMembershipExpiryDate,
         reservePointRenewal,
         cancelPointRenewal,
         cancelMembership,
@@ -323,6 +332,7 @@ export function useUserSafe() {
       logout: () => {},
       upgradeToPremium: () => {},
       setMembershipState: () => {},
+      setMembershipExpiryDate: () => {},
       reservePointRenewal: () => {},
       cancelPointRenewal: () => {},
       cancelMembership: () => {},

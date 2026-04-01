@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"] & { points?: number | null }
+type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
+  points?: number | null
+  membership_expires_at?: string | null
+  membership_auto_renew?: boolean
+}
 
 interface AuthContextType {
   user: User | null
