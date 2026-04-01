@@ -18,6 +18,7 @@ import {
   Building,
   MessageSquare,
   Building2,
+  FileText,
 } from "lucide-react"
 
 const menuItems = [
@@ -30,6 +31,7 @@ const menuItems = [
   { label: "파트너 관리", href: "/admin/partners", icon: Building },
   { label: "후기 관리", href: "/admin/reviews", icon: MessageSquare },
   { label: "지원기관 관리", href: "/admin/agencies", icon: Building2 },
+  { label: "양식 관리", href: "/admin/template", icon: FileText },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

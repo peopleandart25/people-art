@@ -120,7 +120,7 @@ export const quickLinks = [
     iconType: "download",
     lines: ["프로필 양식", "다운로드"],
     sublabel: "",
-    href: "/download/profile-template.pdf",
+    href: "https://ywokkwjetjyagqzvcepz.supabase.co/storage/v1/object/public/templates/profile-form.pptx",
   },
   {
     id: "quick-3",
