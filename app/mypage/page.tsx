@@ -343,6 +343,22 @@ export default function MyPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* 왼쪽: 사진 관리 */}
           <div className="lg:col-span-1 space-y-6">
+            {/* 계정 정보 */}
+            <Card className="border border-border">
+              <CardContent className="pt-5 pb-4 space-y-2">
+                <p className="text-xs text-muted-foreground">이메일</p>
+                <p className="text-sm font-medium text-foreground truncate">{user?.email ?? "-"}</p>
+                <div className="h-px bg-border my-1" />
+                <p className="text-xs text-muted-foreground">이름</p>
+                <p className="text-sm font-medium text-foreground">{authProfile?.name ?? "-"}</p>
+                <div className="h-px bg-border my-1" />
+                <p className="text-xs text-muted-foreground">멤버십</p>
+                <p className="text-sm font-medium text-foreground">
+                  {authProfile?.role === "premium" || authProfile?.role === "admin" ? "멤버십 회원" : "일반 회원"}
+                </p>
+              </CardContent>
+            </Card>
+
             {/* 메인 프로필 사진 */}
             <Card className="border border-border">
               <CardHeader className="pb-4">

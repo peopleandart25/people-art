@@ -18,6 +18,7 @@ export function DevRoleToggle() {
   }, [])
 
   if (!isMounted) return null
+  if (process.env.NODE_ENV === "production") return null
 
   const roles: { value: UserStatus; label: string; icon: React.ReactNode; color: string }[] = [
     { value: "guest", label: "비로그인", icon: <LogOut className="h-3.5 w-3.5" />, color: "bg-gray-500" },
