@@ -42,8 +42,10 @@ export function useProfile() {
     if (!user) return
     setLoading(true)
 
+    const { data: artistProfile } = await supabase
+      .from("artist_profiles").select("*").eq("user_id", user.id).single()
+
     const [
-      { data: artistProfile },
       { data: careerItems },
       { data: photos },
       { data: videoAssets },
@@ -51,14 +53,11 @@ export function useProfile() {
       { data: artistStatusTags },
       { data: tags },
     ] = await Promise.all([
-      supabase.from("artist_profiles").select("*").eq("user_id", user.id).single(),
       supabase.from("career_items").select("*").eq("user_id", user.id).order("sort_order"),
       supabase.from("artist_photos").select("*").eq("user_id", user.id).order("sort_order"),
       supabase.from("video_assets").select("*").eq("user_id", user.id).order("sort_order"),
       supabase.from("social_links").select("*").eq("user_id", user.id).single(),
-      supabase.from("artist_status_tags").select("tag_id").eq("artist_id",
-        (await supabase.from("artist_profiles").select("id").eq("user_id", user.id).single()).data?.id ?? ""
-      ),
+      supabase.from("artist_status_tags").select("tag_id").eq("artist_id", artistProfile?.id ?? ""),
       supabase.from("status_tags").select("*").order("id"),
     ])
 
