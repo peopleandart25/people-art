@@ -181,6 +181,9 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 3
 
+  // 추천인 코드
+  const [referralCode, setReferralCode] = useState("")
+
   // 파일 업로드 상태
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
@@ -455,6 +458,32 @@ export default function OnboardingPage() {
       portfolioFile: uploadedFile ? URL.createObjectURL(uploadedFile) : null,
       portfolioFileName: uploadedFile?.name || null,
     })
+    // 추천인 코드 적용 (입력한 경우)
+    if (referralCode.trim()) {
+      try {
+        const refRes = await fetch("/api/referral/apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referralCode: referralCode.trim() }),
+        })
+        const refData = await refRes.json()
+        if (refRes.ok) {
+          toast({
+            title: "추천인 코드 적용 완료",
+            description: `추천인과 함께 각각 10,000P가 지급되었습니다!`,
+          })
+        } else {
+          toast({
+            title: "추천인 코드 오류",
+            description: refData.error ?? "추천인 코드를 확인해 주세요.",
+            variant: "destructive",
+          })
+        }
+      } catch {
+        // 추천인 오류는 가입 완료를 막지 않음
+      }
+    }
+
     login(false)
     toast({
       title: "회원가입 완료",
@@ -647,6 +676,24 @@ export default function OnboardingPage() {
                     className="hidden"
                     onChange={handleFileInputChange}
                   />
+                </div>
+
+                {/* 추천인 코드 입력 */}
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <Label htmlFor="referralCode" className="text-sm font-medium">
+                    추천인 ID <span className="text-muted-foreground font-normal">(선택)</span>
+                  </Label>
+                  <Input
+                    id="referralCode"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="추천인 ID 입력 (8자리)"
+                    maxLength={8}
+                    className="font-mono tracking-widest"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    추천인 ID를 입력하면 가입 완료 후 추천인과 함께 각각 10,000P가 지급됩니다.
+                  </p>
                 </div>
 
                 {/* Skip Option */}

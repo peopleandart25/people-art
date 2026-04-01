@@ -364,7 +364,6 @@ export default function MembershipPage() {
   const [terminationReasonDetail, setTerminationReasonDetail] = useState("")
   const [isTerminating, setIsTerminating] = useState(false)
 
-  const [referralCode, setReferralCode] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
@@ -461,13 +460,9 @@ export default function MembershipPage() {
       upgradeToPremium()
       setUserPoints(newPoints)
 
-      const SIGNUP_BONUS = membershipData.signupBonus
-      const REFERRAL_BONUS = membershipData.referralBonus
-      const bonusPoints = referralCode.trim() ? SIGNUP_BONUS + REFERRAL_BONUS : SIGNUP_BONUS
-
       toast({
         title: "멤버십 가입 완료!",
-        description: `환영합니다! 가입 축하 ${bonusPoints.toLocaleString()}P가 지급되었습니다. 매월 자동갱신됩니다.`,
+        description: `환영합니다! 가입 축하 ${membershipData.signupBonus.toLocaleString()}P가 지급되었습니다. 매월 자동갱신됩니다.`,
       })
 
       router.refresh()
@@ -1441,20 +1436,6 @@ export default function MembershipPage() {
                   <p className="text-sm text-muted-foreground">멤버십 이용료 (1개월)</p>
                   <p className="text-3xl font-bold text-primary">{MEMBERSHIP_PRICE.toLocaleString()}원</p>
                   <p className="text-xs text-muted-foreground">결제 후 30일간 멤버십 혜택 제공</p>
-                </div>
-
-                {/* 추천인 코드 */}
-                <div className="space-y-2">
-                  <Label htmlFor="referral">추천인 ID (선택)</Label>
-                  <Input
-                    id="referral"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value)}
-                    placeholder="추천인 ID 입력"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    추천인 ID를 입력하면 결제 완료 후 추천인과 가입자에게 각각 10,000P가 지급됩니다.
-                  </p>
                 </div>
 
                 {/* 포인트 사용 섹션 */}

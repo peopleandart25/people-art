@@ -95,8 +95,9 @@ export async function POST(request: Request) {
     payment_method: finalAmount > 0 ? "kakao_pay" : "points",
   })
 
-  // 5. 포인트 차감 + 갱신 보너스 15,000P
-  const newPoints = Math.max(0, currentPoints - clampedPoints) + 15000
+  // 5. 포인트 차감 + 갱신 보너스 15,000P (현금 결제 시만 지급)
+  const renewalBonus = finalAmount > 0 ? 15000 : 0
+  const newPoints = Math.max(0, currentPoints - clampedPoints) + renewalBonus
   await serviceClient.from("profiles").update({ points: newPoints }).eq("id", user.id)
 
   return NextResponse.json({
