@@ -38,12 +38,14 @@ export function useProfile() {
   const [allTags, setAllTags] = useState<StatusTag[]>([])
   const [loading, setLoading] = useState(true)
 
+  const userId = user?.id
+
   const fetchProfile = useCallback(async () => {
-    if (!user) return
+    if (!userId) return
     setLoading(true)
 
     const { data: artistProfile } = await supabase
-      .from("artist_profiles").select("*").eq("user_id", user.id).single()
+      .from("artist_profiles").select("*").eq("user_id", userId).single()
 
     const [
       { data: careerItems },
@@ -53,10 +55,10 @@ export function useProfile() {
       { data: artistStatusTags },
       { data: tags },
     ] = await Promise.all([
-      supabase.from("career_items").select("*").eq("user_id", user.id).order("sort_order"),
-      supabase.from("artist_photos").select("*").eq("user_id", user.id).order("sort_order"),
-      supabase.from("video_assets").select("*").eq("user_id", user.id).order("sort_order"),
-      supabase.from("social_links").select("*").eq("user_id", user.id).single(),
+      supabase.from("career_items").select("*").eq("user_id", userId).order("sort_order"),
+      supabase.from("artist_photos").select("*").eq("user_id", userId).order("sort_order"),
+      supabase.from("video_assets").select("*").eq("user_id", userId).order("sort_order"),
+      supabase.from("social_links").select("*").eq("user_id", userId).single(),
       supabase.from("artist_status_tags").select("tag_id").eq("artist_id", artistProfile?.id ?? ""),
       supabase.from("status_tags").select("*").order("id"),
     ])
@@ -71,11 +73,13 @@ export function useProfile() {
     })
     setAllTags(tags ?? [])
     setLoading(false)
-  }, [user])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   useEffect(() => {
-    if (user) fetchProfile()
-  }, [user, fetchProfile])
+    if (userId) fetchProfile()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   // 메인 사진 업로드
   const uploadMainPhoto = async (file: File): Promise<string | null> => {
