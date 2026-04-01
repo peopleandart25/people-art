@@ -3,10 +3,7 @@ import { Noto_Sans_KR, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { UserProvider } from '@/contexts/user-context'
 import { ArtistProvider } from '@/contexts/artist-context'
-import { Header } from '@/components/header'
-import { Footer } from '@/components/footer'
-import { DevRoleToggle } from '@/components/dev-role-toggle'
-import { Toaster } from '@/components/ui/toaster'
+import { RootLayoutShell } from '@/components/root-layout-shell'
 import './globals.css'
 
 const notoSansKR = Noto_Sans_KR({ 
@@ -45,15 +42,9 @@ export default function RootLayout({
       <body className={`${notoSansKR.variable} font-sans antialiased`}>
         <UserProvider>
             <ArtistProvider>
-              <div className="min-h-screen flex flex-col bg-background">
-                <Header />
-                <main className="flex-1">
-                  {children}
-                </main>
-                <Footer />
-                <DevRoleToggle />
-                <Toaster />
-              </div>
+              <RootLayoutShell>
+                {children}
+              </RootLayoutShell>
             </ArtistProvider>
         </UserProvider>
         <Analytics />
