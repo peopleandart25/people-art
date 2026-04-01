@@ -1417,8 +1417,8 @@ export default function MembershipPage() {
           </div>
         </section>
 
-        {/* 결제 폼 */}
-        <section id="payment-form" className="py-16 bg-muted/30">
+        {/* 결제 폼 - 로그인한 유저에게만 표시 */}
+        {user && <section id="payment-form" className="py-16 bg-muted/30">
           <div className="mx-auto max-w-md px-4">
             <Card className="border border-border shadow-sm">
               <CardHeader className="text-center pb-4">
@@ -1515,7 +1515,7 @@ export default function MembershipPage() {
               </p>
             </div>
           </div>
-        </section>
+        </section>}
     </>
   )
 }
