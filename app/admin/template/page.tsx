@@ -9,6 +9,7 @@ import { Download, Upload, FileText } from "lucide-react"
 const FILE_NAME = "profile-form.pptx"
 const BUCKET = "templates"
 const FILE_URL = `https://ywokkwjetjyagqzvcepz.supabase.co/storage/v1/object/public/${BUCKET}/${FILE_NAME}`
+const DOWNLOAD_URL = `${FILE_URL}?download=${encodeURIComponent("배우 프로필 양식.pptx")}`
 const PREVIEW_URL = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(FILE_URL)}`
 
 interface FileInfo {
@@ -102,7 +103,7 @@ export default function AdminTemplatePage() {
                 <p className="text-xs text-gray-500">업데이트: {formatDate(fileInfo.updated_at)}</p>
               </div>
             </div>
-            <a href={FILE_URL} download="배우 프로필 양식.pptx">
+            <a href={DOWNLOAD_URL}>
               <Button variant="outline" size="sm" className="gap-2 text-gray-600 border-gray-300">
                 <Download className="w-4 h-4" />
                 다운로드
