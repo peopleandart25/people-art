@@ -63,11 +63,11 @@ export const heroBanners = [
     description: "오디션, 촬영, 레슨 일정을 고려한 유연한 근무 조건",
     ctaButton: {
       text: "알바 신청하기",
-      link: "/jobs",
+      link: "/support",
     },
     secondaryButton: {
       text: "자세히 보기",
-      link: "#about",
+      link: "/support",
     },
   },
   {

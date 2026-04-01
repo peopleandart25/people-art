@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Menu, User, LogIn, Coins, Crown } from "lucide-react"
+import { Menu, User, LogIn, Coins, Crown, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -93,8 +93,13 @@ export function Header() {
         <div className="hidden items-center gap-2 lg:flex">
           {isLoggedIn ? (
             <>
-              {/* 멤버십 뱃지 */}
-              {isPremium && (
+              {/* 등급 뱃지 */}
+              {isAdmin ? (
+                <Badge variant="outline" className="border-red-500 text-red-500 bg-red-50 mr-1">
+                  <Shield className="h-3 w-3 mr-1" />
+                  관리자
+                </Badge>
+              ) : isPremium && (
                 <Badge variant="outline" className="border-primary text-primary bg-primary/5 mr-1">
                   <Crown className="h-3 w-3 mr-1" />
                   멤버십
@@ -198,8 +203,13 @@ export function Header() {
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 {isLoggedIn ? (
                   <>
-                    {/* 모바일 멤버십 상태 */}
-                    {isPremium && (
+                    {/* 모바일 등급 상태 */}
+                    {isAdmin ? (
+                      <div className="flex items-center justify-center rounded-lg bg-red-50 border border-red-200 px-4 py-2 mb-2">
+                        <Shield className="h-4 w-4 text-red-500 mr-2" />
+                        <span className="text-sm font-medium text-red-500">관리자</span>
+                      </div>
+                    ) : isPremium && (
                       <div className="flex items-center justify-center rounded-lg bg-primary/5 border border-primary/20 px-4 py-2 mb-2">
                         <Crown className="h-4 w-4 text-primary mr-2" />
                         <span className="text-sm font-medium text-primary">프리미엄 멤버십</span>
