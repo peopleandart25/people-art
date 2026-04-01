@@ -103,7 +103,7 @@ export default function AdminTemplatePage() {
                 <p className="text-xs text-gray-500">업데이트: {formatDate(fileInfo.updated_at)}</p>
               </div>
             </div>
-            <a href={DOWNLOAD_URL}>
+            <a href={FILE_URL} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-2 text-gray-600 border-gray-300">
                 <Download className="w-4 h-4" />
                 다운로드

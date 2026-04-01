@@ -188,12 +188,8 @@ export function HeroBanner() {
         return
       }
       
-      // 로그인 상태: 프로그래매틱 다운로드 실행
-      const downloadLink = document.createElement("a")
-      downloadLink.href = "https://ywokkwjetjyagqzvcepz.supabase.co/storage/v1/object/public/templates/profile-form.pptx?download=%EB%B0%B0%EC%9A%B0%20%ED%94%84%EB%A1%9C%ED%95%84%20%EC%96%91%EC%8B%9D.pptx"
-      document.body.appendChild(downloadLink)
-      downloadLink.click()
-      document.body.removeChild(downloadLink)
+      // 로그인 상태: 같은 도메인 API 라우트로 다운로드
+      window.location.href = "/api/download/template"
       
       toast({
         title: "다운로드 시작",
