@@ -25,17 +25,17 @@ export default function AdminTemplatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchFileInfo = async () => {
-    const supabase = createClient()
-    const { data, error } = await supabase.storage.from(BUCKET).list("", { search: FILE_NAME })
-    if (!error && data && data.length > 0) {
-      const found = data.find((f) => f.name === FILE_NAME)
-      if (found) {
+    // HEAD 요청으로 파일 존재 여부 확인
+    try {
+      const res = await fetch(FILE_URL, { method: "HEAD" })
+      if (res.ok) {
+        const lastModified = res.headers.get("last-modified")
         setFileInfo({
-          name: found.name,
-          updated_at: found.updated_at ?? null,
+          name: "배우 프로필 양식.pptx",
+          updated_at: lastModified,
         })
       }
-    }
+    } catch {}
     setLoading(false)
   }
 
@@ -102,7 +102,7 @@ export default function AdminTemplatePage() {
                 <p className="text-xs text-gray-500">업데이트: {formatDate(fileInfo.updated_at)}</p>
               </div>
             </div>
-            <a href={FILE_URL} download={FILE_NAME}>
+            <a href={FILE_URL} download="배우 프로필 양식.pptx">
               <Button variant="outline" size="sm" className="gap-2 text-gray-600 border-gray-300">
                 <Download className="w-4 h-4" />
                 다운로드
