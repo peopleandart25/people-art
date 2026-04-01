@@ -45,7 +45,7 @@ export function useProfile() {
     setLoading(true)
 
     const { data: artistProfile } = await supabase
-      .from("artist_profiles").select("*").eq("user_id", userId).single()
+      .from("artist_profiles").select("*").eq("user_id", userId).maybeSingle()
 
     const [
       { data: careerItems },
@@ -58,7 +58,7 @@ export function useProfile() {
       supabase.from("career_items").select("*").eq("user_id", userId).order("sort_order"),
       supabase.from("artist_photos").select("*").eq("user_id", userId).order("sort_order"),
       supabase.from("video_assets").select("*").eq("user_id", userId).order("sort_order"),
-      supabase.from("social_links").select("*").eq("user_id", userId).single(),
+      supabase.from("social_links").select("*").eq("user_id", userId).maybeSingle(),
       supabase.from("artist_status_tags").select("tag_id").eq("artist_id", artistProfile?.id ?? ""),
       supabase.from("status_tags").select("*").order("id"),
     ])
