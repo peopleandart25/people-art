@@ -106,7 +106,8 @@ export function useProfile() {
   // 영상 파일 업로드
   const uploadVideo = async (file: File): Promise<string | null> => {
     if (!user) return null
-    const path = `${user.id}/${Date.now()}_${file.name}`
+    const ext = file.name.split(".").pop() ?? "mp4"
+    const path = `${user.id}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from("videos").upload(path, file)
     if (error) { toast({ title: "업로드 실패", description: error.message, variant: "destructive" }); return null }
     const { data } = supabase.storage.from("videos").getPublicUrl(path)
@@ -116,7 +117,7 @@ export function useProfile() {
   // PDF 업로드
   const uploadPortfolio = async (file: File): Promise<string | null> => {
     if (!user) return null
-    const path = `${user.id}/portfolio_${Date.now()}.pdf`
+    const path = `${user.id}/portfolio.pdf`
     const { error } = await supabase.storage.from("portfolios").upload(path, file, { upsert: true })
     if (error) { toast({ title: "업로드 실패", description: error.message, variant: "destructive" }); return null }
     const { data } = supabase.storage.from("portfolios").getPublicUrl(path)
