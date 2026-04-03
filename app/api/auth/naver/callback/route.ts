@@ -8,7 +8,7 @@ export async function GET(request: Request) {
 
   let redirectTo = "/"
   try {
-    const parsed = JSON.parse(decodeURIComponent(state ?? "{}"))
+    const parsed = JSON.parse(state ?? "{}")
     redirectTo = parsed.redirectTo ?? "/"
   } catch {}
 
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     console.log("[naver-cb] step4 createUser:", JSON.stringify({ error: createRes.error?.message }))
 
     // 5. Magic link 생성으로 세션 발급
-    const magicRedirectTo = `${origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`
+    const magicRedirectTo = `${origin}/auth/naver-return`
     console.log("[naver-cb] step5 generateLink redirectTo:", magicRedirectTo)
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: "magiclink",

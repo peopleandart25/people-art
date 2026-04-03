@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   naverAuthUrl.searchParams.set("response_type", "code")
   naverAuthUrl.searchParams.set("client_id", process.env.NAVER_CLIENT_ID!)
   naverAuthUrl.searchParams.set("redirect_uri", `${origin}/api/auth/naver/callback`)
-  naverAuthUrl.searchParams.set("state", encodeURIComponent(JSON.stringify({ redirectTo })))
+  naverAuthUrl.searchParams.set("state", JSON.stringify({ redirectTo }))
 
   return NextResponse.redirect(naverAuthUrl.toString())
 }
