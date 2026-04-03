@@ -416,7 +416,77 @@ export default function MyPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      {/* 이벤트 지원 결과 + 프로필 지원 내역 — 상단 고정 */}
+      <div className="container mx-auto px-4 pt-8 pb-2">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Star className="h-4 w-4 text-primary" />이벤트 지원 결과
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {eventApplications.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">지원한 이벤트가 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {eventApplications.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{app.events?.title ?? "이벤트"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {app.applied_at ? new Date(app.applied_at).toLocaleDateString("ko-KR") : "-"}
+                        </p>
+                      </div>
+                      <Badge
+                        className={
+                          app.result === "합격"
+                            ? "bg-green-100 text-green-700 border-green-200 shrink-0 ml-2"
+                            : app.result === "다음기회에"
+                            ? "bg-gray-100 text-gray-600 border-gray-200 shrink-0 ml-2"
+                            : "bg-yellow-100 text-yellow-700 border-yellow-200 shrink-0 ml-2"
+                        }
+                        variant="outline"
+                      >
+                        {app.result}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Send className="h-4 w-4 text-primary" />프로필 지원 내역
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {supportHistoryItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">프로필 지원 내역이 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {supportHistoryItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{item.agency_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.agency_category}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                        {new Date(item.sent_at).toLocaleDateString("ko-KR")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6">
         <div className="grid gap-6 lg:grid-cols-3">
           {/* 왼쪽: 사진 관리 */}
           <div className="lg:col-span-1 space-y-6">
@@ -447,7 +517,7 @@ export default function MyPage() {
               <CardContent>
                 <div
                   onClick={() => mainPhotoRef.current?.click()}
-                  className="relative aspect-[3/4] rounded-lg border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden group"
+                  className="relative w-full max-w-[160px] mx-auto aspect-[3/4] rounded-lg border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden group"
                 >
                   {mainPhoto ? (
                     <>
@@ -527,37 +597,25 @@ export default function MyPage() {
                 <p className="text-xs text-muted-foreground">* MP4 파일은 100MB 이하만 업로드 가능합니다.</p>
                 <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleVideoUpload} />
                 {videos.length > 0 && (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2 mt-1">
                     {videos.map(video => (
-                      <div key={video.id} className="relative rounded-lg border border-border overflow-hidden bg-muted/30">
-                        {video.type === "link" && video.platform && ["youtube","vimeo"].includes(video.platform) ? (
-                          <div className="aspect-video">
-                            <iframe src={getEmbedUrl(video.url, video.platform) ?? ""} className="w-full h-full"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                          </div>
-                        ) : (
-                          <div className="aspect-video bg-foreground/5 flex items-center justify-center">
-                            {video.type === "file" ? (
-                              <video src={video.url} className="w-full h-full object-cover" controls />
-                            ) : (
-                              <a href={video.url} target="_blank" rel="noopener noreferrer"
-                                className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary">
-                                <ExternalLink className="h-8 w-8" />
-                                <span className="text-sm">외부 링크 열기</span>
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        <div className="p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {video.type === "file" ? <Video className="h-4 w-4 text-primary shrink-0" /> : <Link2 className="h-4 w-4 text-primary shrink-0" />}
-                            <span className="text-sm truncate">{video.name}</span>
-                            {video.size && <span className="text-xs text-muted-foreground shrink-0">({video.size})</span>}
-                          </div>
-                          <button onClick={() => deleteVideo(video.id)} className="p-1 hover:bg-muted rounded">
-                            <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                          </button>
+                      <div key={video.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-muted/20">
+                        {video.type === "file"
+                          ? <Video className="h-4 w-4 text-primary shrink-0" />
+                          : <Link2 className="h-4 w-4 text-primary shrink-0" />}
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm truncate block">{video.name}</span>
+                          {video.size && <span className="text-xs text-muted-foreground">({video.size})</span>}
                         </div>
+                        {video.type === "link" && (
+                          <a href={video.url} target="_blank" rel="noopener noreferrer"
+                            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-primary transition-colors">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        <button onClick={() => deleteVideo(video.id)} className="p-1 hover:bg-muted rounded">
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -866,77 +924,6 @@ export default function MyPage() {
         </div>
       </div>
 
-        {/* 이벤트 지원 내역 + 프로필 지원 내역 */}
-        <div className="container mx-auto px-4 pb-8">
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            {/* 이벤트 지원 결과 */}
-            <Card className="border border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary" />이벤트 지원 결과
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {eventApplications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">지원한 이벤트가 없습니다.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {eventApplications.map((app) => (
-                      <div key={app.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{app.events?.title ?? "이벤트"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {app.applied_at ? new Date(app.applied_at).toLocaleDateString("ko-KR") : "-"}
-                          </p>
-                        </div>
-                        <Badge
-                          className={
-                            app.result === "합격"
-                              ? "bg-green-100 text-green-700 border-green-200 shrink-0 ml-2"
-                              : app.result === "다음기회에"
-                              ? "bg-gray-100 text-gray-600 border-gray-200 shrink-0 ml-2"
-                              : "bg-yellow-100 text-yellow-700 border-yellow-200 shrink-0 ml-2"
-                          }
-                          variant="outline"
-                        >
-                          {app.result}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 프로필 지원 내역 */}
-            <Card className="border border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Send className="h-4 w-4 text-primary" />프로필 지원 내역
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {supportHistoryItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">프로필 지원 내역이 없습니다.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {supportHistoryItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{item.agency_name}</p>
-                          <p className="text-xs text-muted-foreground">{item.agency_category}</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                          {new Date(item.sent_at).toLocaleDateString("ko-KR")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
 
       {/* 영상 링크 모달 */}
       <Dialog open={videoLinkModal} onOpenChange={setVideoLinkModal}>
