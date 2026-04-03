@@ -443,6 +443,7 @@ export default function AdminUsersPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">멤버십</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">전화번호</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">이메일</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">역할</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">상태</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">사유</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">등록일</th>
@@ -492,6 +493,17 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.phone ?? "-"}</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{user.email ?? "-"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                          user.role === "admin"
+                            ? "bg-orange-50 text-orange-600 border-orange-200"
+                            : user.role === "premium"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "bg-gray-50 text-gray-400 border-gray-200"
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                           STATUS_BADGE[user.status] ?? "bg-gray-50 text-gray-400 border-gray-200"
