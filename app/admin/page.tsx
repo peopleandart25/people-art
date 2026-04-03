@@ -16,6 +16,7 @@ type Stats = {
   premiumUsers: number
   totalEvents: number
   totalReviews: number
+  monthlyRevenue: number
 }
 
 function StatCard({
@@ -23,18 +24,25 @@ function StatCard({
   value,
   icon,
   color,
+  format,
 }: {
   title: string
   value: number
   icon: string
   color: string
+  format?: "number" | "currency"
 }) {
+  const displayValue =
+    format === "currency"
+      ? value.toLocaleString() + "원"
+      : value.toLocaleString()
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{value.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{displayValue}</p>
         </div>
         <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${color}`}>
           {icon}
@@ -50,6 +58,7 @@ export default function AdminDashboardPage() {
     premiumUsers: 0,
     totalEvents: 0,
     totalReviews: 0,
+    monthlyRevenue: 0,
   })
   const [recentUsers, setRecentUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,12 +70,16 @@ export default function AdminDashboardPage() {
   async function fetchDashboardData() {
     const supabase = createClient()
 
+    const now = new Date()
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
     const [
       { count: totalUsers },
       { count: premiumUsers },
       { count: totalEvents },
       { count: totalReviews },
       { data: recentUsersData },
+      { data: revenueData },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase
@@ -80,13 +93,21 @@ export default function AdminDashboardPage() {
         .select("id, name, email, role, created_at")
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase
+        .from("payments")
+        .select("amount")
+        .eq("status", "completed")
+        .gte("created_at", firstDay),
     ])
+
+    const monthlyRevenue = (revenueData ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0)
 
     setStats({
       totalUsers: totalUsers ?? 0,
       premiumUsers: premiumUsers ?? 0,
       totalEvents: totalEvents ?? 0,
       totalReviews: totalReviews ?? 0,
+      monthlyRevenue,
     })
     setRecentUsers(recentUsersData ?? [])
     setLoading(false)
@@ -108,7 +129,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
         <StatCard
           title="전체 회원수"
           value={stats.totalUsers}
@@ -132,6 +153,13 @@ export default function AdminDashboardPage() {
           value={stats.totalReviews}
           icon="📝"
           color="bg-purple-50"
+        />
+        <StatCard
+          title="이번 달 매출"
+          value={stats.monthlyRevenue}
+          icon="💰"
+          color="bg-green-50"
+          format="currency"
         />
       </div>
 

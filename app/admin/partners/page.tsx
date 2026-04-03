@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,6 +50,9 @@ export default function AdminPartnersPage() {
   const [form, setForm] = useState<PartnerForm>(defaultForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [partnerLogoFile, setPartnerLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchPartners()
@@ -68,9 +71,21 @@ export default function AdminPartnersPage() {
     setLoading(false)
   }
 
+  async function uploadPartnerLogo(file: File): Promise<string | null> {
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const path = `${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('partner-logos').upload(path, file, { upsert: false })
+    if (error) return null
+    const { data } = supabase.storage.from('partner-logos').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   function openAddDialog() {
     setEditingPartner(null)
     setForm(defaultForm)
+    setPartnerLogoFile(null)
+    setLogoPreview(null)
     setError(null)
     setDialogOpen(true)
   }
@@ -85,6 +100,8 @@ export default function AdminPartnersPage() {
       is_active: partner.is_active ?? true,
       sort_order: String(partner.sort_order ?? 0),
     })
+    setPartnerLogoFile(null)
+    setLogoPreview(partner.image_url ?? null)
     setError(null)
     setDialogOpen(true)
   }
@@ -98,13 +115,36 @@ export default function AdminPartnersPage() {
     setError(null)
     const supabase = createClient()
 
-    const payload = {
+    let imageUrl: string | null | undefined = undefined
+    if (partnerLogoFile) {
+      const uploaded = await uploadPartnerLogo(partnerLogoFile)
+      if (!uploaded) {
+        setError("이미지 업로드에 실패했습니다.")
+        setSaving(false)
+        return
+      }
+      imageUrl = uploaded
+    }
+
+    const payload: {
+      name: string
+      description: string | null
+      link: string | null
+      image_url?: string | null
+      is_active: boolean
+      sort_order: number
+    } = {
       name: form.name,
       description: form.description || null,
       link: form.link || null,
-      image_url: form.image_url || null,
       is_active: form.is_active,
       sort_order: parseInt(form.sort_order, 10) || 0,
+    }
+
+    if (imageUrl !== undefined) {
+      payload.image_url = imageUrl
+    } else if (!editingPartner) {
+      payload.image_url = form.image_url || null
     }
 
     if (editingPartner) {
@@ -143,6 +183,14 @@ export default function AdminPartnersPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setPartnerLogoFile(file)
+    if (file) {
+      setLogoPreview(URL.createObjectURL(file))
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -174,6 +222,7 @@ export default function AdminPartnersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">로고</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">설명</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">링크</th>
@@ -185,6 +234,20 @@ export default function AdminPartnersPage() {
               <tbody className="divide-y divide-gray-50">
                 {partners.map((partner) => (
                   <tr key={partner.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3">
+                      {partner.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={partner.image_url}
+                          alt={partner.name}
+                          className="w-10 h-10 object-contain rounded"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">
+                          없음
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-3 text-sm font-medium text-gray-900">{partner.name}</td>
                     <td className="px-6 py-3 text-sm text-gray-600 max-w-xs truncate">
                       {partner.description ?? "-"}
@@ -239,7 +302,7 @@ export default function AdminPartnersPage() {
                 ))}
                 {partners.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-400">
+                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400">
                       파트너가 없습니다
                     </td>
                   </tr>
@@ -286,12 +349,40 @@ export default function AdminPartnersPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>이미지 URL</Label>
-              <Input
-                value={form.image_url}
-                onChange={(e) => updateForm("image_url", e.target.value)}
-                placeholder="이미지 URL"
+              <Label>로고 이미지</Label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs"
+                >
+                  파일 선택
+                </Button>
+                {partnerLogoFile && (
+                  <span className="text-xs text-gray-500 truncate max-w-[160px]">
+                    {partnerLogoFile.name}
+                  </span>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
               />
+              {logoPreview && (
+                <div className="mt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoPreview}
+                    alt="미리보기"
+                    className="w-24 h-24 object-contain rounded border border-gray-200"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

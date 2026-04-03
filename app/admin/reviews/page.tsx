@@ -13,6 +13,7 @@ type Review = {
   is_hidden: boolean | null
   rating: number | null
   created_at: string | null
+  profiles: { name: string | null; email: string | null } | null
 }
 
 const categoryColors: Record<string, string> = {
@@ -36,11 +37,11 @@ export default function AdminReviewsPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from("reviews")
-      .select("id, title, content, category, user_id, is_hidden, rating, created_at")
+      .select("id, title, content, category, user_id, is_hidden, rating, created_at, profiles(name, email)")
       .order("created_at", { ascending: false })
 
     if (error) setError(error.message)
-    else setReviews(data ?? [])
+    else setReviews((data ?? []) as Review[])
     setLoading(false)
   }
 
@@ -109,8 +110,9 @@ export default function AdminReviewsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-900 max-w-xs truncate">{review.title}</td>
-                    <td className="px-6 py-3 text-sm text-gray-500 font-mono">
-                      {review.user_id.slice(0, 4)}...
+                    <td className="px-6 py-3">
+                      <div className="text-sm font-medium text-gray-900">{review.profiles?.name ?? '-'}</div>
+                      <div className="text-xs text-gray-400">{review.profiles?.email ?? review.user_id.slice(0, 8)}</div>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-600">
                       {review.rating !== null ? `${review.rating}점` : "-"}

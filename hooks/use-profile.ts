@@ -23,7 +23,7 @@ export interface FullProfile {
 }
 
 export function useProfile() {
-  const { user, profile: authProfile } = useAuth()
+  const { user, profile: authProfile, refetchProfile } = useAuth()
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -128,6 +128,7 @@ export function useProfile() {
   const saveProfile = async (data: {
     // profiles
     name: string
+    activityName: string
     phone: string
     // artist_profiles
     gender: string
@@ -164,7 +165,7 @@ export function useProfile() {
 
     try {
       // 1. profiles 업데이트
-      await supabase.from("profiles").update({ name: data.name, phone: data.phone }).eq("id", user.id)
+      await supabase.from("profiles").update({ name: data.name, phone: data.phone, activity_name: data.activityName || null } as Record<string, unknown>).eq("id", user.id)
 
       // 2. artist_profiles upsert
       const { data: ap } = await supabase.from("artist_profiles").upsert({
@@ -263,6 +264,7 @@ export function useProfile() {
       }
 
       await fetchProfile()
+      refetchProfile()
       toast({ title: "저장 완료!", description: "프로필이 저장되었습니다." })
       return true
     } catch (err) {

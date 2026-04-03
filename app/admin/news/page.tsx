@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +48,9 @@ export default function AdminNewsPage() {
   const [form, setForm] = useState<NewsForm>(defaultForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [newsImageFile, setNewsImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchNews()
@@ -66,9 +69,21 @@ export default function AdminNewsPage() {
     setLoading(false)
   }
 
+  async function uploadNewsImage(file: File): Promise<string | null> {
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const path = `news/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('news-images').upload(path, file, { upsert: true })
+    if (error) return null
+    const { data } = supabase.storage.from('news-images').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   function openAddDialog() {
     setEditingNews(null)
     setForm(defaultForm)
+    setNewsImageFile(null)
+    setImagePreview(null)
     setError(null)
     setDialogOpen(true)
   }
@@ -84,6 +99,8 @@ export default function AdminNewsPage() {
         : "",
       is_published: news.is_published ?? false,
     })
+    setNewsImageFile(null)
+    setImagePreview(news.image_url ?? null)
     setError(null)
     setDialogOpen(true)
   }
@@ -97,12 +114,34 @@ export default function AdminNewsPage() {
     setError(null)
     const supabase = createClient()
 
-    const payload = {
+    let imageUrl: string | null | undefined = undefined
+    if (newsImageFile) {
+      const uploaded = await uploadNewsImage(newsImageFile)
+      if (!uploaded) {
+        setError("이미지 업로드에 실패했습니다.")
+        setSaving(false)
+        return
+      }
+      imageUrl = uploaded
+    }
+
+    const payload: {
+      title: string
+      content: string | null
+      excerpt: string | null
+      published_at: string | null
+      is_published: boolean
+      image_url?: string
+    } = {
       title: form.title,
       content: form.content || null,
       excerpt: form.excerpt || null,
       published_at: form.published_at || null,
       is_published: form.is_published,
+    }
+
+    if (imageUrl !== undefined) {
+      payload.image_url = imageUrl
     }
 
     if (editingNews) {
@@ -139,6 +178,14 @@ export default function AdminNewsPage() {
 
   const updateForm = (key: keyof NewsForm, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setNewsImageFile(file)
+    if (file) {
+      setImagePreview(URL.createObjectURL(file))
+    }
   }
 
   return (
@@ -273,6 +320,43 @@ export default function AdminNewsPage() {
                 placeholder="뉴스 내용"
                 rows={6}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>이미지</Label>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs"
+                >
+                  파일 선택
+                </Button>
+                {newsImageFile && (
+                  <span className="text-xs text-gray-500 truncate max-w-[180px]">
+                    {newsImageFile.name}
+                  </span>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              {imagePreview && (
+                <div className="mt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview}
+                    alt="미리보기"
+                    className="w-full max-h-48 object-contain rounded border border-gray-200"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

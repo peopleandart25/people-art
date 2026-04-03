@@ -19,6 +19,8 @@ import {
   MessageSquare,
   Building2,
   FileText,
+  Image,
+  Settings,
 } from "lucide-react"
 
 const menuItems = [
@@ -32,16 +34,20 @@ const menuItems = [
   { label: "후기 관리", href: "/admin/reviews", icon: MessageSquare },
   { label: "지원기관 관리", href: "/admin/agencies", icon: Building2 },
   { label: "양식 관리", href: "/admin/template", icon: FileText },
+  { label: "배너 관리", href: "/admin/banners", icon: Image },
+  { label: "설정", href: "/admin/settings", icon: Settings },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading, signOut } = useAuth()
+  const { profile, loading, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
+  const canAccess = profile?.role === "admin" || profile?.role === "sub_admin"
+
   useEffect(() => {
-    if (!loading && !isAdmin) {
+    if (!loading && !canAccess) {
       // admin 서브도메인에서 접근 시 메인 사이트로 리다이렉트
       if (typeof window !== "undefined" && window.location.hostname.startsWith("admin.")) {
         window.location.href = "https://people-art.co.kr/login"
@@ -49,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.replace("/")
       }
     }
-  }, [loading, isAdmin, router])
+  }, [loading, canAccess, router])
 
   if (loading) {
     return (
@@ -62,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  if (!isAdmin) {
+  if (!canAccess) {
     return null
   }
 

@@ -67,9 +67,13 @@ export default function MyPage() {
   const [errorModal, setErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
+  const [emailChangeMode, setEmailChangeMode] = useState(false)
+  const [newEmail, setNewEmail] = useState("")
+  const [emailChanging, setEmailChanging] = useState(false)
+
   // 폼 상태
   const [formData, setFormData] = useState({
-    name: "", phone: "", gender: "", birthDate: "",
+    name: "", activityName: "", phone: "", gender: "", birthDate: "",
     height: "", weight: "", bio: "", etcInfo: "",
     school: "", isCustomSchool: false, department: "", graduationStatus: "재학",
     instagram: "", youtube: "", tiktok: "",
@@ -96,6 +100,7 @@ export default function MyPage() {
 
     setFormData({
       name: authProfile?.name ?? "",
+      activityName: (authProfile as Record<string, unknown>)?.activity_name as string ?? "",
       phone: authProfile?.phone ?? "",
       gender: artistProfile?.gender ?? "",
       birthDate: artistProfile?.birth_date ?? "",
@@ -249,6 +254,7 @@ export default function MyPage() {
 
       await saveProfile({
         name: formData.name,
+        activityName: formData.activityName,
         phone: formData.phone,
         gender: formData.gender,
         birthDate: formData.birthDate,
@@ -527,8 +533,38 @@ export default function MyPage() {
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-2">
-                    <Label htmlFor="name">성함</Label>
-                    <Input id="name" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="이름을 입력하세요" />
+                    <Label htmlFor="name">성함 (본명)</Label>
+                    <Input id="name" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="본명을 입력하세요" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="activityName">활동명</Label>
+                    <Input id="activityName" value={formData.activityName} onChange={e => setFormData(p => ({ ...p, activityName: e.target.value }))} placeholder="활동명 (본명과 다른 경우)" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>이메일</Label>
+                    {emailChangeMode ? (
+                      <div className="flex gap-2">
+                        <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="새 이메일 주소" type="email" className="flex-1" />
+                        <Button size="sm" disabled={emailChanging} onClick={async () => {
+                          if (!newEmail.trim()) return
+                          setEmailChanging(true)
+                          const { createClient } = await import("@/lib/supabase/client")
+                          const supabase = createClient()
+                          const { error } = await supabase.auth.updateUser({ email: newEmail })
+                          setEmailChanging(false)
+                          if (error) { alert(error.message) } else {
+                            alert("인증 메일을 발송했습니다. 새 이메일을 확인해주세요.")
+                            setEmailChangeMode(false)
+                          }
+                        }}>확인</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEmailChangeMode(false)}>취소</Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input value={authProfile?.email ?? ""} readOnly className="bg-muted flex-1" />
+                        <Button size="sm" variant="outline" onClick={() => { setNewEmail(""); setEmailChangeMode(true) }}>변경</Button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="birthDate">생년월일</Label>

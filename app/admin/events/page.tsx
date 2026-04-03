@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +34,8 @@ type Event = {
   deadline: string | null
   is_member_only: boolean | null
   created_at: string | null
+  image_url: string | null
+  event_applications: { count: number }[]
 }
 
 type EventForm = {
@@ -47,6 +49,19 @@ type EventForm = {
   event_time: string
   deadline: string
   is_member_only: boolean
+}
+
+type Application = {
+  id: string
+  result: string | null
+  applied_at: string | null
+  user_id: string
+  profile: {
+    name: string | null
+    email: string | null
+    phone: string | null
+  } | null
+  portfolio_url: string | null
 }
 
 const defaultForm: EventForm = {
@@ -68,6 +83,18 @@ const statusColors: Record<string, string> = {
   "예정": "bg-blue-100 text-blue-700",
 }
 
+const resultOptions = ["검토중", "다음기회에", "합격"]
+
+async function uploadEventImage(file: File, eventId: string): Promise<string | null> {
+  const supabase = createClient()
+  const ext = file.name.split(".").pop()
+  const path = `${eventId}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from("event-images").upload(path, file, { upsert: true })
+  if (error) return null
+  const { data } = supabase.storage.from("event-images").getPublicUrl(path)
+  return data.publicUrl
+}
+
 export default function AdminEventsPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,6 +103,17 @@ export default function AdminEventsPage() {
   const [form, setForm] = useState<EventForm>(defaultForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 이미지 업로드
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 지원자 모달
+  const [applicantsDialogOpen, setApplicantsDialogOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
+  const [applications, setApplications] = useState<Application[]>([])
+  const [applicationsLoading, setApplicationsLoading] = useState(false)
 
   useEffect(() => {
     fetchEvents()
@@ -86,17 +124,63 @@ export default function AdminEventsPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from("events")
-      .select("id, title, type, status, description, detail_content, director, project_name, location, event_time, deadline, is_member_only, created_at")
+      .select("id, title, type, status, description, detail_content, director, project_name, location, event_time, deadline, is_member_only, created_at, image_url, event_applications(count)")
       .order("created_at", { ascending: false })
 
     if (error) setError(error.message)
-    else setEvents(data ?? [])
+    else setEvents((data ?? []) as Event[])
     setLoading(false)
+  }
+
+  async function fetchApplications(eventId: string) {
+    setApplicationsLoading(true)
+    const supabase = createClient()
+
+    const { data: apps, error: appsError } = await supabase
+      .from("event_applications")
+      .select("id, result, applied_at, user_id")
+      .eq("event_id", eventId)
+      .order("applied_at", { ascending: false })
+
+    if (appsError || !apps) {
+      setApplicationsLoading(false)
+      return
+    }
+
+    const enriched: Application[] = await Promise.all(
+      apps.map(async (app) => {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, email, phone")
+          .eq("id", app.user_id)
+          .single()
+
+        const { data: artistProfile } = await supabase
+          .from("artist_profiles")
+          .select("portfolio_url")
+          .eq("user_id", app.user_id)
+          .single()
+
+        return {
+          id: app.id,
+          result: app.result,
+          applied_at: app.applied_at,
+          user_id: app.user_id,
+          profile: profile ?? null,
+          portfolio_url: artistProfile?.portfolio_url ?? null,
+        }
+      })
+    )
+
+    setApplications(enriched)
+    setApplicationsLoading(false)
   }
 
   function openAddDialog() {
     setEditingEvent(null)
     setForm(defaultForm)
+    setImageFile(null)
+    setImagePreview(null)
     setDialogOpen(true)
   }
 
@@ -114,7 +198,25 @@ export default function AdminEventsPage() {
       deadline: event.deadline ?? "",
       is_member_only: event.is_member_only ?? false,
     })
+    setImageFile(null)
+    setImagePreview(event.image_url ?? null)
     setDialogOpen(true)
+  }
+
+  function openApplicantsDialog(event: Event) {
+    setSelectedEvent(event)
+    setApplications([])
+    setApplicantsDialogOpen(true)
+    fetchApplications(event.id)
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
   }
 
   async function handleSave() {
@@ -125,6 +227,14 @@ export default function AdminEventsPage() {
     setSaving(true)
     setError(null)
     const supabase = createClient()
+
+    let imageUrl: string | null = editingEvent?.image_url ?? null
+
+    if (imageFile) {
+      const eventId = editingEvent?.id ?? String(Date.now())
+      const uploaded = await uploadEventImage(imageFile, eventId)
+      if (uploaded) imageUrl = uploaded
+    }
 
     const payload = {
       title: form.title,
@@ -137,6 +247,7 @@ export default function AdminEventsPage() {
       event_time: form.event_time || null,
       deadline: form.deadline || null,
       is_member_only: form.is_member_only,
+      image_url: imageUrl,
     }
 
     if (editingEvent) {
@@ -161,6 +272,18 @@ export default function AdminEventsPage() {
     const { error } = await supabase.from("events").delete().eq("id", id)
     if (error) setError(error.message)
     else await fetchEvents()
+  }
+
+  async function handleResultChange(applicationId: string, result: string) {
+    const supabase = createClient()
+    await supabase
+      .from("event_applications")
+      .update({ result })
+      .eq("id", applicationId)
+
+    setApplications((prev) =>
+      prev.map((a) => (a.id === applicationId ? { ...a, result } : a))
+    )
   }
 
   const updateForm = (key: keyof EventForm, value: string | boolean) => {
@@ -201,6 +324,7 @@ export default function AdminEventsPage() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">제목</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">타입</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">지원자 수</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">마감일</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">작성일</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
@@ -209,12 +333,27 @@ export default function AdminEventsPage() {
               <tbody className="divide-y divide-gray-50">
                 {events.map((event) => (
                   <tr key={event.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-3 text-sm text-gray-900 max-w-xs truncate">{event.title}</td>
+                    <td className="px-6 py-3 text-sm text-gray-900 max-w-xs truncate">
+                      <button
+                        className="text-left hover:underline hover:text-orange-600 transition-colors"
+                        onClick={() => openApplicantsDialog(event)}
+                      >
+                        {event.title}
+                      </button>
+                    </td>
                     <td className="px-6 py-3 text-sm text-gray-600">{event.type}</td>
                     <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusColors[event.status] ?? "bg-gray-100 text-gray-600"}`}>
                         {event.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-600">
+                      <button
+                        className="hover:underline hover:text-orange-600 transition-colors"
+                        onClick={() => openApplicantsDialog(event)}
+                      >
+                        {event.event_applications?.[0]?.count ?? 0}명
+                      </button>
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-500">
                       {event.deadline
@@ -250,7 +389,7 @@ export default function AdminEventsPage() {
                 ))}
                 {events.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-400">
+                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400">
                       이벤트가 없습니다
                     </td>
                   </tr>
@@ -363,6 +502,27 @@ export default function AdminEventsPage() {
               </div>
             </div>
 
+            {/* 포스터 이미지 업로드 */}
+            <div className="space-y-2">
+              <Label>포스터 이미지</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+              />
+              {imagePreview && (
+                <div className="mt-2">
+                  <img
+                    src={imagePreview}
+                    alt="포스터 미리보기"
+                    className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
@@ -396,6 +556,91 @@ export default function AdminEventsPage() {
                 {saving ? "저장 중..." : "저장"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 지원자 관리 모달 */}
+      <Dialog open={applicantsDialogOpen} onOpenChange={setApplicantsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              지원자 목록 — {selectedEvent?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {applicationsLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="w-7 h-7 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : applications.length === 0 ? (
+            <p className="py-10 text-center text-sm text-gray-400">지원자가 없습니다</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">이름</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">이메일</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">전화번호</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">지원일시</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">포트폴리오</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-gray-500">결과</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {applications.map((app) => (
+                    <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-2 text-gray-900">{app.profile?.name ?? "-"}</td>
+                      <td className="px-4 py-2 text-gray-600">{app.profile?.email ?? "-"}</td>
+                      <td className="px-4 py-2 text-gray-600">{app.profile?.phone ?? "-"}</td>
+                      <td className="px-4 py-2 text-gray-500">
+                        {app.applied_at
+                          ? new Date(app.applied_at).toLocaleString("ko-KR")
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {app.portfolio_url ? (
+                          <a
+                            href={app.portfolio_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange-600 hover:underline text-xs"
+                          >
+                            PDF 다운로드
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Select
+                          value={app.result ?? "검토중"}
+                          onValueChange={(v) => handleResultChange(app.id, v)}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {resultOptions.map((opt) => (
+                              <SelectItem key={opt} value={opt} className="text-xs">
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => setApplicantsDialogOpen(false)}>
+              닫기
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

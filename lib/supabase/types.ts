@@ -91,6 +91,27 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       artist_photos: {
         Row: {
           created_at: string | null
@@ -227,6 +248,39 @@ export type Database = {
           },
         ]
       }
+      banners: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          sort_order: number
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       career_items: {
         Row: {
           category: string
@@ -273,6 +327,7 @@ export type Database = {
           applied_at: string | null
           event_id: string
           id: string
+          result: string
           status: string
           updated_at: string | null
           user_id: string
@@ -281,6 +336,7 @@ export type Database = {
           applied_at?: string | null
           event_id: string
           id?: string
+          result?: string
           status?: string
           updated_at?: string | null
           user_id: string
@@ -289,6 +345,7 @@ export type Database = {
           applied_at?: string | null
           event_id?: string
           id?: string
+          result?: string
           status?: string
           updated_at?: string | null
           user_id?: string
@@ -539,6 +596,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_name: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -548,9 +606,12 @@ export type Database = {
           referral_code: string | null
           referred_by: string | null
           role: string
+          status: string
+          status_reason: string | null
           updated_at: string | null
         }
         Insert: {
+          activity_name?: string | null
           created_at?: string | null
           email?: string | null
           id: string
@@ -560,9 +621,12 @@ export type Database = {
           referral_code?: string | null
           referred_by?: string | null
           role?: string
+          status?: string
+          status_reason?: string | null
           updated_at?: string | null
         }
         Update: {
+          activity_name?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -572,6 +636,8 @@ export type Database = {
           referral_code?: string | null
           referred_by?: string | null
           role?: string
+          status?: string
+          status_reason?: string | null
           updated_at?: string | null
         }
         Relationships: []
