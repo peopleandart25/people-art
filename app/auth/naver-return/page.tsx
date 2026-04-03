@@ -24,31 +24,32 @@ export default function NaverReturnPage() {
       router.replace(artistProfile ? "/" : "/onboarding")
     }
 
-    // SDK가 URL 해시(#access_token=...)를 처리한 후 세션을 가져옴
-    // INITIAL_SESSION보다 SIGNED_IN이 늦게 올 수 있으므로 두 이벤트 모두 처리
-    let handled = false
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (handled) return
-      if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && session)) {
-        handled = true
-        subscription.unsubscribe()
-        handleSession(session)
+    async function init() {
+      // @supabase/ssr의 createBrowserClient는 PKCE 모드 기본값이라
+      // hash fragment(#access_token=...)를 자동 처리하지 않음
+      // → URL hash에서 직접 토큰을 파싱해 setSession으로 세션 복원
+      const hash = window.location.hash.substring(1)
+      const params = new URLSearchParams(hash)
+      const accessToken = params.get("access_token")
+      const refreshToken = params.get("refresh_token")
+
+      if (accessToken && refreshToken) {
+        const { data: { session }, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        if (!error) {
+          await handleSession(session)
+          return
+        }
       }
-    })
 
-    // 5초 타임아웃: 이벤트가 안 오면 getSession으로 직접 확인
-    const timeout = setTimeout(async () => {
-      if (handled) return
-      handled = true
-      subscription.unsubscribe()
+      // hash token이 없거나 setSession 실패 시 기존 세션 확인
       const { data: { session } } = await supabase.auth.getSession()
-      handleSession(session)
-    }, 5000)
-
-    return () => {
-      clearTimeout(timeout)
-      subscription.unsubscribe()
+      await handleSession(session)
     }
+
+    init()
   }, [router])
 
   return (
