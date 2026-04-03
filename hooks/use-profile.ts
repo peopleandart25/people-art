@@ -264,7 +264,6 @@ export function useProfile() {
       }
 
       await fetchProfile()
-      refetchProfile()
       toast({ title: "저장 완료!", description: "프로필이 저장되었습니다." })
       return true
     } catch (err) {

@@ -61,6 +61,7 @@ export default function MyPage() {
   const { user, profile: authProfile, isLoggedIn, loading: authLoading } = useAuth()
   const { fullProfile, allTags, loading: profileLoading, uploadMainPhoto, uploadPortfolio, saveProfile } = useProfile()
 
+  const initialized = useRef(false)
   const [isSaving, setIsSaving] = useState(false)
   const [schoolOpen, setSchoolOpen] = useState(false)
   const [videoLinkModal, setVideoLinkModal] = useState(false)
@@ -107,9 +108,11 @@ export default function MyPage() {
   const portfolioRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
-  // DB 데이터 → 폼 상태 동기화
+  // DB 데이터 → 폼 상태 동기화 (최초 1회만)
   useEffect(() => {
     if (profileLoading) return
+    if (initialized.current) return
+    initialized.current = true
     const { artistProfile, careerItems, photos, videoAssets, socialLinks, statusTagIds: tagIds } = fullProfile
 
     setFormData({
