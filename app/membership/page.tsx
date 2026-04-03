@@ -1427,7 +1427,7 @@ export default function MembershipPage() {
                   <CardTitle className="text-lg">멤버십 결제</CardTitle>
                 </div>
                 <CardDescription>
-                  카카오페이로 간편하게 결제하세요
+                  카카오페이 간편결제로 빠르게 시작하세요
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">

@@ -148,14 +148,26 @@ export default function SupportPage() {
       `안녕하세요.\n\n피플앤아트를 통해 프로필을 지원드립니다.\n\n이름: ${name}\n연락처: ${phone}\n이메일: ${email}\n\n프로필 및 포트폴리오는 첨부 파일로 전달드립니다.\n\n검토 부탁드립니다.\n감사합니다.`
     )
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${emailAddresses}&su=${subject}&body=${body}`
-    const naverUrl = `https://mail.naver.com/write?to=${emailAddresses}&subject=${subject}&body=${body}`
+    const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${emailAddresses}&su=${subject}&body=${body}`
+    const naverWebUrl = `https://mail.naver.com/write?to=${emailAddresses}&subject=${subject}&body=${body}`
+    const gmailDeeplinkUrl = `googlegmail://co?to=${emailAddresses}&subject=${subject}&body=${body}`
+    const naverDeeplinkUrl = `navermail://compose?to=${emailAddresses}&subject=${subject}&body=${body}`
     const mailtoUrl = `mailto:${emailAddresses}?subject=${subject}&body=${body}`
 
-    if (!isMobile && emailProvider === "gmail") {
-      window.open(gmailUrl, "_blank", "noopener,noreferrer")
-    } else if (!isMobile && emailProvider === "naver") {
-      window.open(naverUrl, "_blank", "noopener,noreferrer")
+    if (emailProvider === "gmail") {
+      if (isMobile) {
+        window.location.href = gmailDeeplinkUrl
+        setTimeout(() => { window.location.href = mailtoUrl }, 1500)
+      } else {
+        window.open(gmailWebUrl, "_blank", "noopener,noreferrer")
+      }
+    } else if (emailProvider === "naver") {
+      if (isMobile) {
+        window.location.href = naverDeeplinkUrl
+        setTimeout(() => { window.location.href = mailtoUrl }, 1500)
+      } else {
+        window.open(naverWebUrl, "_blank", "noopener,noreferrer")
+      }
     } else {
       window.location.href = mailtoUrl
     }

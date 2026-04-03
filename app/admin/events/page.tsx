@@ -115,6 +115,37 @@ export default function AdminEventsPage() {
   const [applications, setApplications] = useState<Application[]>([])
   const [applicationsLoading, setApplicationsLoading] = useState(false)
 
+  function downloadApplicantsPDF() {
+    if (!selectedEvent || applications.length === 0) return
+    const rows = applications.map((app) => `
+      <tr>
+        <td>${app.profile?.name ?? "-"}</td>
+        <td>${app.profile?.email ?? "-"}</td>
+        <td>${app.profile?.phone ?? "-"}</td>
+        <td>${app.applied_at ? new Date(app.applied_at).toLocaleString("ko-KR") : "-"}</td>
+        <td>${app.result ?? "검토중"}</td>
+      </tr>
+    `).join("")
+    const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${selectedEvent.title} - 신청자 목록</title>
+    <style>
+      body { font-family: sans-serif; padding: 24px; color: #111; }
+      h1 { font-size: 18px; margin-bottom: 4px; }
+      p { font-size: 12px; color: #666; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th { background: #f3f4f6; text-align: left; padding: 8px 12px; border-bottom: 2px solid #e5e7eb; }
+      td { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; }
+      @media print { body { padding: 0; } }
+    </style></head><body>
+    <h1>${selectedEvent.title} — 신청자 목록</h1>
+    <p>총 ${applications.length}명 · 출력일: ${new Date().toLocaleDateString("ko-KR")}</p>
+    <table><thead><tr><th>이름</th><th>이메일</th><th>전화번호</th><th>지원일시</th><th>결과</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <script>window.onload = function(){ window.print(); }<\/script>
+    </body></html>`
+    const win = window.open("", "_blank")
+    if (win) { win.document.write(html); win.document.close() }
+  }
+
   useEffect(() => {
     fetchEvents()
   }, [])
@@ -637,7 +668,15 @@ export default function AdminEventsPage() {
             </div>
           )}
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-between pt-2">
+            <Button
+              variant="outline"
+              onClick={downloadApplicantsPDF}
+              disabled={applications.length === 0}
+              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              신청자 목록 PDF 다운로드
+            </Button>
             <Button variant="outline" onClick={() => setApplicantsDialogOpen(false)}>
               닫기
             </Button>

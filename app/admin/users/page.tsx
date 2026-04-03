@@ -56,6 +56,13 @@ type Payment = {
   created_at: string | null
 }
 
+type SupportHistory = {
+  id: string
+  sent_at: string | null
+  agency_name: string
+  agency_category: string
+}
+
 // ─── 상수 ───────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS = ["전체", "승인대기", "승인", "탈퇴", "정지"] as const
@@ -149,6 +156,7 @@ export default function AdminUsersPage() {
   const [eventCount, setEventCount] = useState(0)
   const [referralCount, setReferralCount] = useState(0)
   const [activityLoading, setActivityLoading] = useState(false)
+  const [supportHistory, setSupportHistory] = useState<SupportHistory[]>([])
 
   useEffect(() => {
     fetchProfiles()
@@ -261,6 +269,19 @@ export default function AdminUsersPage() {
     } else {
       setReferralCount(0)
     }
+
+    const supportRes = await supabase
+      .from("support_history")
+      .select("id, sent_at, support_agencies(name, category)")
+      .eq("user_id", userId)
+      .order("sent_at", { ascending: false })
+    const supportItems = ((supportRes.data ?? []) as any[]).map(r => ({
+      id: r.id,
+      sent_at: r.sent_at,
+      agency_name: r.support_agencies?.name ?? "-",
+      agency_category: r.support_agencies?.category ?? "-",
+    }))
+    setSupportHistory(supportItems)
 
     setActivityLoading(false)
   }
@@ -672,6 +693,39 @@ export default function AdminUsersPage() {
                                       {pay.status ?? "-"}
                                     </span>
                                   </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 프로필지원 내역 */}
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">프로필지원 내역</h3>
+                      {supportHistory.length === 0 ? (
+                        <div className="text-center py-8 text-sm text-gray-400 bg-gray-50 rounded-lg">
+                          프로필지원 내역이 없습니다
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-lg border border-gray-100">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-gray-50 text-left text-xs text-gray-500">
+                                <th className="px-4 py-2">발송일</th>
+                                <th className="px-4 py-2">소속사명</th>
+                                <th className="px-4 py-2">카테고리</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {supportHistory.map((item) => (
+                                <tr key={item.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-gray-600">
+                                    {item.sent_at ? new Date(item.sent_at).toLocaleDateString("ko-KR") : "-"}
+                                  </td>
+                                  <td className="px-4 py-2 text-gray-800">{item.agency_name}</td>
+                                  <td className="px-4 py-2 text-gray-600">{item.agency_category}</td>
                                 </tr>
                               ))}
                             </tbody>
