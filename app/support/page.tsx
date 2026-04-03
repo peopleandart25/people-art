@@ -43,6 +43,7 @@ export default function SupportPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [supportRecords, setSupportRecords] = useState<SupportRecord[]>([])
   const [isMounted, setIsMounted] = useState(false)
+  const [emailProvider, setEmailProvider] = useState<"gmail" | "naver" | "default">("default")
 
   useEffect(() => {
     const fetchAgencies = async () => {
@@ -136,7 +137,7 @@ export default function SupportPage() {
     setShowConfirmModal(true)
   }
 
-  const confirmSend = () => {
+  const confirmSend = async () => {
     const selectedData = selectedAgencies.map((id) => agencies.find((a) => a.id === id)).filter((a): a is Agency => !!a)
     const emailAddresses = selectedData.map((a) => a.email).join(",")
     const name = authProfile?.name ?? ""
@@ -146,11 +147,31 @@ export default function SupportPage() {
     const body = encodeURIComponent(
       `안녕하세요.\n\n피플앤아트를 통해 프로필을 지원드립니다.\n\n이름: ${name}\n연락처: ${phone}\n이메일: ${email}\n\n프로필 및 포트폴리오는 첨부 파일로 전달드립니다.\n\n검토 부탁드립니다.\n감사합니다.`
     )
-    window.location.href = `mailto:${emailAddresses}?subject=${subject}&body=${body}`
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${emailAddresses}&su=${subject}&body=${body}`
+    const naverUrl = `https://mail.naver.com/write?to=${emailAddresses}&subject=${subject}&body=${body}`
+    const mailtoUrl = `mailto:${emailAddresses}?subject=${subject}&body=${body}`
+
+    if (!isMobile && emailProvider === "gmail") {
+      window.open(gmailUrl, "_blank", "noopener,noreferrer")
+    } else if (!isMobile && emailProvider === "naver") {
+      window.open(naverUrl, "_blank", "noopener,noreferrer")
+    } else {
+      window.location.href = mailtoUrl
+    }
     const today = getTodayString()
     const newRecords = [...supportRecords, ...selectedAgencies.map((id) => ({ id, last_sent: today }))]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newRecords))
     setSupportRecords(newRecords)
+
+    // DB 저장 (로그인한 경우에만)
+    if (user) {
+      const supabase = createClient()
+      await (supabase as any).from("support_history").insert(
+        selectedAgencies.map((agency_id) => ({ user_id: user.id, agency_id, sent_at: today }))
+      )
+    }
+
     setShowConfirmModal(false)
     setShowSuccessModal(true)
     setSelectedAgencies([])
@@ -317,6 +338,27 @@ export default function SupportPage() {
               </div>
             </div>
           )}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">이메일 앱 선택</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: "gmail", label: "Gmail" },
+                { value: "naver", label: "네이버" },
+                { value: "default", label: "기본 메일" },
+              ].map(({ value, label }) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant={emailProvider === value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEmailProvider(value as "gmail" | "naver" | "default")}
+                  className={emailProvider === value ? "bg-primary text-primary-foreground" : ""}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
           <DialogFooter className="flex flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={() => setShowConfirmModal(false)}>취소</Button>
             <Button onClick={confirmSend} className="bg-primary text-primary-foreground hover:bg-primary/90">메일 앱 열기</Button>

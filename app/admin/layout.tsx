@@ -24,18 +24,18 @@ import {
 } from "lucide-react"
 
 const menuItems = [
-  { label: "대시보드", href: "/admin", icon: LayoutDashboard },
-  { label: "회원 관리", href: "/admin/users", icon: Users },
-  { label: "배우 관리", href: "/admin/artists", icon: Star },
-  { label: "이벤트 관리", href: "/admin/events", icon: Calendar },
-  { label: "뉴스 관리", href: "/admin/news", icon: Newspaper },
-  { label: "투어 관리", href: "/admin/tours", icon: Map },
-  { label: "파트너 관리", href: "/admin/partners", icon: Building },
-  { label: "후기 관리", href: "/admin/reviews", icon: MessageSquare },
-  { label: "지원기관 관리", href: "/admin/agencies", icon: Building2 },
-  { label: "양식 관리", href: "/admin/template", icon: FileText },
-  { label: "배너 관리", href: "/admin/banners", icon: Image },
-  { label: "설정", href: "/admin/settings", icon: Settings },
+  { label: "대시보드", href: "/admin", icon: LayoutDashboard, adminOnly: true },
+  { label: "회원 관리", href: "/admin/users", icon: Users, adminOnly: true },
+  { label: "배우 관리", href: "/admin/artists", icon: Star, adminOnly: false },
+  { label: "이벤트 관리", href: "/admin/events", icon: Calendar, adminOnly: false },
+  { label: "뉴스 관리", href: "/admin/news", icon: Newspaper, adminOnly: false },
+  { label: "투어 관리", href: "/admin/tours", icon: Map, adminOnly: false },
+  { label: "파트너 관리", href: "/admin/partners", icon: Building, adminOnly: true },
+  { label: "후기 관리", href: "/admin/reviews", icon: MessageSquare, adminOnly: false },
+  { label: "지원기관 관리", href: "/admin/agencies", icon: Building2, adminOnly: false },
+  { label: "양식 관리", href: "/admin/template", icon: FileText, adminOnly: false },
+  { label: "배너 관리", href: "/admin/banners", icon: Image, adminOnly: true },
+  { label: "설정", href: "/admin/settings", icon: Settings, adminOnly: true },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -45,17 +45,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const canAccess = profile?.role === "admin" || profile?.role === "sub_admin"
+  const isAdmin = profile?.role === "admin"
 
   useEffect(() => {
     if (!loading && !canAccess) {
-      // admin 서브도메인에서 접근 시 메인 사이트로 리다이렉트
       if (typeof window !== "undefined" && window.location.hostname.startsWith("admin.")) {
         window.location.href = "https://people-art.co.kr/login"
       } else {
         router.replace("/")
       }
     }
-  }, [loading, canAccess, router])
+    // sub_admin이 admin 전용 페이지에 직접 접근 시 차단
+    if (!loading && canAccess && !isAdmin) {
+      const current = menuItems.find(m => m.href === "/admin" ? pathname === "/admin" : pathname.startsWith(m.href))
+      if (current?.adminOnly) {
+        router.replace("/admin/events")
+      }
+    }
+  }, [loading, canAccess, isAdmin, pathname, router])
 
   if (loading) {
     return (
@@ -103,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* 메뉴 */}
         <nav className="flex-1 py-4 overflow-y-auto">
           <ul className="space-y-1 px-2">
-            {menuItems.map((item) => {
+            {menuItems.filter(item => isAdmin || !item.adminOnly).map((item) => {
               const Icon = item.icon
               return (
                 <li key={item.href}>

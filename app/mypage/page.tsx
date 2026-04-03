@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import {
   ArrowLeft, Camera, Upload, X, Plus, Trash2, Star, FileText, Video,
   Link2, Sparkles, Check, ChevronsUpDown, ExternalLink, Crown, Shield,
-  Instagram, Youtube, AlertCircle, GraduationCap, Save,
+  Instagram, Youtube, AlertCircle, GraduationCap, Save, Send,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
@@ -71,6 +71,19 @@ export default function MyPage() {
   const [emailChangeMode, setEmailChangeMode] = useState(false)
   const [newEmail, setNewEmail] = useState("")
   const [emailChanging, setEmailChanging] = useState(false)
+  const [eventApplications, setEventApplications] = useState<{
+    id: string
+    event_id: string
+    applied_at: string | null
+    result: string
+    events: { title: string; deadline: string | null } | null
+  }[]>([])
+  const [supportHistoryItems, setSupportHistoryItems] = useState<{
+    id: string
+    sent_at: string
+    agency_name: string
+    agency_category: string
+  }[]>([])
 
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -143,6 +156,35 @@ export default function MyPage() {
   useEffect(() => {
     if (!authLoading && !isLoggedIn) router.push("/login?redirectTo=/mypage")
   }, [authLoading, isLoggedIn])
+
+  useEffect(() => {
+    if (!user) return
+    const supabase = createClient()
+    supabase
+      .from("event_applications")
+      .select("id, event_id, applied_at, result, events(title, deadline)")
+      .eq("user_id", user.id)
+      .order("applied_at", { ascending: false })
+      .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setEventApplications((data as any[]) ?? [])
+      })
+    supabase
+      .from("support_history")
+      .select("id, sent_at, support_agencies(name, category)")
+      .eq("user_id", user.id)
+      .order("sent_at", { ascending: false })
+      .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items = ((data as any[]) ?? []).map((r: any) => ({
+          id: r.id,
+          sent_at: r.sent_at,
+          agency_name: r.support_agencies?.name ?? "-",
+          agency_category: r.support_agencies?.category ?? "-",
+        }))
+        setSupportHistoryItems(items)
+      })
+  }, [user])
 
   const handleMainPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -480,7 +522,7 @@ export default function MyPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">* MP4 파일은 100MB 이하만 업로드 가능합니다.</p>
-                <input ref={videoRef} type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} />
+                <input ref={videoRef} type="file" accept="video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleVideoUpload} />
                 {videos.length > 0 && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {videos.map(video => (
@@ -820,6 +862,78 @@ export default function MyPage() {
           </div>
         </div>
       </div>
+
+        {/* 이벤트 지원 내역 + 프로필 지원 내역 */}
+        <div className="container mx-auto px-4 pb-8">
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            {/* 이벤트 지원 결과 */}
+            <Card className="border border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />이벤트 지원 결과
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {eventApplications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">지원한 이벤트가 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {eventApplications.map((app) => (
+                      <div key={app.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{app.events?.title ?? "이벤트"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {app.applied_at ? new Date(app.applied_at).toLocaleDateString("ko-KR") : "-"}
+                          </p>
+                        </div>
+                        <Badge
+                          className={
+                            app.result === "합격"
+                              ? "bg-green-100 text-green-700 border-green-200 shrink-0 ml-2"
+                              : app.result === "다음기회에"
+                              ? "bg-gray-100 text-gray-600 border-gray-200 shrink-0 ml-2"
+                              : "bg-yellow-100 text-yellow-700 border-yellow-200 shrink-0 ml-2"
+                          }
+                          variant="outline"
+                        >
+                          {app.result}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 프로필 지원 내역 */}
+            <Card className="border border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Send className="h-4 w-4 text-primary" />프로필 지원 내역
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {supportHistoryItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">프로필 지원 내역이 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {supportHistoryItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{item.agency_name}</p>
+                          <p className="text-xs text-muted-foreground">{item.agency_category}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                          {new Date(item.sent_at).toLocaleDateString("ko-KR")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
       {/* 영상 링크 모달 */}
       <Dialog open={videoLinkModal} onOpenChange={setVideoLinkModal}>

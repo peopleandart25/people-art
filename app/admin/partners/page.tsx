@@ -75,7 +75,7 @@ export default function AdminPartnersPage() {
     const supabase = createClient()
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('partner-logos').upload(path, file, { upsert: false })
+    const { error } = await supabase.storage.from('partner-logos').upload(path, file, { upsert: false, contentType: file.type })
     if (error) return null
     const { data } = supabase.storage.from('partner-logos').getPublicUrl(path)
     return data.publicUrl
@@ -241,6 +241,14 @@ export default function AdminPartnersPage() {
                           src={partner.image_url}
                           alt={partner.name}
                           className="w-10 h-10 object-contain rounded"
+                          onError={(e) => {
+                            const target = e.currentTarget
+                            target.style.display = "none"
+                            const parent = target.parentElement
+                            if (parent) {
+                              parent.innerHTML = '<div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">없음</div>'
+                            }
+                          }}
                         />
                       ) : (
                         <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">

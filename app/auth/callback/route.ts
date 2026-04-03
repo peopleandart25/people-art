@@ -11,16 +11,16 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      // 온보딩 여부 확인 - 프로필에 name이 없으면 온보딩으로
+      // 온보딩 여부 확인 - artist_profiles row가 없으면 온보딩으로
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("name")
-          .eq("id", user.id)
-          .single()
+        const { data: artistProfile } = await supabase
+          .from("artist_profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle()
 
-        if (!profile?.name) {
+        if (!artistProfile) {
           return NextResponse.redirect(`${origin}/onboarding`)
         }
       }

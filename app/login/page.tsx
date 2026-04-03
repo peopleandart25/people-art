@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Phone, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -21,7 +21,12 @@ function LoginContent() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [oauthLoading, setOauthLoading] = useState<"kakao" | "google" | null>(null)
+  const [oauthLoading, setOauthLoading] = useState<"kakao" | "google" | "naver" | null>(null)
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false)
+  const [phoneOtp, setPhoneOtp] = useState("")
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [phoneVerifying, setPhoneVerifying] = useState(false)
+  const [signupPhone, setSignupPhone] = useState("")
 
   const redirectTo = searchParams.get("redirectTo") ?? "/"
   const error = searchParams.get("error")
@@ -45,6 +50,11 @@ function LoginContent() {
       provider: "kakao",
       options: { redirectTo: `${window.location.origin}/auth/callback?redirectTo=${redirectTo}` },
     })
+  }
+
+  const handleNaverLogin = () => {
+    setOauthLoading("naver")
+    window.location.href = `/api/auth/naver?redirectTo=${encodeURIComponent(redirectTo)}`
   }
 
   const handleGoogleLogin = async () => {
@@ -71,8 +81,50 @@ function LoginContent() {
     }
   }
 
+  const formatPhoneToE164 = (phone: string) => {
+    const cleaned = phone.replace(/[-\s]/g, "")
+    if (cleaned.startsWith("010") || cleaned.startsWith("011")) {
+      return `+82${cleaned.substring(1)}`
+    }
+    return `+82${cleaned}`
+  }
+
+  const handleSendPhoneOtp = async () => {
+    if (!signupPhone) {
+      toast({ title: "오류", description: "휴대폰 번호를 입력해주세요.", variant: "destructive" })
+      return
+    }
+    setPhoneVerifying(true)
+    const { error } = await supabase.auth.signInWithOtp({ phone: formatPhoneToE164(signupPhone) })
+    if (error) {
+      toast({ title: "인증번호 발송 실패", description: error.message, variant: "destructive" })
+    } else {
+      setPhoneOtpSent(true)
+      toast({ title: "인증번호 발송", description: "휴대폰으로 인증번호가 발송되었습니다." })
+    }
+    setPhoneVerifying(false)
+  }
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtp) return
+    setPhoneVerifying(true)
+    const { error } = await supabase.auth.verifyOtp({ phone: formatPhoneToE164(signupPhone), token: phoneOtp, type: "sms" })
+    if (error) {
+      toast({ title: "인증 실패", description: "인증번호가 올바르지 않습니다.", variant: "destructive" })
+    } else {
+      setPhoneVerified(true)
+      toast({ title: "인증 완료", description: "휴대폰 번호가 인증되었습니다." })
+      await supabase.auth.signOut()
+    }
+    setPhoneVerifying(false)
+  }
+
   const handleEmailSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!phoneVerified) {
+      toast({ title: "휴대폰 인증 필요", description: "휴대폰 번호 인증을 완료해주세요.", variant: "destructive" })
+      return
+    }
     setIsLoading(true)
     const form = e.currentTarget
     const name = (form.elements.namedItem("name") as HTMLInputElement).value
@@ -142,6 +194,21 @@ function LoginContent() {
                 )}
                 카카오로 {oauthLoading === "kakao" ? "연결 중..." : "시작하기"}
               </Button>
+
+              <Button
+                type="button"
+                className="w-full h-12 bg-[#03C75A] hover:bg-[#02b350] text-white font-semibold gap-2 active:scale-95 transition-transform"
+                onClick={handleNaverLogin}
+                disabled={!!oauthLoading}
+              >
+                {oauthLoading === "naver" ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <span className="font-bold text-white text-base leading-none">N</span>
+                )}
+                네이버로 {oauthLoading === "naver" ? "연결 중..." : "시작하기"}
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
@@ -231,9 +298,39 @@ function LoginContent() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">휴대폰 번호</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="phone" name="phone" type="tel" placeholder="010-1234-5678" className="pl-10" required />
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="phone" name="phone" type="tel" placeholder="010-1234-5678"
+                            className="pl-10" required
+                            value={signupPhone}
+                            onChange={(e) => { setSignupPhone(e.target.value); setPhoneVerified(false); setPhoneOtpSent(false) }}
+                            disabled={phoneVerified}
+                          />
+                        </div>
+                        {!phoneVerified && (
+                          <Button type="button" variant="outline" onClick={handleSendPhoneOtp} disabled={phoneVerifying || !signupPhone} className="shrink-0 text-xs">
+                            {phoneVerifying && !phoneOtpSent ? "발송 중..." : phoneOtpSent ? "재발송" : "인증번호 받기"}
+                          </Button>
+                        )}
+                        {phoneVerified && <span className="flex items-center text-green-600 text-sm shrink-0 gap-1"><Check className="h-4 w-4" />인증완료</span>}
+                      </div>
+                      {phoneOtpSent && !phoneVerified && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="인증번호 6자리"
+                            value={phoneOtp}
+                            onChange={(e) => setPhoneOtp(e.target.value)}
+                            maxLength={6}
+                            className="flex-1"
+                          />
+                          <Button type="button" onClick={handleVerifyPhoneOtp} disabled={phoneVerifying || phoneOtp.length < 6} className="shrink-0 text-xs bg-primary text-primary-foreground">
+                            {phoneVerifying ? "확인 중..." : "확인"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">

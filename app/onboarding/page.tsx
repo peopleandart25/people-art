@@ -27,6 +27,8 @@ import {
   X,
   Edit3,
   Wand2,
+  Phone,
+  Check,
 } from "lucide-react"
 
 import { AlertCircle } from "lucide-react"
@@ -204,6 +206,12 @@ export default function OnboardingPage() {
     etcInfo: "",
     career: [] as { year: string; channel: string; title: string; role: string; isUncertain: boolean }[],
   })
+
+  // 휴대폰 OTP 인증
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false)
+  const [phoneOtp, setPhoneOtp] = useState("")
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [phoneVerifying, setPhoneVerifying] = useState(false)
 
   // 불확실 데이터 필드 추적
   const [uncertainFields, setUncertainFields] = useState<string[]>([])
@@ -519,8 +527,44 @@ export default function OnboardingPage() {
     return "드라마"
   }
 
+  const formatPhoneToE164 = (phone: string) => {
+    const cleaned = phone.replace(/[-\s]/g, "")
+    if (cleaned.startsWith("010") || cleaned.startsWith("011")) return `+82${cleaned.substring(1)}`
+    return `+82${cleaned}`
+  }
+
+  const handleSendPhoneOtp = async () => {
+    if (!formData.phone) return
+    setPhoneVerifying(true)
+    const { createClient } = await import("@/lib/supabase/client")
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({ phone: formatPhoneToE164(formData.phone) })
+    if (error) {
+      toast({ title: "인증번호 발송 실패", description: error.message, variant: "destructive" })
+    } else {
+      setPhoneOtpSent(true)
+      toast({ title: "인증번호 발송", description: "휴대폰으로 인증번호가 발송되었습니다." })
+    }
+    setPhoneVerifying(false)
+  }
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!phoneOtp) return
+    setPhoneVerifying(true)
+    const { createClient } = await import("@/lib/supabase/client")
+    const supabase = createClient()
+    const { error } = await supabase.auth.verifyOtp({ phone: formatPhoneToE164(formData.phone), token: phoneOtp, type: "sms" })
+    if (error) {
+      toast({ title: "인증 실패", description: "인증번호가 올바르지 않습니다.", variant: "destructive" })
+    } else {
+      setPhoneVerified(true)
+      toast({ title: "인증 완료", description: "휴대폰 번호가 인증되었습니다." })
+    }
+    setPhoneVerifying(false)
+  }
+
   const canProceedToStep2 = uploadedFile && !isExtracting
-  const canProceedToStep3 = formData.name && formData.email && formData.phone
+  const canProceedToStep3 = formData.name && formData.email && formData.phone && phoneVerified
   const canComplete = canProceedToStep3 && formData.bio
 
   return (
@@ -801,12 +845,45 @@ export default function OnboardingPage() {
                     <Label htmlFor="phone">
                       휴대폰 번호 <span className="text-destructive">*</span>
                     </Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                      placeholder="010-1234-5678"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="phone"
+                            value={formData.phone}
+                            onChange={(e) => {
+                              setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                              setPhoneVerified(false)
+                              setPhoneOtpSent(false)
+                            }}
+                            placeholder="010-1234-5678"
+                            className="pl-10"
+                            disabled={phoneVerified}
+                          />
+                        </div>
+                        {!phoneVerified && (
+                          <Button type="button" variant="outline" onClick={handleSendPhoneOtp} disabled={phoneVerifying || !formData.phone} className="shrink-0 text-xs">
+                            {phoneVerifying && !phoneOtpSent ? "발송 중..." : phoneOtpSent ? "재발송" : "인증번호 받기"}
+                          </Button>
+                        )}
+                        {phoneVerified && <span className="flex items-center text-green-600 text-sm shrink-0 gap-1"><Check className="h-4 w-4" />인증완료</span>}
+                      </div>
+                      {phoneOtpSent && !phoneVerified && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="인증번호 6자리"
+                            value={phoneOtp}
+                            onChange={(e) => setPhoneOtp(e.target.value)}
+                            maxLength={6}
+                            className="flex-1"
+                          />
+                          <Button type="button" onClick={handleVerifyPhoneOtp} disabled={phoneVerifying || phoneOtp.length < 6} className="shrink-0 text-xs bg-primary text-primary-foreground">
+                            {phoneVerifying ? "확인 중..." : "확인"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">

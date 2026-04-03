@@ -854,6 +854,45 @@ export type Database = {
         }
         Relationships: []
       }
+      support_history: {
+        Row: {
+          id: string
+          user_id: string
+          agency_id: string | null
+          sent_at: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          agency_id?: string | null
+          sent_at?: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          agency_id?: string | null
+          sent_at?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_history_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "support_agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_assets: {
         Row: {
           created_at: string | null
