@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // 4. 신규 유저면 생성 (기존 유저면 무시)
+    // 4. 신규 유저면 생성, 기존 유저면 중복 이메일 에러
     const createRes = await adminClient.auth.admin.createUser({
       email: naverUser.email,
       email_confirm: true,
@@ -59,6 +59,19 @@ export async function GET(request: Request) {
       },
     })
     console.log("[naver-cb] step4 createUser:", JSON.stringify({ error: createRes.error?.message }))
+
+    if (createRes.error) {
+      // 이미 가입된 이메일 → profiles에서 기존 provider 조회
+      const { data: existingProfile } = await adminClient
+        .from("profiles")
+        .select("provider")
+        .eq("email", naverUser.email)
+        .maybeSingle()
+      const existingProvider = existingProfile?.provider ?? "other"
+      return NextResponse.redirect(
+        `${origin}/login?error=email_taken&provider=${existingProvider}`
+      )
+    }
 
     // 5. Magic link 생성으로 세션 발급
     const magicRedirectTo = `${origin}/auth/naver-return`

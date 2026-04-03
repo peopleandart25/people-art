@@ -30,10 +30,18 @@ function LoginContent() {
 
   const redirectTo = searchParams.get("redirectTo") ?? "/"
   const error = searchParams.get("error")
+  const errorProvider = searchParams.get("provider")
+
+  const providerLabels: Record<string, string> = {
+    kakao: "카카오", google: "구글", naver: "네이버", email: "이메일", phone: "휴대폰",
+  }
 
   useEffect(() => {
     if (error === "auth_failed") {
       toast({ title: "로그인 실패", description: "소셜 로그인에 실패했습니다. 다시 시도해주세요.", variant: "destructive" })
+    } else if (error === "email_taken") {
+      const providerLabel = providerLabels[errorProvider ?? ""] ?? errorProvider ?? "다른 방법"
+      toast({ title: "이미 가입된 이메일", description: `이미 ${providerLabel}(으)로 가입된 이메일입니다. ${providerLabel}로 로그인해주세요.`, variant: "destructive" })
     }
   }, [error])
 
