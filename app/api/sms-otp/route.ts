@@ -52,14 +52,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  let body: { phone?: string; otp?: string }
+  let body: { user?: { phone?: string }; sms?: { otp?: string } }
   try {
     body = JSON.parse(rawBody)
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  const { phone, otp } = body
+  // Supabase SMS hook payload: { user: { phone }, sms: { otp } }
+  const phone = body.user?.phone
+  const otp = body.sms?.otp
   if (!phone || !otp) {
     return NextResponse.json({ error: "Missing phone or otp" }, { status: 400 })
   }
