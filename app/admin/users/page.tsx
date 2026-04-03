@@ -82,6 +82,14 @@ const MEMBERSHIP_BADGE: Record<string, string> = {
 
 const ROLE_OPTIONS = ["user", "premium", "sub_admin", "admin"] as const
 
+const ROLE_LABELS: Record<string, string> = {
+  user: "User",
+  basic: "Basic",
+  premium: "Premium",
+  sub_admin: "Sub Admin",
+  admin: "Admin",
+}
+
 // ─── 헬퍼 ───────────────────────────────────────────────────────────────────
 
 function getMembershipStatus(memberships: Membership[] | null): string {
@@ -497,11 +505,13 @@ export default function AdminUsersPage() {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                           user.role === "admin"
                             ? "bg-orange-50 text-orange-600 border-orange-200"
+                            : user.role === "sub_admin"
+                            ? "bg-amber-50 text-amber-600 border-amber-200"
                             : user.role === "premium"
                             ? "bg-blue-50 text-blue-600 border-blue-200"
                             : "bg-gray-50 text-gray-400 border-gray-200"
                         }`}>
-                          {user.role}
+                          {ROLE_LABELS[user.role] ?? user.role}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -598,7 +608,7 @@ export default function AdminUsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {ROLE_OPTIONS.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                        <SelectItem key={r} value={r}>{ROLE_LABELS[r] ?? r}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
