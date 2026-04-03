@@ -75,7 +75,8 @@ export async function GET(request: Request) {
     // 6. Supabase magic link로 리다이렉트 → 세션 자동 처리
     return NextResponse.redirect(linkData.properties.action_link)
   } catch (err) {
-    console.error("[naver-cb] ERROR:", err)
-    return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("[naver-cb] ERROR:", msg)
+    return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent(msg.slice(0, 200))}`)
   }
 }
