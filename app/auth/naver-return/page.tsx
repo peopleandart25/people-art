@@ -10,31 +10,45 @@ export default function NaverReturnPage() {
   useEffect(() => {
     const supabase = createClient()
 
-    // Supabase SDK가 URL 해시(#access_token=...)를 자동으로 처리해 세션을 설정함
-    // onAuthStateChange로 세션 확인 후 온보딩 여부 체크
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        const { data: artistProfile } = await supabase
-          .from("artist_profiles")
-          .select("id")
-          .eq("user_id", session.user.id)
-          .maybeSingle()
-
-        subscription.unsubscribe()
-
-        if (!artistProfile) {
-          router.replace("/onboarding")
-        } else {
-          router.replace("/")
-        }
-      } else if (event === "INITIAL_SESSION" && !session) {
-        // 세션 없으면 로그인 페이지로
-        subscription.unsubscribe()
+    async function handleSession(session: { user: { id: string } } | null) {
+      if (!session?.user) {
         router.replace("/login?error=auth_failed")
+        return
+      }
+      const { data: artistProfile } = await supabase
+        .from("artist_profiles")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle()
+
+      router.replace(artistProfile ? "/" : "/onboarding")
+    }
+
+    // SDK가 URL 해시(#access_token=...)를 처리한 후 세션을 가져옴
+    // INITIAL_SESSION보다 SIGNED_IN이 늦게 올 수 있으므로 두 이벤트 모두 처리
+    let handled = false
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (handled) return
+      if (event === "SIGNED_IN" || (event === "INITIAL_SESSION" && session)) {
+        handled = true
+        subscription.unsubscribe()
+        handleSession(session)
       }
     })
 
-    return () => subscription.unsubscribe()
+    // 5초 타임아웃: 이벤트가 안 오면 getSession으로 직접 확인
+    const timeout = setTimeout(async () => {
+      if (handled) return
+      handled = true
+      subscription.unsubscribe()
+      const { data: { session } } = await supabase.auth.getSession()
+      handleSession(session)
+    }, 5000)
+
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [router])
 
   return (
