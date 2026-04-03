@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Building2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -68,17 +67,22 @@ export default function PartnersPage() {
                     <Card className="cursor-pointer border border-border bg-card overflow-hidden h-full transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:border-primary/30">
                       <div className="relative aspect-[4/3] bg-muted overflow-hidden">
                         {item.image_url ? (
-                          <Image
+                          <img
                             src={item.image_url}
                             alt={item.name}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none"
+                              e.currentTarget.nextElementSibling?.removeAttribute("style")
+                            }}
                           />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center bg-primary/10">
-                            <Building2 className="h-16 w-16 text-primary/40" />
-                          </div>
-                        )}
+                        ) : null}
+                        <div
+                          className="absolute inset-0 flex items-center justify-center bg-primary/10"
+                          style={item.image_url ? { display: "none" } : undefined}
+                        >
+                          <Building2 className="h-16 w-16 text-primary/40" />
+                        </div>
                       </div>
                       <CardContent className="p-4 text-center">
                         <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
