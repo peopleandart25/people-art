@@ -165,7 +165,7 @@ export function useProfile() {
 
     try {
       // 1. profiles 업데이트
-      await supabase.from("profiles").update({ name: data.name, phone: data.phone, activity_name: data.activityName || null } as Record<string, unknown>).eq("id", user.id)
+      await supabase.from("profiles").update({ name: data.name, phone: data.phone, activity_name: data.activityName || null }).eq("id", user.id)
 
       // 2. artist_profiles upsert
       const { data: ap } = await supabase.from("artist_profiles").upsert({

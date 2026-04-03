@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
+import { createClient } from "@/lib/supabase/client"
 
 const SCHOOL_LIST = [
   "한국예술종합학교","중앙대학교","동국대학교","성균관대학교","한양대학교",
@@ -100,7 +101,7 @@ export default function MyPage() {
 
     setFormData({
       name: authProfile?.name ?? "",
-      activityName: (authProfile as Record<string, unknown>)?.activity_name as string ?? "",
+      activityName: authProfile?.activity_name ?? "",
       phone: authProfile?.phone ?? "",
       gender: artistProfile?.gender ?? "",
       birthDate: artistProfile?.birth_date ?? "",
@@ -215,6 +216,20 @@ export default function MyPage() {
   const deleteVideo = (videoId: string) => {
     if (!videoId.startsWith("new-")) setDeletedVideoIds(prev => [...prev, videoId])
     setVideos(prev => prev.filter(v => v.id !== videoId))
+  }
+
+  const handleEmailChange = async () => {
+    if (!newEmail.trim()) return
+    setEmailChanging(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    setEmailChanging(false)
+    if (error) {
+      alert(error.message)
+    } else {
+      alert("인증 메일을 발송했습니다. 새 이메일을 확인해주세요.")
+      setEmailChangeMode(false)
+    }
   }
 
   const handlePortfolioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -545,18 +560,7 @@ export default function MyPage() {
                     {emailChangeMode ? (
                       <div className="flex gap-2">
                         <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="새 이메일 주소" type="email" className="flex-1" />
-                        <Button size="sm" disabled={emailChanging} onClick={async () => {
-                          if (!newEmail.trim()) return
-                          setEmailChanging(true)
-                          const { createClient } = await import("@/lib/supabase/client")
-                          const supabase = createClient()
-                          const { error } = await supabase.auth.updateUser({ email: newEmail })
-                          setEmailChanging(false)
-                          if (error) { alert(error.message) } else {
-                            alert("인증 메일을 발송했습니다. 새 이메일을 확인해주세요.")
-                            setEmailChangeMode(false)
-                          }
-                        }}>확인</Button>
+                        <Button size="sm" disabled={emailChanging} onClick={handleEmailChange}>확인</Button>
                         <Button size="sm" variant="outline" onClick={() => setEmailChangeMode(false)}>취소</Button>
                       </div>
                     ) : (
