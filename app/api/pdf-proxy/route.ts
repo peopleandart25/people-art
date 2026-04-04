@@ -4,9 +4,15 @@ import { createClient } from "@supabase/supabase-js"
 // URL 형식: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
 function parseStorageUrl(url: string): { supabaseUrl: string; bucket: string; path: string } | null {
   try {
-    const match = url.match(/^(https:\/\/[^/]+\.supabase\.co)\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)/)
-    if (!match) return null
-    return { supabaseUrl: match[1], bucket: match[2], path: match[3] }
+    const parsed = new URL(url)
+    if (!parsed.hostname.endsWith(".supabase.co")) return null
+    const pathMatch = parsed.pathname.match(/^\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)/)
+    if (!pathMatch) return null
+    return {
+      supabaseUrl: `${parsed.protocol}//${parsed.hostname}`,
+      bucket: pathMatch[1],
+      path: pathMatch[2],
+    }
   } catch {
     return null
   }
