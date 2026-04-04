@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   ArrowLeft, Camera, Upload, X, Plus, Trash2, Star, FileText, Video,
@@ -59,6 +60,7 @@ type LocalPhoto = {
 export default function MyPage() {
   const router = useRouter()
   const { user, profile: authProfile, isLoggedIn, loading: authLoading } = useAuth()
+  const { toast } = useToast()
   const { fullProfile, allTags, loading: profileLoading, uploadMainPhoto, uploadPortfolio, saveProfile } = useProfile()
 
   const initialized = useRef(false)
@@ -347,6 +349,9 @@ export default function MyPage() {
       setDeletedVideoIds([])
       setSubPhotos(prev => prev.map(p => ({ ...p, isNew: false, file: undefined })))
       setVideos(prev => prev.map(v => ({ ...v, isNew: false, file: undefined })))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "저장 중 오류가 발생했습니다."
+      toast({ title: "저장 실패", description: msg, variant: "destructive" })
     } finally {
       setIsSaving(false)
     }

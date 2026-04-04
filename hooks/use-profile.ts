@@ -109,7 +109,7 @@ export function useProfile() {
     const ext = file.name.split(".").pop() ?? "mp4"
     const path = `${user.id}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from("videos").upload(path, file, { contentType: file.type || "video/mp4" })
-    if (error) { toast({ title: "업로드 실패", description: error.message, variant: "destructive" }); return null }
+    if (error) throw new Error(error.message)
     const { data } = supabase.storage.from("videos").getPublicUrl(path)
     return data.publicUrl
   }
@@ -119,7 +119,7 @@ export function useProfile() {
     if (!user) return null
     const path = `${user.id}/portfolio.pdf`
     const { error } = await supabase.storage.from("portfolios").upload(path, file, { upsert: true })
-    if (error) { toast({ title: "업로드 실패", description: error.message, variant: "destructive" }); return null }
+    if (error) throw new Error(error.message)
     const { data } = supabase.storage.from("portfolios").getPublicUrl(path)
     return data.publicUrl
   }
