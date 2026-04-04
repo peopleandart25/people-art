@@ -10,11 +10,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import type { Database } from "@/lib/supabase/types"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { AdminListToolbar } from "@/components/admin/AdminListToolbar"
+import { AdminPagination } from "@/components/admin/AdminPagination"
 
-type Agency = Database["public"]["Tables"]["support_agencies"]["Row"]
+type Agency = {
+  id: string
+  name: string
+  category: string | null
+  email: string | null
+  website: string | null
+  description: string | null
+  is_active: boolean | null
+  sort_order: number | null
+  created_at: string | null
+  updated_at: string | null
+}
 
-const emptyForm = { name: "", category: "엔터테인먼트", email: "", website: "", description: "", sort_order: 0, is_active: true }
+const emptyForm = {
+  name: "",
+  category: "엔터테인먼트",
+  email: "",
+  website: "",
+  description: "",
+  sort_order: 0,
+  is_active: true,
+}
+
+const SORT_OPTIONS = [
+  { value: "created_at", label: "등록일순" },
+  { value: "updated_at", label: "수정일순" },
+  { value: "name", label: "이름순" },
+]
 
 export default function AdminAgenciesPage() {
   const { toast } = useToast()
@@ -25,10 +52,31 @@ export default function AdminAgenciesPage() {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
 
+  const {
+    paginatedItems,
+    filteredCount,
+    searchTerm,
+    setSearchTerm,
+    sortField,
+    setSortField,
+    sortDirection,
+    toggleSortDirection,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+  } = useAdminList(agencies as Record<string, unknown>[], {
+    searchFields: ["name", "email", "website"] as never[],
+    defaultSortField: "created_at" as never,
+    defaultSortDirection: "desc",
+    pageSize: 20,
+  })
+
   const fetchAgencies = async () => {
     const supabase = createClient()
-    const { data } = await supabase.from("support_agencies").select("*").order("sort_order", { ascending: true })
-    setAgencies(data ?? [])
+    const { data } = await supabase
+      .from("support_agencies")
+      .select("id, name, category, email, website, description, is_active, sort_order, created_at, updated_at")
+    setAgencies((data ?? []) as Agency[])
     setLoading(false)
   }
 
@@ -55,10 +103,7 @@ export default function AdminAgenciesPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) {
-      toast({ title: "기관명을 입력해주세요.", variant: "destructive" })
-      return
-    }
+    if (!form.name.trim()) { toast({ title: "기관명을 입력해주세요.", variant: "destructive" }); return }
     setSubmitting(true)
     const supabase = createClient()
     const payload = {
@@ -103,33 +148,47 @@ export default function AdminAgenciesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">지원기관 관리</h1>
-          <p className="text-sm text-gray-500 mt-1">총 {agencies.length}개 기관</p>
+          <p className="text-sm text-gray-500 mt-1">지원기관 목록 및 관리</p>
         </div>
         <Button onClick={openCreate} className="bg-gray-900 hover:bg-gray-700 text-white gap-2">
           <Plus className="h-4 w-4" /> 기관 추가
         </Button>
       </div>
 
+      <AdminListToolbar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="기관명, 이메일 검색..."
+        sortField={String(sortField)}
+        onSortFieldChange={(v) => setSortField(v as never)}
+        sortOptions={SORT_OPTIONS}
+        sortDirection={sortDirection}
+        onToggleSortDirection={toggleSortDirection}
+        filteredCount={filteredCount}
+        totalCount={agencies.length}
+      />
+
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-16"><span className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full" /></div>
+          <div className="flex justify-center py-16">
+            <span className="animate-spin h-8 w-8 border-4 border-orange-500 border-t-transparent rounded-full" />
+          </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead className="w-12">순서</TableHead>
                 <TableHead>기관명</TableHead>
                 <TableHead>구분</TableHead>
                 <TableHead>이메일</TableHead>
                 <TableHead>홈페이지</TableHead>
                 <TableHead>활성</TableHead>
+                <TableHead>등록일</TableHead>
                 <TableHead className="w-24 text-right">관리</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {agencies.map((agency) => (
+              {(paginatedItems as Agency[]).map((agency) => (
                 <TableRow key={agency.id}>
-                  <TableCell className="text-gray-500 text-sm">{agency.sort_order}</TableCell>
                   <TableCell className="font-medium">{agency.name}</TableCell>
                   <TableCell>
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${agency.category === "광고에이전시" ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-blue-600"}`}>
@@ -139,10 +198,15 @@ export default function AdminAgenciesPage() {
                   <TableCell className="text-sm text-gray-600">{agency.email ?? "-"}</TableCell>
                   <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">{agency.website ?? "-"}</TableCell>
                   <TableCell>
-                    <button onClick={() => toggleActive(agency)}
-                      className={`text-xs px-2 py-1 rounded-full font-medium cursor-pointer ${agency.is_active ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"}`}>
+                    <button
+                      onClick={() => toggleActive(agency)}
+                      className={`text-xs px-2 py-1 rounded-full font-medium cursor-pointer ${agency.is_active ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"}`}
+                    >
                       {agency.is_active ? "활성" : "비활성"}
                     </button>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-500 whitespace-nowrap">
+                    {agency.created_at ? new Date(agency.created_at).toLocaleDateString("ko-KR") : "-"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -156,10 +220,19 @@ export default function AdminAgenciesPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {paginatedItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-sm text-gray-400">
+                    {searchTerm ? "검색 결과가 없습니다" : "등록된 기관이 없습니다"}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         )}
       </div>
+
+      <AdminPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -191,7 +264,7 @@ export default function AdminAgenciesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>정렬 순서</Label>
+                <Label>정렬 순서 (프론트 노출 순서)</Label>
                 <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />
               </div>
               <div className="space-y-2">

@@ -12,6 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { AdminListToolbar } from "@/components/admin/AdminListToolbar"
+import { AdminPagination } from "@/components/admin/AdminPagination"
+import { ImageIcon } from "lucide-react"
 
 type News = {
   id: string
@@ -22,6 +26,7 @@ type News = {
   is_published: boolean | null
   published_at: string | null
   created_at: string | null
+  updated_at: string | null
 }
 
 type NewsForm = {
@@ -40,6 +45,12 @@ const defaultForm: NewsForm = {
   is_published: false,
 }
 
+const SORT_OPTIONS = [
+  { value: "created_at", label: "등록일순" },
+  { value: "updated_at", label: "수정일순" },
+  { value: "title", label: "제목순" },
+]
+
 export default function AdminNewsPage() {
   const [newsList, setNewsList] = useState<News[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,30 +63,46 @@ export default function AdminNewsPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    fetchNews()
-  }, [])
+  const {
+    paginatedItems,
+    filteredCount,
+    searchTerm,
+    setSearchTerm,
+    sortField,
+    setSortField,
+    sortDirection,
+    toggleSortDirection,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+  } = useAdminList(newsList as Record<string, unknown>[], {
+    searchFields: ["title", "excerpt"] as never[],
+    defaultSortField: "created_at" as never,
+    defaultSortDirection: "desc",
+    pageSize: 20,
+  })
+
+  useEffect(() => { fetchNews() }, [])
 
   async function fetchNews() {
     setLoading(true)
     const supabase = createClient()
     const { data, error } = await supabase
       .from("news")
-      .select("id, title, content, excerpt, image_url, is_published, published_at, created_at")
-      .order("created_at", { ascending: false })
+      .select("id, title, content, excerpt, image_url, is_published, published_at, created_at, updated_at")
 
     if (error) setError(error.message)
-    else setNewsList(data ?? [])
+    else setNewsList((data ?? []) as News[])
     setLoading(false)
   }
 
   async function uploadNewsImage(file: File): Promise<string | null> {
     const supabase = createClient()
-    const ext = file.name.split('.').pop()
+    const ext = file.name.split(".").pop()
     const path = `news/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('news-images').upload(path, file, { upsert: true })
+    const { error } = await supabase.storage.from("news-images").upload(path, file, { upsert: true })
     if (error) return null
-    const { data } = supabase.storage.from('news-images').getPublicUrl(path)
+    const { data } = supabase.storage.from("news-images").getPublicUrl(path)
     return data.publicUrl
   }
 
@@ -94,9 +121,7 @@ export default function AdminNewsPage() {
       title: news.title,
       content: news.content ?? "",
       excerpt: news.excerpt ?? "",
-      published_at: news.published_at
-        ? new Date(news.published_at).toISOString().slice(0, 16)
-        : "",
+      published_at: news.published_at ? new Date(news.published_at).toISOString().slice(0, 16) : "",
       is_published: news.is_published ?? false,
     })
     setNewsImageFile(null)
@@ -106,10 +131,7 @@ export default function AdminNewsPage() {
   }
 
   async function handleSave() {
-    if (!form.title.trim()) {
-      setError("제목을 입력해주세요.")
-      return
-    }
+    if (!form.title.trim()) { setError("제목을 입력해주세요."); return }
     setSaving(true)
     setError(null)
     const supabase = createClient()
@@ -117,11 +139,7 @@ export default function AdminNewsPage() {
     let imageUrl: string | null | undefined = undefined
     if (newsImageFile) {
       const uploaded = await uploadNewsImage(newsImageFile)
-      if (!uploaded) {
-        setError("이미지 업로드에 실패했습니다.")
-        setSaving(false)
-        return
-      }
+      if (!uploaded) { setError("이미지 업로드에 실패했습니다."); setSaving(false); return }
       imageUrl = uploaded
     }
 
@@ -140,27 +158,14 @@ export default function AdminNewsPage() {
       is_published: form.is_published,
     }
 
-    if (imageUrl !== undefined) {
-      payload.image_url = imageUrl
-    }
+    if (imageUrl !== undefined) payload.image_url = imageUrl
 
     if (editingNews) {
-      const { error } = await supabase
-        .from("news")
-        .update(payload)
-        .eq("id", editingNews.id)
-      if (error) {
-        setError(error.message)
-        setSaving(false)
-        return
-      }
+      const { error } = await supabase.from("news").update(payload).eq("id", editingNews.id)
+      if (error) { setError(error.message); setSaving(false); return }
     } else {
       const { error } = await supabase.from("news").insert(payload)
-      if (error) {
-        setError(error.message)
-        setSaving(false)
-        return
-      }
+      if (error) { setError(error.message); setSaving(false); return }
     }
 
     await fetchNews()
@@ -183,9 +188,7 @@ export default function AdminNewsPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null
     setNewsImageFile(file)
-    if (file) {
-      setImagePreview(URL.createObjectURL(file))
-    }
+    if (file) setImagePreview(URL.createObjectURL(file))
   }
 
   return (
@@ -195,19 +198,27 @@ export default function AdminNewsPage() {
           <h1 className="text-2xl font-bold text-gray-900">뉴스 관리</h1>
           <p className="text-sm text-gray-500 mt-1">뉴스 목록 및 발행 관리</p>
         </div>
-        <Button
-          onClick={openAddDialog}
-          className="bg-gray-900 hover:bg-gray-700 text-white"
-        >
+        <Button onClick={openAddDialog} className="bg-gray-900 hover:bg-gray-700 text-white">
           뉴스 추가
         </Button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-          {error}
-        </div>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
       )}
+
+      <AdminListToolbar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="제목, 요약 검색..."
+        sortField={String(sortField)}
+        onSortFieldChange={(v) => setSortField(v as never)}
+        sortOptions={SORT_OPTIONS}
+        sortDirection={sortDirection}
+        onToggleSortDirection={toggleSortDirection}
+        filteredCount={filteredCount}
+        totalCount={newsList.length}
+      />
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -219,64 +230,62 @@ export default function AdminNewsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">제목</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">발행여부</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">발행일</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">작성일</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-16">이미지</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">제목</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">발행여부</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">발행일</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">등록일</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {newsList.map((news) => (
+                {(paginatedItems as News[]).map((news) => (
                   <tr key={news.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-3 text-sm text-gray-900 max-w-xs truncate">{news.title}</td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          news.is_published
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
+                    <td className="px-4 py-3">
+                      {news.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={news.image_url}
+                          alt={news.title}
+                          className="w-12 h-12 object-cover rounded border border-gray-100"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none"
+                            const sib = e.currentTarget.nextElementSibling as HTMLElement | null
+                            if (sib) sib.style.display = "flex"
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center"
+                        style={news.image_url ? { display: "none" } : undefined}
                       >
+                        <ImageIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{news.title}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${news.is_published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                         {news.is_published ? "발행" : "미발행"}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-500">
-                      {news.published_at
-                        ? new Date(news.published_at).toLocaleDateString("ko-KR")
-                        : "-"}
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {news.published_at ? new Date(news.published_at).toLocaleDateString("ko-KR") : "-"}
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-500">
-                      {news.created_at
-                        ? new Date(news.created_at).toLocaleDateString("ko-KR")
-                        : "-"}
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {news.created_at ? new Date(news.created_at).toLocaleDateString("ko-KR") : "-"}
                     </td>
-                    <td className="px-6 py-3">
+                    <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditDialog(news)}
-                          className="text-xs"
-                        >
-                          수정
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(news.id)}
-                          className="text-xs"
-                        >
-                          삭제
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openEditDialog(news)} className="text-xs">수정</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(news.id)} className="text-xs">삭제</Button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {newsList.length === 0 && (
+                {paginatedItems.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-400">
-                      뉴스가 없습니다
+                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-400">
+                      {searchTerm ? "검색 결과가 없습니다" : "뉴스가 없습니다"}
                     </td>
                   </tr>
                 )}
@@ -286,7 +295,8 @@ export default function AdminNewsPage() {
         )}
       </div>
 
-      {/* 추가/수정 다이얼로그 */}
+      <AdminPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -295,109 +305,46 @@ export default function AdminNewsPage() {
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>제목 *</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => updateForm("title", e.target.value)}
-                placeholder="뉴스 제목"
-              />
+              <Input value={form.title} onChange={(e) => updateForm("title", e.target.value)} placeholder="뉴스 제목" />
             </div>
-
             <div className="space-y-2">
               <Label>요약</Label>
-              <Textarea
-                value={form.excerpt}
-                onChange={(e) => updateForm("excerpt", e.target.value)}
-                placeholder="뉴스 요약"
-                rows={2}
-              />
+              <Textarea value={form.excerpt} onChange={(e) => updateForm("excerpt", e.target.value)} placeholder="뉴스 요약" rows={2} />
             </div>
-
             <div className="space-y-2">
               <Label>내용</Label>
-              <Textarea
-                value={form.content}
-                onChange={(e) => updateForm("content", e.target.value)}
-                placeholder="뉴스 내용"
-                rows={6}
-              />
+              <Textarea value={form.content} onChange={(e) => updateForm("content", e.target.value)} placeholder="뉴스 내용" rows={6} />
             </div>
-
             <div className="space-y-2">
               <Label>이미지</Label>
               <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs">
                   파일 선택
                 </Button>
                 {newsImageFile && (
-                  <span className="text-xs text-gray-500 truncate max-w-[180px]">
-                    {newsImageFile.name}
-                  </span>
+                  <span className="text-xs text-gray-500 truncate max-w-[180px]">{newsImageFile.name}</span>
                 )}
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               {imagePreview && (
-                <div className="mt-2">
+                <div className="mt-2 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreview}
-                    alt="미리보기"
-                    className="w-full max-h-48 object-contain rounded border border-gray-200"
-                  />
+                  <img src={imagePreview} alt="미리보기" className="w-full max-h-52 object-contain" />
                 </div>
               )}
             </div>
-
             <div className="space-y-2">
               <Label>발행일</Label>
-              <Input
-                type="datetime-local"
-                value={form.published_at}
-                onChange={(e) => updateForm("published_at", e.target.value)}
-              />
+              <Input type="datetime-local" value={form.published_at} onChange={(e) => updateForm("published_at", e.target.value)} />
             </div>
-
             <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="is_published"
-                checked={form.is_published}
-                onChange={(e) => updateForm("is_published", e.target.checked)}
-                className="w-4 h-4 accent-orange-500"
-              />
-              <Label htmlFor="is_published" className="cursor-pointer">
-                발행하기
-              </Label>
+              <input type="checkbox" id="is_published" checked={form.is_published} onChange={(e) => updateForm("is_published", e.target.checked)} className="w-4 h-4 accent-orange-500" />
+              <Label htmlFor="is_published" className="cursor-pointer">발행하기</Label>
             </div>
-
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex gap-2 justify-end pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-                disabled={saving}
-              >
-                취소
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-gray-900 hover:bg-gray-700 text-white"
-              >
+              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>취소</Button>
+              <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-gray-700 text-white">
                 {saving ? "저장 중..." : "저장"}
               </Button>
             </div>

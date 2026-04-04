@@ -12,6 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { AdminListToolbar } from "@/components/admin/AdminListToolbar"
+import { AdminPagination } from "@/components/admin/AdminPagination"
+import { Building2 } from "lucide-react"
 
 type Partner = {
   id: string
@@ -22,6 +26,7 @@ type Partner = {
   is_active: boolean | null
   sort_order: number | null
   created_at: string | null
+  updated_at: string | null
 }
 
 type PartnerForm = {
@@ -42,6 +47,12 @@ const defaultForm: PartnerForm = {
   sort_order: "0",
 }
 
+const SORT_OPTIONS = [
+  { value: "created_at", label: "등록일순" },
+  { value: "updated_at", label: "수정일순" },
+  { value: "name", label: "이름순" },
+]
+
 export default function AdminPartnersPage() {
   const [partners, setPartners] = useState<Partner[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,30 +65,48 @@ export default function AdminPartnersPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    fetchPartners()
-  }, [])
+  const {
+    paginatedItems,
+    filteredCount,
+    searchTerm,
+    setSearchTerm,
+    sortField,
+    setSortField,
+    sortDirection,
+    toggleSortDirection,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+  } = useAdminList(partners as Record<string, unknown>[], {
+    searchFields: ["name", "description"] as never[],
+    defaultSortField: "created_at" as never,
+    defaultSortDirection: "desc",
+    pageSize: 20,
+  })
+
+  useEffect(() => { fetchPartners() }, [])
 
   async function fetchPartners() {
     setLoading(true)
     const supabase = createClient()
     const { data, error } = await supabase
       .from("partners")
-      .select("id, name, description, image_url, link, is_active, sort_order, created_at")
-      .order("sort_order", { ascending: true })
+      .select("id, name, description, image_url, link, is_active, sort_order, created_at, updated_at")
 
     if (error) setError(error.message)
-    else setPartners(data ?? [])
+    else setPartners((data ?? []) as Partner[])
     setLoading(false)
   }
 
   async function uploadPartnerLogo(file: File): Promise<string | null> {
     const supabase = createClient()
-    const ext = file.name.split('.').pop()
+    const ext = file.name.split(".").pop()
     const path = `${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('partner-logos').upload(path, file, { upsert: false, contentType: file.type })
+    const { error } = await supabase.storage
+      .from("partner-logos")
+      .upload(path, file, { upsert: false, contentType: file.type })
     if (error) return null
-    const { data } = supabase.storage.from('partner-logos').getPublicUrl(path)
+    const { data } = supabase.storage.from("partner-logos").getPublicUrl(path)
     return data.publicUrl
   }
 
@@ -107,10 +136,7 @@ export default function AdminPartnersPage() {
   }
 
   async function handleSave() {
-    if (!form.name.trim()) {
-      setError("이름을 입력해주세요.")
-      return
-    }
+    if (!form.name.trim()) { setError("이름을 입력해주세요."); return }
     setSaving(true)
     setError(null)
     const supabase = createClient()
@@ -118,11 +144,7 @@ export default function AdminPartnersPage() {
     let imageUrl: string | null | undefined = undefined
     if (partnerLogoFile) {
       const uploaded = await uploadPartnerLogo(partnerLogoFile)
-      if (!uploaded) {
-        setError("이미지 업로드에 실패했습니다.")
-        setSaving(false)
-        return
-      }
+      if (!uploaded) { setError("이미지 업로드에 실패했습니다."); setSaving(false); return }
       imageUrl = uploaded
     }
 
@@ -141,29 +163,15 @@ export default function AdminPartnersPage() {
       sort_order: parseInt(form.sort_order, 10) || 0,
     }
 
-    if (imageUrl !== undefined) {
-      payload.image_url = imageUrl
-    } else if (!editingPartner) {
-      payload.image_url = form.image_url || null
-    }
+    if (imageUrl !== undefined) payload.image_url = imageUrl
+    else if (!editingPartner) payload.image_url = form.image_url || null
 
     if (editingPartner) {
-      const { error } = await supabase
-        .from("partners")
-        .update(payload)
-        .eq("id", editingPartner.id)
-      if (error) {
-        setError(error.message)
-        setSaving(false)
-        return
-      }
+      const { error } = await supabase.from("partners").update(payload).eq("id", editingPartner.id)
+      if (error) { setError(error.message); setSaving(false); return }
     } else {
       const { error } = await supabase.from("partners").insert(payload)
-      if (error) {
-        setError(error.message)
-        setSaving(false)
-        return
-      }
+      if (error) { setError(error.message); setSaving(false); return }
     }
 
     await fetchPartners()
@@ -186,9 +194,7 @@ export default function AdminPartnersPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null
     setPartnerLogoFile(file)
-    if (file) {
-      setLogoPreview(URL.createObjectURL(file))
-    }
+    if (file) setLogoPreview(URL.createObjectURL(file))
   }
 
   return (
@@ -198,10 +204,7 @@ export default function AdminPartnersPage() {
           <h1 className="text-2xl font-bold text-gray-900">파트너 관리</h1>
           <p className="text-sm text-gray-500 mt-1">파트너사 목록 및 활성 상태 관리</p>
         </div>
-        <Button
-          onClick={openAddDialog}
-          className="bg-gray-900 hover:bg-gray-700 text-white"
-        >
+        <Button onClick={openAddDialog} className="bg-gray-900 hover:bg-gray-700 text-white">
           파트너 추가
         </Button>
       </div>
@@ -211,6 +214,19 @@ export default function AdminPartnersPage() {
           {error}
         </div>
       )}
+
+      <AdminListToolbar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="이름, 설명 검색..."
+        sortField={String(sortField)}
+        onSortFieldChange={(v) => setSortField(v as never)}
+        sortOptions={SORT_OPTIONS}
+        sortDirection={sortDirection}
+        onToggleSortDirection={toggleSortDirection}
+        filteredCount={filteredCount}
+        totalCount={partners.length}
+      />
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -222,96 +238,70 @@ export default function AdminPartnersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">로고</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">설명</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">링크</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">활성여부</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">순서</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-16">로고</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">설명</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">링크</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">활성</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">등록일</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {partners.map((partner) => (
+                {(paginatedItems as Partner[]).map((partner) => (
                   <tr key={partner.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-3">
+                    <td className="px-4 py-3">
                       {partner.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={partner.image_url}
                           alt={partner.name}
-                          className="w-10 h-10 object-contain rounded"
+                          className="w-12 h-12 object-contain rounded border border-gray-100"
                           onError={(e) => {
-                            const target = e.currentTarget
-                            target.style.display = "none"
-                            const parent = target.parentElement
-                            if (parent) {
-                              parent.innerHTML = '<div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">없음</div>'
-                            }
+                            e.currentTarget.style.display = "none"
+                            const sib = e.currentTarget.nextElementSibling as HTMLElement | null
+                            if (sib) sib.style.display = "flex"
                           }}
                         />
-                      ) : (
-                        <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">
-                          없음
-                        </div>
-                      )}
+                      ) : null}
+                      <div
+                        className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center"
+                        style={partner.image_url ? { display: "none" } : undefined}
+                      >
+                        <Building2 className="h-5 w-5 text-gray-400" />
+                      </div>
                     </td>
-                    <td className="px-6 py-3 text-sm font-medium text-gray-900">{partner.name}</td>
-                    <td className="px-6 py-3 text-sm text-gray-600 max-w-xs truncate">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{partner.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[180px] truncate">
                       {partner.description ?? "-"}
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-600 max-w-xs truncate">
+                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[160px] truncate">
                       {partner.link ? (
-                        <a
-                          href={partner.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
-                        >
+                        <a href={partner.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                           {partner.link}
                         </a>
                       ) : "-"}
                     </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          partner.is_active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${partner.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                         {partner.is_active ? "활성" : "비활성"}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-600">
-                      {partner.sort_order ?? 0}
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {partner.created_at ? new Date(partner.created_at).toLocaleDateString("ko-KR") : "-"}
                     </td>
-                    <td className="px-6 py-3">
+                    <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditDialog(partner)}
-                          className="text-xs"
-                        >
-                          수정
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(partner.id)}
-                          className="text-xs"
-                        >
-                          삭제
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openEditDialog(partner)} className="text-xs">수정</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(partner.id)} className="text-xs">삭제</Button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {partners.length === 0 && (
+                {paginatedItems.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400">
-                      파트너가 없습니다
+                      {searchTerm ? "검색 결과가 없습니다" : "파트너가 없습니다"}
                     </td>
                   </tr>
                 )}
@@ -321,7 +311,8 @@ export default function AdminPartnersPage() {
         )}
       </div>
 
-      {/* 추가/수정 다이얼로그 */}
+      <AdminPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -330,109 +321,46 @@ export default function AdminPartnersPage() {
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>이름 *</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => updateForm("name", e.target.value)}
-                placeholder="파트너사명"
-              />
+              <Input value={form.name} onChange={(e) => updateForm("name", e.target.value)} placeholder="파트너사명" />
             </div>
-
             <div className="space-y-2">
               <Label>설명</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => updateForm("description", e.target.value)}
-                placeholder="파트너 설명"
-                rows={3}
-              />
+              <Textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} placeholder="파트너 설명" rows={3} />
             </div>
-
             <div className="space-y-2">
               <Label>링크</Label>
-              <Input
-                value={form.link}
-                onChange={(e) => updateForm("link", e.target.value)}
-                placeholder="https://..."
-              />
+              <Input value={form.link} onChange={(e) => updateForm("link", e.target.value)} placeholder="https://..." />
             </div>
-
             <div className="space-y-2">
               <Label>로고 이미지</Label>
               <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs">
                   파일 선택
                 </Button>
                 {partnerLogoFile && (
-                  <span className="text-xs text-gray-500 truncate max-w-[160px]">
-                    {partnerLogoFile.name}
-                  </span>
+                  <span className="text-xs text-gray-500 truncate max-w-[160px]">{partnerLogoFile.name}</span>
                 )}
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               {logoPreview && (
-                <div className="mt-2">
+                <div className="mt-2 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={logoPreview}
-                    alt="미리보기"
-                    className="w-24 h-24 object-contain rounded border border-gray-200"
-                  />
+                  <img src={logoPreview} alt="미리보기" className="max-h-40 max-w-full object-contain" />
                 </div>
               )}
             </div>
-
             <div className="space-y-2">
-              <Label>정렬 순서</Label>
-              <Input
-                type="number"
-                value={form.sort_order}
-                onChange={(e) => updateForm("sort_order", e.target.value)}
-                placeholder="0"
-              />
+              <Label>정렬 순서 (프론트 노출 순서)</Label>
+              <Input type="number" value={form.sort_order} onChange={(e) => updateForm("sort_order", e.target.value)} placeholder="0" />
             </div>
-
             <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={form.is_active}
-                onChange={(e) => updateForm("is_active", e.target.checked)}
-                className="w-4 h-4 accent-orange-500"
-              />
-              <Label htmlFor="is_active" className="cursor-pointer">
-                활성화
-              </Label>
+              <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => updateForm("is_active", e.target.checked)} className="w-4 h-4 accent-orange-500" />
+              <Label htmlFor="is_active" className="cursor-pointer">활성화</Label>
             </div>
-
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-
+            {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex gap-2 justify-end pt-2">
-              <Button
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-                disabled={saving}
-              >
-                취소
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-gray-900 hover:bg-gray-700 text-white"
-              >
+              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>취소</Button>
+              <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-gray-700 text-white">
                 {saving ? "저장 중..." : "저장"}
               </Button>
             </div>

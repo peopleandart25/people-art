@@ -517,6 +517,7 @@ export type Database = {
           link: string | null
           name: string
           sort_order: number | null
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -527,6 +528,7 @@ export type Database = {
           link?: string | null
           name: string
           sort_order?: number | null
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -537,6 +539,7 @@ export type Database = {
           link?: string | null
           name?: string
           sort_order?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -652,6 +655,7 @@ export type Database = {
           is_hidden: boolean | null
           rating: number | null
           title: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -663,6 +667,7 @@ export type Database = {
           is_hidden?: boolean | null
           rating?: number | null
           title: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -674,6 +679,7 @@ export type Database = {
           is_hidden?: boolean | null
           rating?: number | null
           title?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -743,6 +749,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           sort_order: number | null
+          updated_at: string | null
           website: string | null
         }
         Insert: {
@@ -754,6 +761,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           sort_order?: number | null
+          updated_at?: string | null
           website?: string | null
         }
         Update: {
@@ -765,6 +773,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           sort_order?: number | null
+          updated_at?: string | null
           website?: string | null
         }
         Relationships: []
