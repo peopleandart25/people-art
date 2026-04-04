@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { getMembershipSettings } from "@/lib/supabase/membership-settings"
 import { NextResponse } from "next/server"
 
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 })
   }
 
-  const MEMBERSHIP_PRICE = 44000
+  const { membershipPrice: MEMBERSHIP_PRICE, signupBonus: SIGNUP_BONUS } = await getMembershipSettings()
   const expectedAmount = MEMBERSHIP_PRICE - Math.min(pointsUsed, MEMBERSHIP_PRICE)
 
   const serviceClient = createServiceClient()
@@ -94,8 +95,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "결제 내역 저장 실패" }, { status: 500 })
   }
 
-  // 6. profiles 테이블 role → premium, points 업데이트 (포인트 차감 + 15,000P 지급)
-  const newPoints = Math.max(0, currentPoints - pointsUsed) + 15000
+  // 6. profiles 테이블 role → premium, points 업데이트 (포인트 차감 + 가입 보너스 지급)
+  const newPoints = Math.max(0, currentPoints - pointsUsed) + SIGNUP_BONUS
 
   const { error: profileError } = await serviceClient
     .from("profiles")

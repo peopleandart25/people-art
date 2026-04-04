@@ -1,8 +1,8 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { getMembershipSettings } from "@/lib/supabase/membership-settings"
 import { NextResponse } from "next/server"
 
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!
-const MEMBERSHIP_PRICE = 44000
 
 async function cancelPortOnePayment(paymentId: string): Promise<void> {
   await fetch(`https://api.portone.io/payments/${paymentId}/cancel`, {
@@ -16,8 +16,9 @@ async function cancelPortOnePayment(paymentId: string): Promise<void> {
 }
 
 export async function POST(request: Request) {
-  const { billingKey, pointsUsed = 0 } = await request.json()
+  const { billingKey, pointsUsed = 0, referralCode } = await request.json()
 
+  const { membershipPrice: MEMBERSHIP_PRICE, signupBonus } = await getMembershipSettings()
   const finalAmount = MEMBERSHIP_PRICE - Math.min(pointsUsed, MEMBERSHIP_PRICE)
 
   if (!billingKey && finalAmount > 0) {
@@ -33,10 +34,10 @@ export async function POST(request: Request) {
 
   const serviceClient = createServiceClient()
 
-  // 2. 포인트 선검증
+  // 2. 포인트 선검증 + 최초 가입 여부 확인
   const { data: currentProfile } = await serviceClient
     .from("profiles")
-    .select("points")
+    .select("points, referral_bonus_claimed")
     .eq("id", user.id)
     .single()
 
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       p_final_amount: finalAmount,
       p_payment_id: paymentId,
       p_membership_price: MEMBERSHIP_PRICE,
-      p_signup_bonus: 15000,
+      p_signup_bonus: signupBonus,
     }
   ) as { data: { success: boolean; new_points: number; expires_at: string } | null; error: { message: string } | null }
 
@@ -113,10 +114,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "멤버십 처리 실패", details: message }, { status: 500 })
   }
 
+  // 추천인 보너스 지급 (아직 추천 보너스를 받지 않은 경우에만 1회 지급)
+  let finalPoints = rpcResult.new_points
+  let referralBonusAwarded = false
+
+  if (!currentProfile?.referral_bonus_claimed && referralCode) {
+    // app_settings에서 추천인 보너스 금액 조회 (미설정 시 지급 안 함)
+    const { data: bonusSetting } = await serviceClient
+      .from("app_settings")
+      .select("value")
+      .eq("key", "referral_points_amount")
+      .maybeSingle()
+    const referralBonus = parseInt(bonusSetting?.value ?? "0", 10)
+
+    if (referralBonus > 0) {
+      // 추천인 조회 (premium 회원만 유효)
+      const { data: referrer } = await serviceClient
+        .from("profiles")
+        .select("id, points, role")
+        .eq("referral_code", referralCode.toUpperCase())
+        .single()
+
+      if (referrer && referrer.id !== user.id && referrer.role === "premium") {
+        // 신규 가입자 포인트 지급 + referred_by 설정 + referral_bonus_claimed = true
+        finalPoints = rpcResult.new_points + referralBonus
+        await serviceClient
+          .from("profiles")
+          .update({
+            points: finalPoints,
+            referred_by: referralCode.toUpperCase(),
+            referral_bonus_claimed: true,
+          })
+          .eq("id", user.id)
+
+        // 추천인 포인트 지급
+        await serviceClient
+          .from("profiles")
+          .update({ points: (referrer.points ?? 0) + referralBonus })
+          .eq("id", referrer.id)
+
+        referralBonusAwarded = true
+      }
+    }
+  }
+
   return NextResponse.json({
     success: true,
     expiresAt: rpcResult.expires_at,
-    newPoints: rpcResult.new_points,
+    newPoints: finalPoints,
+    referralBonusAwarded,
   })
 }
 

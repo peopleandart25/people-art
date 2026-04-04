@@ -80,8 +80,8 @@ function MembershipSkeleton() {
 // [관리자 안내] 서비스/단계 데이터는 data/content.ts에서 관리됩니다
 const { services: serviceDetails, steps, comparison: comparisonFeatures, faqs: membershipFaqs, benefits: topBenefitsData } = membershipData
 
-// 멤버십 가격 상수 (전역)
-const MEMBERSHIP_PRICE = membershipData.price // 44,000원
+// data/content.ts의 값은 UI 레이아웃 계산용 초기값 (DB 로드 후 교체됨)
+const MEMBERSHIP_PRICE_DEFAULT = membershipData.price
 
 // 요금제 데이터
 const plans = [
@@ -316,6 +316,25 @@ export default function MembershipPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  // 멤버십 설정값 (DB에서 로드)
+  const [MEMBERSHIP_PRICE, setMEMBERSHIP_PRICE] = useState(MEMBERSHIP_PRICE_DEFAULT)
+  const [signupBonusAmount, setSignupBonusAmount] = useState(membershipData.signupBonus)
+
+  useEffect(() => {
+    fetch("/api/settings/membership")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.membershipPrice) setMEMBERSHIP_PRICE(d.membershipPrice)
+        if (d.signupBonus) setSignupBonusAmount(d.signupBonus)
+      })
+      .catch(() => {})
+  }, [])
+
+  // 추천인 코드 상태 (신규 가입용)
+  const [referralCodeInput, setReferralCodeInput] = useState("")
+  const [referralValidating, setReferralValidating] = useState(false)
+  const [referralValidResult, setReferralValidResult] = useState<{ valid: boolean; error?: string; referrerName?: string } | null>(null)
+
   // 포인트 사용 관련 상태 (신규 가입용)
   const [usePointsForPayment, setUsePointsForPayment] = useState(false)
 
@@ -374,6 +393,24 @@ export default function MembershipPage() {
     }, 500)
     return () => clearTimeout(timer)
   }, [])
+
+  // 추천인 코드 검증
+  const validateReferralCode = async (code: string) => {
+    if (!code.trim()) {
+      setReferralValidResult(null)
+      return
+    }
+    setReferralValidating(true)
+    try {
+      const res = await fetch(`/api/referral/validate?code=${encodeURIComponent(code.trim())}`)
+      const data = await res.json()
+      setReferralValidResult(data)
+    } catch {
+      setReferralValidResult({ valid: false, error: "검증 중 오류가 발생했습니다." })
+    } finally {
+      setReferralValidating(false)
+    }
+  }
 
   // 실제 결제 금액 계산 (신규 가입용) - userPoints 사용
   const usablePoints = usePointsForPayment ? Math.min(userPoints, MEMBERSHIP_PRICE) : 0
@@ -447,7 +484,7 @@ export default function MembershipPage() {
       const issueRes = await fetch("/api/billing/issue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ billingKey, pointsUsed: usablePoints }),
+        body: JSON.stringify({ billingKey, pointsUsed: usablePoints, referralCode: referralCodeInput.trim() || undefined }),
       })
 
       if (!issueRes.ok) {
@@ -456,13 +493,15 @@ export default function MembershipPage() {
         return
       }
 
-      const { newPoints } = await issueRes.json()
+      const { newPoints, referralBonusAwarded } = await issueRes.json()
       upgradeToPremium()
       setUserPoints(newPoints)
 
       toast({
         title: "멤버십 가입 완료!",
-        description: `환영합니다! 가입 축하 ${membershipData.signupBonus.toLocaleString()}P가 지급되었습니다. 매월 자동갱신됩니다.`,
+        description: referralBonusAwarded
+          ? `환영합니다! 가입 축하 ${signupBonusAmount.toLocaleString()}P + 추천인 보너스 포인트가 지급되었습니다.`
+          : `환영합니다! 가입 축하 ${signupBonusAmount.toLocaleString()}P가 지급되었습니다. 매월 자동갱신됩니다.`,
       })
 
       router.refresh()
@@ -1357,7 +1396,9 @@ export default function MembershipPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="mb-6">
-                      <span className="text-3xl font-bold text-foreground">{plan.price}</span>
+                      <span className="text-3xl font-bold text-foreground">
+                        {plan.isRecommended ? `월 ${MEMBERSHIP_PRICE.toLocaleString()}원` : plan.price}
+                      </span>
                     </div>
                     <ul className="space-y-2.5">
                       {plan.features.map((feature, idx) => (
@@ -1481,6 +1522,49 @@ export default function MembershipPage() {
                   {userPoints <= 0 && (
                     <p className="text-xs text-muted-foreground mt-2">
                       사용 가능한 포인트가 없습니다.
+                    </p>
+                  )}
+                </div>
+
+                {/* 추천인 코드 입력 */}
+                <div className="space-y-2">
+                  <Label htmlFor="referral-code" className="text-sm font-medium text-foreground">
+                    추천인 코드 <span className="text-muted-foreground font-normal">(선택)</span>
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="referral-code"
+                      placeholder="추천인 코드를 입력하세요"
+                      value={referralCodeInput}
+                      onChange={(e) => {
+                        setReferralCodeInput(e.target.value.toUpperCase())
+                        setReferralValidResult(null)
+                      }}
+                      onBlur={() => validateReferralCode(referralCodeInput)}
+                      className="bg-background uppercase"
+                      maxLength={20}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => validateReferralCode(referralCodeInput)}
+                      disabled={referralValidating || !referralCodeInput.trim()}
+                      className="shrink-0"
+                    >
+                      {referralValidating ? "확인 중..." : "확인"}
+                    </Button>
+                  </div>
+                  {referralValidResult && (
+                    <p className={`text-xs ${referralValidResult.valid ? "text-green-600" : "text-destructive"}`}>
+                      {referralValidResult.valid
+                        ? `✓ ${referralValidResult.referrerName}님의 코드가 확인되었습니다. 가입 시 보너스 포인트가 지급됩니다.`
+                        : `✗ ${referralValidResult.error}`}
+                    </p>
+                  )}
+                  {!referralValidResult && (
+                    <p className="text-xs text-muted-foreground">
+                      멤버십 회원의 추천인 코드 입력 시 추천인과 가입자 모두 보너스 포인트가 지급됩니다.
                     </p>
                   )}
                 </div>

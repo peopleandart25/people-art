@@ -606,6 +606,7 @@ export type Database = {
           name: string | null
           phone: string | null
           points: number
+          referral_bonus_claimed: boolean
           referral_code: string | null
           referred_by: string | null
           role: string
@@ -621,6 +622,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           points?: number
+          referral_bonus_claimed?: boolean
           referral_code?: string | null
           referred_by?: string | null
           role?: string
@@ -636,6 +638,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           points?: number
+          referral_bonus_claimed?: boolean
           referral_code?: string | null
           referred_by?: string | null
           role?: string

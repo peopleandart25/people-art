@@ -513,22 +513,26 @@ export default function MyPage() {
                 <p className="text-sm font-medium text-foreground">
                   {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "premium" ? "멤버십 회원" : "일반 회원"}
                 </p>
-                <div className="h-px bg-border my-1" />
-                <p className="text-xs text-muted-foreground">내 추천인 코드</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground tracking-widest">{referralCode ?? "-"}</p>
-                  {referralCode && (
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(referralCode)
-                        toast({ title: "복사 완료", description: "추천인 코드가 복사되었습니다." })
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      복사
-                    </button>
-                  )}
-                </div>
+                {authProfile?.role === "premium" && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <p className="text-xs text-muted-foreground">내 추천인 코드</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground tracking-widest">{referralCode ?? "-"}</p>
+                      {referralCode && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(referralCode)
+                            toast({ title: "복사 완료", description: "추천인 코드가 복사되었습니다." })
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          복사
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 

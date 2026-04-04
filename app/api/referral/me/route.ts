@@ -11,9 +11,14 @@ export async function GET() {
   const serviceClient = createServiceClient()
   const { data: profile } = await serviceClient
     .from("profiles")
-    .select("referral_code")
+    .select("referral_code, role")
     .eq("id", user.id)
     .single()
+
+  // 멤버십 회원(premium)에게만 추천인 코드 노출
+  if (profile?.role !== "premium") {
+    return NextResponse.json({ referralCode: null })
+  }
 
   return NextResponse.json({ referralCode: profile?.referral_code ?? null })
 }

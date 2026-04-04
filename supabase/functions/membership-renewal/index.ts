@@ -1,12 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const PORTONE_API_SECRET = Deno.env.get("PORTONE_API_SECRET")!
-const MEMBERSHIP_PRICE = 44000
 
 Deno.serve(async (_req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   const supabase = createClient(supabaseUrl, serviceKey)
+
+  // app_settings에서 멤버십 설정 조회
+  const { data: settingsRows } = await supabase
+    .from("app_settings")
+    .select("key, value")
+    .in("key", ["membership_price", "membership_renewal_bonus"])
+  const settingsMap = Object.fromEntries((settingsRows ?? []).map((s: { key: string; value: string }) => [s.key, s.value]))
+  const MEMBERSHIP_PRICE = parseInt(settingsMap["membership_price"] ?? "0", 10)
+  const RENEWAL_BONUS = parseInt(settingsMap["membership_renewal_bonus"] ?? "0", 10)
 
   const now = new Date()
   // 24시간 이내 만료되는 자동갱신 멤버십 조회
@@ -122,7 +130,7 @@ Deno.serve(async (_req) => {
         payment_method: "kakao_pay",
       })
 
-      // 4. profiles 포인트 +15,000P (갱신 보너스)
+      // 4. profiles 포인트 갱신 보너스 지급
       const { data: profile } = await supabase
         .from("profiles")
         .select("points")
@@ -132,7 +140,7 @@ Deno.serve(async (_req) => {
       const currentPoints = profile?.points ?? 0
       await supabase
         .from("profiles")
-        .update({ points: currentPoints + 15000 })
+        .update({ points: currentPoints + RENEWAL_BONUS })
         .eq("id", user_id)
 
       results.push({ userId: user_id, success: true })

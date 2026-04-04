@@ -1,8 +1,8 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { getMembershipSettings } from "@/lib/supabase/membership-settings"
 import { NextResponse } from "next/server"
 
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!
-const MEMBERSHIP_PRICE = 44000
 
 export async function POST(request: Request) {
   const { pointsUsed = 0 } = await request.json()
@@ -14,6 +14,8 @@ export async function POST(request: Request) {
   }
 
   const serviceClient = createServiceClient()
+
+  const { membershipPrice: MEMBERSHIP_PRICE, renewalBonus: RENEWAL_BONUS } = await getMembershipSettings()
 
   // 1. 현재 멤버십 및 포인트 조회
   const [{ data: profile }, { data: membership }] = await Promise.all([
@@ -95,8 +97,8 @@ export async function POST(request: Request) {
     payment_method: finalAmount > 0 ? "kakao_pay" : "points",
   })
 
-  // 5. 포인트 차감 + 갱신 보너스 15,000P (현금 결제 시만 지급)
-  const renewalBonus = finalAmount > 0 ? 15000 : 0
+  // 5. 포인트 차감 + 갱신 보너스 (현금 결제 시만 지급)
+  const renewalBonus = finalAmount > 0 ? RENEWAL_BONUS : 0
   const newPoints = Math.max(0, currentPoints - clampedPoints) + renewalBonus
   await serviceClient.from("profiles").update({ points: newPoints }).eq("id", user.id)
 
