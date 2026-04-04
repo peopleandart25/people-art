@@ -465,7 +465,7 @@ export default function AdminEventsPage() {
                 <a href={pdfViewerUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:underline">새 탭에서 열기 ↗</a>
               </div>
               <iframe
-                src={`https://docs.google.com/gview?url=${encodeURIComponent(pdfViewerUrl)}&embedded=true`}
+                src={`/api/pdf-proxy?url=${encodeURIComponent(pdfViewerUrl)}`}
                 className="w-full h-[600px] rounded border border-gray-200"
               />
             </div>
