@@ -117,7 +117,7 @@ export default function MyPage() {
 
   // DB 데이터 → 폼 상태 동기화 (최초 1회만)
   useEffect(() => {
-    if (profileLoading) return
+    if (profileLoading || authLoading) return
     if (initialized.current) return
     initialized.current = true
     const { artistProfile, careerItems, photos, videoAssets, socialLinks, statusTagIds: tagIds } = fullProfile
@@ -730,7 +730,20 @@ export default function MyPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">연락처</Label>
-                    <Input id="phone" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} placeholder="010-0000-0000" />
+                    <div className="relative">
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        readOnly
+                        className="bg-muted/30 pr-24"
+                        placeholder="온보딩에서 인증 후 등록됩니다"
+                      />
+                      {formData.phone && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-green-600 font-medium">
+                          <Check className="h-3.5 w-3.5" />인증완료
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2 sm:col-span-2 lg:col-span-3">
                     <Label>이메일</Label>
