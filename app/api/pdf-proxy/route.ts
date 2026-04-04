@@ -22,10 +22,13 @@ export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url")
   if (!url) return new NextResponse("Missing url", { status: 400 })
 
+  if (url.startsWith("blob:")) {
+    return new NextResponse("포트폴리오를 마이페이지에서 다시 업로드해주세요.", { status: 400 })
+  }
+
   const parsed = parseStorageUrl(url)
   if (!parsed) {
-    console.error("[pdf-proxy] Invalid storage URL:", url)
-    return new NextResponse(`Invalid storage URL: ${url}`, { status: 400 })
+    return new NextResponse("Invalid storage URL", { status: 400 })
   }
 
   const supabase = createClient(
