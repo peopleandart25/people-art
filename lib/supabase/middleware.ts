@@ -67,7 +67,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 로그인 유저가 phone 미등록 시 온보딩 강제
-  const onboardingExempt = ['/onboarding', '/api/', '/auth/', '/login', '/_next/', '/favicon']
+  const onboardingExempt = ['/onboarding', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
   const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
   if (user && !isExempt) {
     const phoneClient = createServerClient(
