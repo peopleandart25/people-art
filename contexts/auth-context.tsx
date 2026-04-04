@@ -9,6 +9,7 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
   points?: number | null
   membership_expires_at?: string | null
   membership_auto_renew?: boolean
+  membership_is_active?: boolean
 }
 
 interface AuthContextType {
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isLoggedIn = !!user
   const isAdmin = profile?.role === "admin"
-  const isPremium = profile?.role === "premium" || profile?.role === "admin"
+  const isPremium = !!(profile?.membership_is_active) || profile?.role === "admin"
 
   return (
     <AuthContext.Provider value={{

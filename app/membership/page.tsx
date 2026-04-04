@@ -328,6 +328,13 @@ export default function MembershipPage() {
         if (d.signupBonus) setSignupBonusAmount(d.signupBonus)
       })
       .catch(() => {})
+
+    fetch("/api/membership/status")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.hasBillingKey) setHasBillingKey(true)
+      })
+      .catch(() => {})
   }, [])
 
   // 추천인 코드 상태 (신규 가입용)
@@ -376,6 +383,9 @@ export default function MembershipPage() {
 
   // 자동갱신 토글 상태
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false)
+
+  // 등록된 결제수단 여부
+  const [hasBillingKey, setHasBillingKey] = useState(false)
 
   // 멤버십 해지 팝업 상태 (서비스 탈퇴)
   const [showTerminationDialog, setShowTerminationDialog] = useState(false)
@@ -1077,10 +1087,17 @@ export default function MembershipPage() {
                     </div>
                   </div>
 
+                  {/* 결제수단 없고 포인트로 전액 커버 안 될 때 안내 */}
+                  {!hasBillingKey && renewalFinalAmount > 0 && (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+                      등록된 결제수단이 없습니다. 포인트로 전액({MEMBERSHIP_PRICE.toLocaleString()}P) 결제하시거나, 멤버십 가입 시 카드를 등록해 주세요.
+                    </p>
+                  )}
+
                   {/* 갱신 버튼 */}
                   <Button
                     onClick={handleRenewalPayment}
-                    disabled={isRenewing || (usePointsForRenewal && !isPointApplied)}
+                    disabled={isRenewing || (usePointsForRenewal && !isPointApplied) || (!hasBillingKey && renewalFinalAmount > 0)}
                     className="w-full h-12 mt-4 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     {isRenewing ? (

@@ -80,12 +80,10 @@ const MEMBERSHIP_BADGE: Record<string, string> = {
   비활성: "bg-gray-100 text-gray-500 border-gray-200",
 }
 
-const ROLE_OPTIONS = ["user", "premium", "sub_admin", "admin"] as const
+const ROLE_OPTIONS = ["user", "sub_admin", "admin"] as const
 
 const ROLE_LABELS: Record<string, string> = {
   user: "User",
-  basic: "Basic",
-  premium: "Premium",
   sub_admin: "Sub Admin",
   admin: "Admin",
 }
@@ -292,6 +290,22 @@ export default function AdminUsersPage() {
     setSupportHistory(supportItems)
 
     setActivityLoading(false)
+  }
+
+  async function handleDeleteUser() {
+    if (!selectedUser) return
+    if (!confirm(`[${selectedUser.name ?? selectedUser.email}] 회원의 모든 데이터를 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return
+
+    setUpdating(true)
+    const res = await fetch(`/api/admin/users/${selectedUser.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      const err = await res.json()
+      setError(err.error ?? "삭제 실패")
+    } else {
+      await fetchProfiles()
+      setDialogOpen(false)
+    }
+    setUpdating(false)
   }
 
   async function handleSave() {
@@ -507,8 +521,6 @@ export default function AdminUsersPage() {
                             ? "bg-orange-50 text-orange-600 border-orange-200"
                             : user.role === "sub_admin"
                             ? "bg-amber-50 text-amber-600 border-amber-200"
-                            : user.role === "premium"
-                            ? "bg-blue-50 text-blue-600 border-blue-200"
                             : "bg-gray-50 text-gray-400 border-gray-200"
                         }`}>
                           {ROLE_LABELS[user.role] ?? user.role}
@@ -642,21 +654,31 @@ export default function AdminUsersPage() {
                   />
                 </div>
 
-                <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
+                <div className="flex gap-2 justify-between pt-2 border-t border-gray-100">
                   <Button
                     variant="outline"
-                    onClick={() => setDialogOpen(false)}
+                    onClick={handleDeleteUser}
                     disabled={updating}
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
                   >
-                    취소
+                    회원 삭제
                   </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={updating}
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                  >
-                    {updating ? "저장 중..." : "저장"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setDialogOpen(false)}
+                      disabled={updating}
+                    >
+                      취소
+                    </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={updating}
+                      className="bg-orange-500 hover:bg-orange-600 text-white"
+                    >
+                      {updating ? "저장 중..." : "저장"}
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
 

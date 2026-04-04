@@ -165,7 +165,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
     const role: string = authProfile.role ?? "user"
     if (role === "admin") setStatus("admin")
-    else if (role === "premium") setStatus("premium")
+    else if (authProfile.membership_is_active) setStatus("premium")
     else setStatus("basic")
     setPoints(authProfile.points ?? 0)
 

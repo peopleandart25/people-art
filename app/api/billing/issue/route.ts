@@ -131,11 +131,21 @@ export async function POST(request: Request) {
       // 추천인 조회 (premium 회원만 유효)
       const { data: referrer } = await serviceClient
         .from("profiles")
-        .select("id, points, role")
+        .select("id, points")
         .eq("referral_code", referralCode.toUpperCase())
         .single()
 
-      if (referrer && referrer.id !== user.id && referrer.role === "premium") {
+      // 추천인이 활성 멤버십 보유 여부 확인
+      const { data: referrerMembership } = referrer
+        ? await serviceClient
+            .from("memberships")
+            .select("user_id")
+            .eq("user_id", referrer.id)
+            .eq("status", "active")
+            .maybeSingle()
+        : { data: null }
+
+      if (referrer && referrer.id !== user.id && referrerMembership) {
         // 신규 가입자 포인트 지급 + referred_by 설정 + referral_bonus_claimed = true
         finalPoints = rpcResult.new_points + referralBonus
         await serviceClient

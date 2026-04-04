@@ -59,7 +59,7 @@ type LocalPhoto = {
 
 export default function MyPage() {
   const router = useRouter()
-  const { user, profile: authProfile, isLoggedIn, loading: authLoading } = useAuth()
+  const { user, profile: authProfile, isLoggedIn, loading: authLoading, isPremium } = useAuth()
   const { toast } = useToast()
   const [referralCode, setReferralCode] = useState<string | null>(null)
 
@@ -402,7 +402,7 @@ export default function MyPage() {
                 <h1 className="text-xl font-bold text-foreground">마이페이지</h1>
                 {authProfile?.role === "admin" ? (
                   <Badge className="bg-red-500 text-white gap-1 border-0 hover:bg-red-500"><Shield className="h-3 w-3" />관리자</Badge>
-                ) : authProfile?.role === "premium" ? (
+                ) : isPremium ? (
                   <Badge className="gold-badge gap-1"><Crown className="h-3 w-3" />멤버십</Badge>
                 ) : (
                   <Badge variant="secondary">일반회원</Badge>
@@ -511,9 +511,9 @@ export default function MyPage() {
                 <div className="h-px bg-border my-1" />
                 <p className="text-xs text-muted-foreground">멤버십</p>
                 <p className="text-sm font-medium text-foreground">
-                  {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "premium" ? "멤버십 회원" : "일반 회원"}
+                  {authProfile?.role === "admin" ? "관리자" : isPremium ? "멤버십 회원" : "일반 회원"}
                 </p>
-                {authProfile?.role === "premium" && (
+                {isPremium && (
                   <>
                     <div className="h-px bg-border my-1" />
                     <p className="text-xs text-muted-foreground">내 추천인 코드</p>

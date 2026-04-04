@@ -152,7 +152,7 @@ export default function AdminDashboardPage() {
       { data: profilesHistory },
     ] = await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("*", { count: "exact", head: true }).in("role", ["premium", "admin"]),
+      supabase.from("memberships").select("*", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("events").select("*", { count: "exact", head: true }),
       supabase.from("reviews").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("id, name, email, role, created_at").order("created_at", { ascending: false }).limit(5),
@@ -285,7 +285,7 @@ export default function AdminDashboardPage() {
                   <td className="px-6 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                       user.role === "admin" ? "bg-orange-100 text-orange-700"
-                        : user.role === "premium" ? "bg-blue-100 text-blue-700"
+                        : user.role === "sub_admin" ? "bg-amber-100 text-amber-700"
                         : "bg-gray-100 text-gray-600"
                     }`}>
                       {user.role}

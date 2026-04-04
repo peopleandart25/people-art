@@ -24,5 +24,6 @@ export async function GET() {
     ...profile,
     membership_expires_at: membership?.expires_at ?? null,
     membership_auto_renew: membership?.auto_renew ?? false,
+    membership_is_active: !!membership,
   })
 }

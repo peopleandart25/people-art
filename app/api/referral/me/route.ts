@@ -9,14 +9,13 @@ export async function GET() {
   }
 
   const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient
-    .from("profiles")
-    .select("referral_code, role")
-    .eq("id", user.id)
-    .single()
+  const [{ data: profile }, { data: membership }] = await Promise.all([
+    serviceClient.from("profiles").select("referral_code").eq("id", user.id).single(),
+    serviceClient.from("memberships").select("user_id").eq("user_id", user.id).eq("status", "active").maybeSingle(),
+  ])
 
-  // 멤버십 회원(premium)에게만 추천인 코드 노출
-  if (profile?.role !== "premium") {
+  // 멤버십 활성 회원에게만 추천인 코드 노출
+  if (!membership) {
     return NextResponse.json({ referralCode: null })
   }
 
