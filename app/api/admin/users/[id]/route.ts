@@ -32,25 +32,25 @@ export async function DELETE(
     return NextResponse.json({ error: "자기 자신은 삭제할 수 없습니다." }, { status: 400 })
   }
 
-  // Cascade 삭제 (FK 의존 순서대로)
-  const tables: { table: string; column: string }[] = [
-    { table: "career_items", column: "user_id" },
-    { table: "artist_profiles", column: "user_id" },
-    { table: "payments", column: "user_id" },
-    { table: "memberships", column: "user_id" },
-    { table: "event_applications", column: "user_id" },
-    { table: "support_history", column: "user_id" },
-    { table: "point_transactions", column: "user_id" },
+  // Cascade 삭제 — FK 의존 순서대로 (자식 → 부모)
+  const tables: string[] = [
+    "career_items",
+    "artist_photos",
+    "social_links",
+    "video_assets",
+    "artist_profiles",
+    "payments",
+    "memberships",
+    "event_applications",
+    "support_history",
+    "tour_participations",
+    "agency_applications",
+    "reviews",
   ]
 
-  for (const { table, column } of tables) {
-    const { error } = await serviceClient
-      .from(table)
-      .delete()
-      .eq(column, targetUserId)
-
-    // 테이블이 없거나 컬럼이 없으면 무시
-    if (error && !error.message.includes("does not exist")) {
+  for (const table of tables) {
+    const { error } = await serviceClient.from(table).delete().eq("user_id", targetUserId)
+    if (error) {
       return NextResponse.json(
         { error: `${table} 삭제 실패`, detail: error.message },
         { status: 500 }
