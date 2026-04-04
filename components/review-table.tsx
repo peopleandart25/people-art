@@ -69,7 +69,7 @@ export function ReviewTable({ data, onRowClick, showPreview = true }: ReviewTabl
             <TableHead className="w-[100px]">작성자</TableHead>
             <TableHead>제목</TableHead>
             {showPreview && (
-              <TableHead className="hidden md:table-cell">내용</TableHead>
+              <TableHead>내용</TableHead>
             )}
             <TableHead className="w-[120px] text-right">작성일자</TableHead>
           </TableRow>
@@ -98,7 +98,7 @@ export function ReviewTable({ data, onRowClick, showPreview = true }: ReviewTabl
                   {review.title}
                 </TableCell>
                 {showPreview && (
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm truncate max-w-[300px]">
+                  <TableCell className="text-muted-foreground text-sm truncate max-w-[300px]">
                     {review.content}
                   </TableCell>
                 )}
