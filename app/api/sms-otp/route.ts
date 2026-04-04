@@ -8,6 +8,18 @@ function getCoolSMSAuthHeader(apiKey: string, apiSecret: string) {
   return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`
 }
 
+function verifyBearerToken(authHeader: string | null): boolean {
+  const secret = process.env.SUPABASE_HOOK_SECRET ?? ""
+  if (!secret || !authHeader) return false
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null
+  if (!token) return false
+  try {
+    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(secret))
+  } catch {
+    return false
+  }
+}
+
 function verifySupabaseHookSignature(
   webhookId: string | null,
   webhookTimestamp: string | null,
@@ -43,12 +55,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 })
   }
 
-  const isValid = verifySupabaseHookSignature(
-    request.headers.get("webhook-id"),
-    request.headers.get("webhook-timestamp"),
-    request.headers.get("webhook-signature"),
-    rawBody
-  )
+  const isValid =
+    verifyBearerToken(request.headers.get("authorization")) ||
+    verifySupabaseHookSignature(
+      request.headers.get("webhook-id"),
+      request.headers.get("webhook-timestamp"),
+      request.headers.get("webhook-signature"),
+      rawBody
+    )
   if (!isValid) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
