@@ -20,6 +20,8 @@ type ArtistRow = {
   weight: number | null
   is_public: boolean | null
   updated_at: string | null
+  portfolio_url: string | null
+  portfolio_file_name: string | null
   profiles: {
     name: string | null
     email: string | null
@@ -36,6 +38,7 @@ export default function AdminArtistsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null)
 
   useEffect(() => {
     fetchArtists()
@@ -61,14 +64,13 @@ export default function AdminArtistsPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from("artist_profiles")
-      .select("user_id, bio, birth_date, gender, height, weight, is_public, updated_at, profiles(name, email, phone)")
+      .select("user_id, bio, birth_date, gender, height, weight, is_public, updated_at, portfolio_url, portfolio_file_name, profiles(name, email, phone)")
       .order("updated_at", { ascending: false })
 
     if (error) {
       setError(error.message)
     } else {
       setArtists((data ?? []) as ArtistRow[])
-      setFiltered((data ?? []) as ArtistRow[])
     }
     setLoading(false)
   }
@@ -134,6 +136,7 @@ export default function AdminArtistsPage() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">이메일</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">성별</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">키/몸무게</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">포트폴리오</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">공개 여부</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">최근 수정</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
@@ -148,6 +151,13 @@ export default function AdminArtistsPage() {
                     <td className="px-6 py-3 text-sm text-gray-600">
                       {artist.height ? `${artist.height}cm` : "-"}
                       {artist.weight ? ` / ${artist.weight}kg` : ""}
+                    </td>
+                    <td className="px-6 py-3">
+                      {artist.portfolio_url ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">
+                          PDF
+                        </span>
+                      ) : "-"}
                     </td>
                     <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
@@ -175,7 +185,7 @@ export default function AdminArtistsPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400">
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-400">
                       등록된 배우 프로필이 없습니다
                     </td>
                   </tr>
@@ -185,6 +195,18 @@ export default function AdminArtistsPage() {
           </div>
         )}
       </div>
+
+      {/* PDF 뷰어 모달 */}
+      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => { if (!open) setPdfViewerUrl(null) }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>포트폴리오 PDF</DialogTitle>
+          </DialogHeader>
+          {pdfViewerUrl && (
+            <iframe src={pdfViewerUrl} className="w-full h-[600px] rounded border border-gray-200" />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 상세 다이얼로그 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -229,6 +251,26 @@ export default function AdminArtistsPage() {
                   <p className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-4">{selected.bio}</p>
                 </div>
               )}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">포트폴리오</p>
+                {selected.portfolio_url ? (
+                  <div className="flex flex-col gap-1">
+                    {selected.portfolio_file_name && (
+                      <p className="text-xs text-gray-500">{selected.portfolio_file_name}</p>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPdfViewerUrl(selected.portfolio_url)}
+                      className="text-xs w-fit border-orange-300 text-orange-700 hover:bg-orange-50"
+                    >
+                      포트폴리오 PDF 보기
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">-</p>
+                )}
+              </div>
               <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">공개 여부</span>

@@ -317,21 +317,22 @@ export default function AdminNewsPage() {
             </div>
             <div className="space-y-2">
               <Label>이미지</Label>
-              <div className="flex items-center gap-3">
+              {imagePreview && (
+                <div className="rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+                  <p className="text-xs text-gray-500 px-3 pt-2 pb-1">현재 이미지</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="미리보기" className="w-full max-h-48 object-cover" />
+                </div>
+              )}
+              <div className="flex items-center gap-3 mt-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs">
-                  파일 선택
+                  {imagePreview ? "이미지 변경" : "파일 선택"}
                 </Button>
                 {newsImageFile && (
                   <span className="text-xs text-gray-500 truncate max-w-[180px]">{newsImageFile.name}</span>
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-              {imagePreview && (
-                <div className="mt-2 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imagePreview} alt="미리보기" className="w-full max-h-52 object-contain" />
-                </div>
-              )}
             </div>
             <div className="space-y-2">
               <Label>발행일</Label>

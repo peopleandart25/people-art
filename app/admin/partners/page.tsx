@@ -24,7 +24,6 @@ type Partner = {
   image_url: string | null
   link: string | null
   is_active: boolean | null
-  sort_order: number | null
   created_at: string | null
   updated_at: string | null
 }
@@ -35,7 +34,6 @@ type PartnerForm = {
   link: string
   image_url: string
   is_active: boolean
-  sort_order: string
 }
 
 const defaultForm: PartnerForm = {
@@ -44,7 +42,6 @@ const defaultForm: PartnerForm = {
   link: "",
   image_url: "",
   is_active: true,
-  sort_order: "0",
 }
 
 const SORT_OPTIONS = [
@@ -91,7 +88,7 @@ export default function AdminPartnersPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from("partners")
-      .select("id, name, description, image_url, link, is_active, sort_order, created_at, updated_at")
+      .select("id, name, description, image_url, link, is_active, created_at, updated_at")
 
     if (error) setError(error.message)
     else setPartners((data ?? []) as Partner[])
@@ -127,7 +124,6 @@ export default function AdminPartnersPage() {
       link: partner.link ?? "",
       image_url: partner.image_url ?? "",
       is_active: partner.is_active ?? true,
-      sort_order: String(partner.sort_order ?? 0),
     })
     setPartnerLogoFile(null)
     setLogoPreview(partner.image_url ?? null)
@@ -154,13 +150,11 @@ export default function AdminPartnersPage() {
       link: string | null
       image_url?: string | null
       is_active: boolean
-      sort_order: number
     } = {
       name: form.name,
       description: form.description || null,
       link: form.link || null,
       is_active: form.is_active,
-      sort_order: parseInt(form.sort_order, 10) || 0,
     }
 
     if (imageUrl !== undefined) payload.image_url = imageUrl
@@ -333,25 +327,22 @@ export default function AdminPartnersPage() {
             </div>
             <div className="space-y-2">
               <Label>로고 이미지</Label>
-              <div className="flex items-center gap-3">
+              {logoPreview && (
+                <div className="rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-4">
+                  <p className="sr-only">현재 로고</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logoPreview} alt="현재 로고" className="max-h-32 max-w-full object-contain" />
+                </div>
+              )}
+              <div className="flex items-center gap-3 mt-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-xs">
-                  파일 선택
+                  {logoPreview ? "이미지 변경" : "파일 선택"}
                 </Button>
                 {partnerLogoFile && (
                   <span className="text-xs text-gray-500 truncate max-w-[160px]">{partnerLogoFile.name}</span>
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-              {logoPreview && (
-                <div className="mt-2 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={logoPreview} alt="미리보기" className="max-h-40 max-w-full object-contain" />
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>정렬 순서 (프론트 노출 순서)</Label>
-              <Input type="number" value={form.sort_order} onChange={(e) => updateForm("sort_order", e.target.value)} placeholder="0" />
             </div>
             <div className="flex items-center gap-3">
               <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => updateForm("is_active", e.target.checked)} className="w-4 h-4 accent-orange-500" />

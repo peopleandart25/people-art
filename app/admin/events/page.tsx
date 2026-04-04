@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Pencil, Trash2, Users, FileDown } from "lucide-react"
+import { Calendar, ChevronDown, ChevronUp, Pencil, Trash2, Users, FileDown } from "lucide-react"
 
 type Event = {
   id: string
@@ -107,6 +107,9 @@ export default function AdminEventsPage() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [applicationsMap, setApplicationsMap] = useState<Record<string, Application[]>>({})
   const [loadingApps, setLoadingApps] = useState<string | null>(null)
+
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null)
+  const [pdfViewerName, setPdfViewerName] = useState<string>("")
 
   useEffect(() => { fetchEvents() }, [])
 
@@ -262,6 +265,7 @@ export default function AdminEventsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">이미지</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">제목</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">타입</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
@@ -278,11 +282,19 @@ export default function AdminEventsPage() {
                   const appCount = event.event_applications?.[0]?.count ?? 0
 
                   return (
-                    <>
+                    <Fragment key={event.id}>
                       <tr
-                        key={event.id}
                         className={`border-b border-gray-50 transition-colors ${isExpanded ? "bg-orange-50" : "hover:bg-gray-50"}`}
                       >
+                        <td className="px-4 py-3">
+                          {event.image_url ? (
+                            <img src={event.image_url} alt={event.title} className="w-12 h-12 object-cover rounded-md border border-gray-200" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center">
+                              <Calendar className="w-5 h-5 text-gray-400" />
+                            </div>
+                          )}
+                        </td>
                         <td className="px-6 py-3 text-sm text-gray-900 font-medium max-w-xs truncate">
                           {event.title}
                         </td>
@@ -337,7 +349,7 @@ export default function AdminEventsPage() {
                       {/* 인라인 지원자 패널 */}
                       {isExpanded && (
                         <tr key={`${event.id}-expanded`} className="border-b border-orange-100">
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <div className="bg-orange-50/50 border-t border-orange-100">
                               {/* 패널 헤더 */}
                               <div className="flex items-center justify-between px-6 py-3 border-b border-orange-100">
@@ -386,7 +398,15 @@ export default function AdminEventsPage() {
                                           </td>
                                           <td className="px-6 py-3">
                                             {app.portfolio_url ? (
-                                              <a href={app.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline text-xs">PDF 보기</a>
+                                              <div className="flex items-center gap-2">
+                                                <a href={app.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline text-xs">PDF 보기</a>
+                                                <button
+                                                  onClick={() => { setPdfViewerUrl(app.portfolio_url!); setPdfViewerName(app.profile?.name ?? "지원자") }}
+                                                  className="text-xs px-2 py-0.5 rounded border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
+                                                >
+                                                  미리보기
+                                                </button>
+                                              </div>
                                             ) : <span className="text-gray-400 text-xs">-</span>}
                                           </td>
                                           <td className="px-6 py-3">
@@ -419,12 +439,12 @@ export default function AdminEventsPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
                 {events.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400">이벤트가 없습니다</td>
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-400">이벤트가 없습니다</td>
                   </tr>
                 )}
               </tbody>
@@ -432,6 +452,18 @@ export default function AdminEventsPage() {
           </div>
         )}
       </div>
+
+      {/* PDF 뷰어 모달 */}
+      <Dialog open={!!pdfViewerUrl} onOpenChange={(open) => { if (!open) setPdfViewerUrl(null) }}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{pdfViewerName} 포트폴리오</DialogTitle>
+          </DialogHeader>
+          {pdfViewerUrl && (
+            <iframe src={pdfViewerUrl} className="w-full h-[600px]" />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 이벤트 추가/수정 다이얼로그 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -504,11 +536,11 @@ export default function AdminEventsPage() {
 
             <div className="space-y-2">
               <Label>포스터 이미지</Label>
+              {imagePreview && (
+                <img src={imagePreview} alt="포스터 미리보기" className="w-full max-h-48 object-cover rounded-lg border border-gray-200" />
+              )}
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange}
                 className="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer" />
-              {imagePreview && (
-                <img src={imagePreview} alt="포스터 미리보기" className="w-32 h-32 object-cover rounded-lg border border-gray-200 mt-2" />
-              )}
             </div>
 
             <div className="flex items-center gap-3">
