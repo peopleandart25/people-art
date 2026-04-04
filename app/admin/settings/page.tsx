@@ -151,7 +151,7 @@ export default function AdminSettingsPage() {
           <div className="w-7 h-7 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="space-y-6 max-w-xl">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* 멤버십 금액 설정 카드 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-base font-semibold text-gray-900 mb-1">멤버십 금액 설정</h2>

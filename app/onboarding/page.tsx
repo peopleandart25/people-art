@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useUser } from "@/contexts/user-context"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 import { Toaster } from "@/components/ui/toaster"
 import {
   ArrowLeft,
@@ -182,9 +183,6 @@ export default function OnboardingPage() {
   // 스텝 관리
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 3
-
-  // 추천인 코드
-  const [referralCode, setReferralCode] = useState("")
 
   // 파일 업로드 상태
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -423,6 +421,29 @@ export default function OnboardingPage() {
         role: c.role,
       }))
 
+    // PDF 포트폴리오 Storage 업로드
+    let portfolioUrl: string | null = null
+    let portfolioFileName: string | null = null
+    if (uploadedFile) {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const path = `${user.id}/portfolio.pdf`
+          const { error: uploadError } = await supabase.storage
+            .from("portfolios")
+            .upload(path, uploadedFile, { upsert: true })
+          if (!uploadError) {
+            const { data } = supabase.storage.from("portfolios").getPublicUrl(path)
+            portfolioUrl = data.publicUrl
+            portfolioFileName = uploadedFile.name
+          }
+        }
+      } catch {
+        // 업로드 실패해도 나머지 저장은 진행
+      }
+    }
+
     // DB 저장
     try {
       const res = await fetch("/api/onboarding", {
@@ -439,6 +460,8 @@ export default function OnboardingPage() {
           bio: formData.bio,
           etcInfo: formData.etcInfo,
           careerList,
+          portfolioUrl,
+          portfolioFileName,
         }),
       })
       if (!res.ok) {
@@ -466,31 +489,6 @@ export default function OnboardingPage() {
       portfolioFile: uploadedFile ? URL.createObjectURL(uploadedFile) : null,
       portfolioFileName: uploadedFile?.name || null,
     })
-    // 추천인 코드 적용 (입력한 경우)
-    if (referralCode.trim()) {
-      try {
-        const refRes = await fetch("/api/referral/apply", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ referralCode: referralCode.trim() }),
-        })
-        const refData = await refRes.json()
-        if (refRes.ok) {
-          toast({
-            title: "추천인 코드 적용 완료",
-            description: `추천인과 함께 각각 10,000P가 지급되었습니다!`,
-          })
-        } else {
-          toast({
-            title: "추천인 코드 오류",
-            description: refData.error ?? "추천인 코드를 확인해 주세요.",
-            variant: "destructive",
-          })
-        }
-      } catch {
-        // 추천인 오류는 가입 완료를 막지 않음
-      }
-    }
 
     login(false)
     toast({
@@ -722,23 +720,6 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                {/* 추천인 코드 입력 */}
-                <div className="space-y-2 pt-2 border-t border-border">
-                  <Label htmlFor="referralCode" className="text-sm font-medium">
-                    추천인 ID <span className="text-muted-foreground font-normal">(선택)</span>
-                  </Label>
-                  <Input
-                    id="referralCode"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                    placeholder="추천인 ID 입력 (8자리)"
-                    maxLength={8}
-                    className="font-mono tracking-widest"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    추천인 ID를 입력하면 가입 완료 후 추천인과 함께 각각 10,000P가 지급됩니다.
-                  </p>
-                </div>
 
                 {/* Skip Option */}
                 <div className="text-center">

@@ -66,7 +66,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 로그인 유저가 phone 미등록 시 온보딩 강제
+  // 로그인 유저가 phone 미등록 + artist_profiles 없을 시 온보딩 강제 (신규 유저만)
   const onboardingExempt = ['/onboarding', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
   const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
   if (user && !isExempt) {
@@ -75,13 +75,13 @@ export async function updateSession(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { cookies: { getAll() { return [] }, setAll() {} } }
     )
-    const { data: profile } = await phoneClient
-      .from('profiles')
-      .select('phone')
-      .eq('id', user.id)
-      .single()
+    const [{ data: profile }, { data: artistProfile }] = await Promise.all([
+      phoneClient.from('profiles').select('phone').eq('id', user.id).single(),
+      phoneClient.from('artist_profiles').select('user_id').eq('user_id', user.id).maybeSingle(),
+    ])
 
-    if (profile && !profile.phone) {
+    // phone 없고 artist_profiles도 없는 경우만 신규 유저로 판단 → 온보딩 강제
+    if (profile && !profile.phone && !artistProfile) {
       const url = request.nextUrl.clone()
       url.pathname = '/onboarding'
       return NextResponse.redirect(url)
