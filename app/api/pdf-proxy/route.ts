@@ -23,7 +23,10 @@ export async function GET(request: NextRequest) {
   if (!url) return new NextResponse("Missing url", { status: 400 })
 
   const parsed = parseStorageUrl(url)
-  if (!parsed) return new NextResponse("Invalid storage URL", { status: 400 })
+  if (!parsed) {
+    console.error("[pdf-proxy] Invalid storage URL:", url)
+    return new NextResponse(`Invalid storage URL: ${url}`, { status: 400 })
+  }
 
   const supabase = createClient(
     parsed.supabaseUrl,
