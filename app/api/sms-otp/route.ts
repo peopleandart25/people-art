@@ -81,9 +81,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing phone or otp" }, { status: 400 })
   }
 
-  // +82XXXXXXXXXX → 01XXXXXXXXXX (coolsms 국내 형식)
+  // E.164 → 국내 형식: +821051336070 또는 821051336070 → 01051336070
   const to = phone.startsWith("+82")
     ? "0" + phone.slice(3)
+    : phone.startsWith("82") && phone.length >= 11
+    ? "0" + phone.slice(2)
     : phone.replace(/^\+/, "")
   const from = (process.env.COOLSMS_FROM ?? "").replace(/-/g, "")
 
