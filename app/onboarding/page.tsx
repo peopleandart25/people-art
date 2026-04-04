@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -204,6 +204,16 @@ export default function OnboardingPage() {
     etcInfo: "",
     career: [] as { year: string; channel: string; title: string; role: string; isUncertain: boolean }[],
   })
+
+  // 마운트 시 소셜 로그인 이메일 자동 설정
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setFormData((prev) => ({ ...prev, email: prev.email || user.email! }))
+      }
+    })
+  }, [])
 
   // 휴대폰 OTP 인증
   const [phoneOtpSent, setPhoneOtpSent] = useState(false)
@@ -495,7 +505,7 @@ export default function OnboardingPage() {
       title: "회원가입 완료",
       description: "피플앤아트에 오신 것을 환영합니다!",
     })
-    router.push("/mypage")
+    router.push("/")
   }
 
   // 채널명에서 카테고리 추론

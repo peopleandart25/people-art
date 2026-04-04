@@ -117,7 +117,7 @@ export default function MyPage() {
 
   // DB 데이터 → 폼 상태 동기화 (최초 1회만)
   useEffect(() => {
-    if (profileLoading || authLoading) return
+    if (profileLoading || authLoading || !authProfile) return
     if (initialized.current) return
     initialized.current = true
     const { artistProfile, careerItems, photos, videoAssets, socialLinks, statusTagIds: tagIds } = fullProfile
@@ -698,7 +698,7 @@ export default function MyPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <Input value={authProfile?.email ?? ""} readOnly className="bg-muted flex-1" />
+                        <Input value={user?.email ?? authProfile?.email ?? ""} readOnly className="bg-muted flex-1" />
                         <Button size="sm" variant="outline" onClick={() => { setNewEmail(""); setEmailChangeMode(true) }}>변경</Button>
                       </div>
                     )}
