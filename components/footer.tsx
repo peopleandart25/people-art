@@ -23,7 +23,7 @@ export function Footer() {
 
   return (
     <footer className="bg-black text-gray-400">
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
         {/* 메인 콘텐츠 영역 - 3단 Flex (동일 너비, 상단 정렬) */}
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-12">
           {/* 왼쪽: 로고 + 회사정보 */}
@@ -34,8 +34,7 @@ export function Footer() {
                 alt="피플앤아트 로고"
                 width={120}
                 height={40}
-                className="object-contain brightness-0 invert"
-                style={{ width: "120px", height: "auto" }}
+                className="w-24 sm:w-28 h-auto object-contain brightness-0 invert"
               />
             </Link>
             <div className="text-xs leading-relaxed space-y-1 text-gray-400">
@@ -139,7 +138,7 @@ export function Footer() {
       </div>
 
       {/* Fixed Buttons */}
-      <div className="fixed right-4 bottom-4 flex flex-col gap-2 z-40">
+      <div className="fixed right-4 bottom-6 sm:bottom-4 flex flex-col gap-2 z-40">
         {footerData.social.kakao && (
           <a
             href={footerData.social.kakao}

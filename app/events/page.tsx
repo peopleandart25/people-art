@@ -58,7 +58,7 @@ export default function EventsPage() {
 
   if (loading) {
     return (
-      <section className="py-12 lg:py-20 bg-background">
+      <section className="py-8 sm:py-12 lg:py-20 bg-background">
         <div className="mx-auto max-w-7xl px-4 lg:px-8 flex justify-center">
           <span className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
@@ -67,9 +67,9 @@ export default function EventsPage() {
   }
 
   return (
-    <section className="py-12 lg:py-20 bg-background">
+    <section className="py-8 sm:py-12 lg:py-20 bg-background">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
-        <div className="mb-10">
+        <div className="mb-6 sm:mb-10">
           <h1 className="text-2xl font-bold text-foreground lg:text-3xl">EVENT</h1>
           <p className="text-muted-foreground mt-1">오디션 및 특강 이벤트</p>
         </div>
@@ -81,7 +81,7 @@ export default function EventsPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {currentItems.map((item) => (
                 <Card
                   key={item.id}

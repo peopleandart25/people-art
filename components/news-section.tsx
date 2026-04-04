@@ -106,7 +106,7 @@ export function NewsSection() {
               {newsItems.map((item, index) => (
                 <div
                   key={item.id}
-                  className="flex-[0_0_100%] min-w-0 pl-4 md:flex-[0_0_33.333%]"
+                  className="flex-[0_0_100%] min-w-0 pl-4 sm:flex-[0_0_50%] md:flex-[0_0_33.333%]"
                 >
                   <Link href={`/news/${item.id}`}>
                     <Card className="group cursor-pointer border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1 overflow-hidden h-full">

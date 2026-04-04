@@ -61,7 +61,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 lg:px-8">
+      <div className="mx-auto flex h-16 lg:h-24 max-w-7xl items-center justify-between px-4 lg:px-8">
         {/* Logo - [관리 필드: siteInfo.logo] - 클릭 시 메인 페이지로 이동 */}
         <Link href="/" className="flex items-center shrink-0 mr-8 ml-2">
           <Image
@@ -69,8 +69,7 @@ export function Header() {
             alt="피플앤아트 로고"
             width={300}
             height={100}
-            className="object-contain"
-            style={{ height: "100px", width: "auto", minHeight: "70px" }}
+            className="object-contain h-14 lg:h-20 w-auto"
             priority
           />
         </Link>
@@ -176,8 +175,7 @@ export function Header() {
                   alt="피플앤아트 로고"
                   width={240}
                   height={80}
-                  className="object-contain"
-                  style={{ height: "80px", width: "auto", minHeight: "60px" }}
+                  className="object-contain h-12 w-auto"
                 />
               </div>
               

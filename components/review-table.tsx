@@ -31,7 +31,37 @@ interface ReviewTableProps {
 
 export function ReviewTable({ data, onRowClick, showPreview = true }: ReviewTableProps) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <>
+      {/* 모바일 카드 레이아웃 */}
+      <div className="block md:hidden rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
+        {data.length > 0 ? (
+          data.map((review) => (
+            <div
+              key={review.id}
+              onClick={() => onRowClick?.(review)}
+              className={`px-4 py-3 ${onRowClick ? "cursor-pointer" : ""} hover:bg-muted/50 transition-colors`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${categoryColors[review.category] || "bg-gray-50 text-gray-600"}`}>
+                  {review.categoryLabel}
+                </span>
+                <span className="text-xs text-muted-foreground ml-auto">{review.date}</span>
+              </div>
+              <p className="font-medium text-foreground text-sm line-clamp-2">{review.title}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-xs text-muted-foreground">{maskAuthorId(review.author)}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">
+            등록된 후기가 없습니다.
+          </div>
+        )}
+      </div>
+
+      {/* 데스크탑 테이블 레이아웃 */}
+      <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
@@ -89,6 +119,7 @@ export function ReviewTable({ data, onRowClick, showPreview = true }: ReviewTabl
           )}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </>
   )
 }

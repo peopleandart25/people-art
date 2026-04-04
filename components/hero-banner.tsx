@@ -273,7 +273,7 @@ export function HeroBanner() {
       onTouchEnd={onTouchEnd}
       style={{ ...slide.bgStyle, touchAction: "pan-y" }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-20">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12 lg:px-8 lg:py-20">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
           {/* Left Content - 애니메이션 적용 */}
           <div 
@@ -288,12 +288,12 @@ export function HeroBanner() {
               {slide.badge}
             </div>
             
-            <h1 className="text-3xl font-bold leading-tight text-foreground md:text-4xl lg:text-5xl text-balance">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-foreground text-balance">
               {slide.title}<br />
               <span className="text-primary">{slide.highlight}</span>
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
+            <p className="text-base lg:text-lg text-muted-foreground max-w-md leading-relaxed">
               {slide.description}
             </p>
 
@@ -316,21 +316,21 @@ export function HeroBanner() {
           </div>
 
           {/* Right - Quick Links Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {quickLinks.map((link, index) => {
               // 외부 링크인 경우 (고객센터 등)
               const isExternal = "isExternal" in link && link.isExternal
               
               const linkContent = (
                 <>
-                  <div className="relative w-14 h-14 lg:w-16 lg:h-16 mb-3 transform group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300">
+                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mb-3 transform group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300">
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-2 bg-primary/10 rounded-full blur-sm opacity-60" />
                     <div className="relative z-10 w-full h-full">
                       <link.Icon />
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-center justify-center text-center max-w-full h-[48px]" style={{ wordBreak: "keep-all" }}>
+                  <div className="flex flex-col items-center justify-center text-center max-w-full h-auto min-h-[40px]" style={{ wordBreak: "keep-all" }}>
                     {link?.lines ? link.lines.map((line, lineIndex) => (
                       <span 
                         key={lineIndex} 
@@ -348,7 +348,7 @@ export function HeroBanner() {
                 </>
               )
               
-              const className = "group relative flex flex-col items-center justify-center rounded-2xl bg-card p-5 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[160px] lg:h-[180px]"
+              const className = "group relative flex flex-col items-center justify-center rounded-2xl bg-card p-3 sm:p-4 lg:p-5 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[130px] sm:h-[150px] lg:h-[180px]"
               const style = { animation: `float 3s ease-in-out ${index * 0.15}s infinite` }
               
               // 외부 링크는 <a> 태그 사용
