@@ -17,8 +17,9 @@ function verifySupabaseHookSignature(
   if (!webhookId || !webhookTimestamp || !webhookSignature) return false
 
   const secret = process.env.SUPABASE_HOOK_SECRET ?? ""
-  const base64Secret = secret.replace(/^v1,whsec_/, "")
-  const secretBytes = Buffer.from(base64Secret, "base64")
+  const secretBytes = secret.startsWith("v1,whsec_")
+    ? Buffer.from(secret.replace(/^v1,whsec_/, ""), "base64")
+    : Buffer.from(secret, "hex")
 
   const msg = `${webhookId}.${webhookTimestamp}.${rawBody}`
   const computed = crypto.createHmac("sha256", secretBytes).update(msg).digest("base64")
