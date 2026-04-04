@@ -140,7 +140,7 @@ function LoginContent() {
     const email = (form.elements.namedItem("email") as HTMLInputElement).value
     const password = (form.elements.namedItem("password") as HTMLInputElement).value
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -151,6 +151,9 @@ function LoginContent() {
 
     if (error) {
       toast({ title: "가입 실패", description: error.message, variant: "destructive" })
+    } else if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      // 이미 가입된 이메일 — Supabase는 이메일 확인 활성화 시 에러 대신 빈 identities 반환
+      toast({ title: "이미 가입된 이메일", description: "해당 이메일로 이미 가입된 계정이 있습니다. 로그인을 시도해주세요.", variant: "destructive" })
     } else {
       toast({ title: "가입 완료!", description: "이메일을 확인하여 인증을 완료해주세요." })
       router.push("/onboarding")

@@ -76,12 +76,14 @@ export async function updateSession(request: NextRequest) {
       { cookies: { getAll() { return [] }, setAll() {} } }
     )
     const [{ data: profile }, { data: artistProfile }] = await Promise.all([
-      phoneClient.from('profiles').select('phone').eq('id', user.id).single(),
+      phoneClient.from('profiles').select('phone, role').eq('id', user.id).single(),
       phoneClient.from('artist_profiles').select('user_id').eq('user_id', user.id).maybeSingle(),
     ])
 
+    // 관리자/서브관리자는 온보딩 강제 제외
+    const adminRoles = ['admin', 'sub_admin']
     // phone 없고 artist_profiles도 없는 경우만 신규 유저로 판단 → 온보딩 강제
-    if (profile && !profile.phone && !artistProfile) {
+    if (profile && !adminRoles.includes(profile.role) && !profile.phone && !artistProfile) {
       const url = request.nextUrl.clone()
       url.pathname = '/onboarding'
       return NextResponse.redirect(url)
