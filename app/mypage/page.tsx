@@ -61,6 +61,11 @@ export default function MyPage() {
   const router = useRouter()
   const { user, profile: authProfile, isLoggedIn, loading: authLoading } = useAuth()
   const { toast } = useToast()
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/referral/me").then(r => r.json()).then(d => setReferralCode(d.referralCode ?? null))
+  }, [])
   const { fullProfile, allTags, loading: profileLoading, uploadMainPhoto, uploadPortfolio, saveProfile } = useProfile()
 
   const initialized = useRef(false)
@@ -508,6 +513,22 @@ export default function MyPage() {
                 <p className="text-sm font-medium text-foreground">
                   {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "premium" ? "멤버십 회원" : "일반 회원"}
                 </p>
+                <div className="h-px bg-border my-1" />
+                <p className="text-xs text-muted-foreground">내 추천인 코드</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground tracking-widest">{referralCode ?? "-"}</p>
+                  {referralCode && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(referralCode)
+                        toast({ title: "복사 완료", description: "추천인 코드가 복사되었습니다." })
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      복사
+                    </button>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

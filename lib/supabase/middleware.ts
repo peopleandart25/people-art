@@ -66,5 +66,27 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // 로그인 유저가 phone 미등록 시 온보딩 강제
+  const onboardingExempt = ['/onboarding', '/api/', '/auth/', '/login', '/_next/', '/favicon']
+  const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
+  if (user && !isExempt) {
+    const phoneClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { cookies: { getAll() { return [] }, setAll() {} } }
+    )
+    const { data: profile } = await phoneClient
+      .from('profiles')
+      .select('phone')
+      .eq('id', user.id)
+      .single()
+
+    if (profile && !profile.phone) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
+      return NextResponse.redirect(url)
+    }
+  }
+
   return supabaseResponse
 }

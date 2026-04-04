@@ -14,6 +14,20 @@ export async function POST(request: Request) {
 
   const serviceClient = createServiceClient()
 
+  // 전화번호 중복 체크
+  if (phone) {
+    const { data: existing } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("phone", phone)
+      .neq("id", user.id)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json({ error: "이미 가입된 휴대폰 번호입니다." }, { status: 409 })
+    }
+  }
+
   // 1. profiles 기본 정보 업데이트
   const { error: profileError } = await serviceClient
     .from("profiles")

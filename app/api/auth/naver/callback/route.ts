@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     }
 
     // 5. Magic link 생성으로 세션 발급
-    const magicRedirectTo = `${origin}/auth/naver-return`
+    const magicRedirectTo = `${origin}/auth/callback`
     console.log("[naver-cb] step5 generateLink redirectTo:", magicRedirectTo)
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: "magiclink",
