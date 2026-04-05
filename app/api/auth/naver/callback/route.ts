@@ -65,7 +65,7 @@ export async function GET(request: Request) {
       const { data: reLinkData, error: reLinkError } = await adminClient.auth.admin.generateLink({
         type: "magiclink",
         email: naverUser.email,
-        options: { redirectTo: `${origin}/auth/callback` },
+        options: { redirectTo: `${origin}/auth/hash-callback?redirectTo=${encodeURIComponent(redirectTo)}` },
       })
       if (reLinkError || !reLinkData?.properties?.action_link) {
         return NextResponse.redirect(`${origin}/login?error=auth_failed`)
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     }
 
     // 5. Magic link 생성으로 세션 발급
-    const magicRedirectTo = `${origin}/auth/callback`
+    const magicRedirectTo = `${origin}/auth/hash-callback?redirectTo=${encodeURIComponent(redirectTo)}`
     console.log("[naver-cb] step5 generateLink redirectTo:", magicRedirectTo)
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: "magiclink",
