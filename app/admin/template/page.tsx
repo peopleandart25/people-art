@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Download, Upload, FileText } from "lucide-react"
@@ -10,7 +9,7 @@ const FILE_NAME = "profile-form.pptx"
 const BUCKET = "templates"
 const FILE_URL = `https://ywokkwjetjyagqzvcepz.supabase.co/storage/v1/object/public/${BUCKET}/${FILE_NAME}`
 const DOWNLOAD_URL = `${FILE_URL}?download=${encodeURIComponent("배우 프로필 양식.pptx")}`
-const PREVIEW_URL = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(FILE_URL)}`
+const PREVIEW_URL = `https://docs.google.com/viewer?url=${encodeURIComponent(FILE_URL)}&embedded=true`
 
 interface FileInfo {
   name: string
@@ -59,13 +58,13 @@ export default function AdminTemplatePage() {
       return
     }
     setUploading(true)
-    const supabase = createClient()
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(FILE_NAME, selectedFile, { upsert: true })
+    const formData = new FormData()
+    formData.append("file", selectedFile)
+    const res = await fetch("/api/admin/template", { method: "POST", body: formData })
     setUploading(false)
-    if (error) {
-      toast({ title: "업로드 실패", description: error.message, variant: "destructive" })
+    if (!res.ok) {
+      const err = await res.json()
+      toast({ title: "업로드 실패", description: err.error, variant: "destructive" })
     } else {
       toast({ title: "업로드 성공", description: "프로필 양식이 업데이트되었습니다." })
       setSelectedFile(null)
