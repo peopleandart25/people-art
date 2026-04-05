@@ -80,13 +80,18 @@ const resultColors: Record<string, string> = {
 
 const resultOptions = ["검토중", "다음기회에", "합격"]
 
-async function uploadEventImage(file: File, eventId: string): Promise<string> {
+async function uploadEventImage(file: File, folderId: string): Promise<string> {
   const supabase = createClient()
   const ext = file.name.split(".").pop()
-  const path = `${eventId}/${Date.now()}.${ext}`
+  const path = `${folderId}/${Date.now()}.${ext}`
+  console.log("[uploadEventImage] uploading to path:", path)
   const { error } = await supabase.storage.from("event-images").upload(path, file, { upsert: true })
-  if (error) throw new Error(`이미지 업로드 실패: ${error.message}`)
+  if (error) {
+    console.error("[uploadEventImage] error:", error)
+    throw new Error(`이미지 업로드 실패: ${error.message}`)
+  }
   const { data } = supabase.storage.from("event-images").getPublicUrl(path)
+  console.log("[uploadEventImage] success:", data.publicUrl)
   return data.publicUrl
 }
 
@@ -215,7 +220,6 @@ export default function AdminEventsPage() {
     setSaving(true); setError(null)
     const supabase = createClient()
     let imageUrl: string | null = editingEvent?.image_url ?? null
-      const uploaded = await uploadEventImage(imageFile, eventId)
     try {
       if (imageFile) {
         const eventId = editingEvent?.id ?? String(Date.now())
