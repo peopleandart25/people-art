@@ -33,7 +33,8 @@ export async function DELETE(
   }
 
   // Cascade 삭제 — FK 의존 순서대로 (자식 → 부모)
-  const tables: string[] = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tables: any[] = [
     "career_items",
     "artist_photos",
     "social_links",

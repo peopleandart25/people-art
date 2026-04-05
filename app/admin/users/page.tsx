@@ -65,12 +65,10 @@ type SupportHistory = {
 
 // ─── 상수 ───────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = ["전체", "승인대기", "승인", "탈퇴", "정지"] as const
+const STATUS_OPTIONS = ["전체", "정지", "탈퇴"] as const
 const MEMBERSHIP_OPTIONS = ["전체", "활성", "비활성"] as const
 
 const STATUS_BADGE: Record<string, string> = {
-  승인대기: "bg-orange-100 text-orange-700 border-orange-200",
-  승인: "bg-green-100 text-green-700 border-green-200",
   탈퇴: "bg-red-100 text-red-700 border-red-200",
   정지: "bg-gray-100 text-gray-600 border-gray-200",
 }
@@ -84,6 +82,7 @@ const ROLE_OPTIONS = ["user", "sub_admin", "admin"] as const
 
 const ROLE_LABELS: Record<string, string> = {
   user: "User",
+  basic: "User",
   sub_admin: "Sub Admin",
   admin: "Admin",
 }
@@ -209,6 +208,7 @@ export default function AdminUsersPage() {
       const q = filterEmail.trim().toLowerCase()
       result = result.filter((p) => (p.email ?? "").toLowerCase().includes(q))
     }
+
     if (filterStatus !== "전체") {
       result = result.filter((p) => p.status === filterStatus)
     }

@@ -42,6 +42,8 @@ function LoginContent() {
     } else if (error === "email_taken") {
       const providerLabel = providerLabels[errorProvider ?? ""] ?? errorProvider ?? "다른 방법"
       toast({ title: "이미 가입된 이메일", description: `이미 ${providerLabel}(으)로 가입된 이메일입니다. ${providerLabel}로 로그인해주세요.`, variant: "destructive" })
+    } else if (error === "email_already_exists") {
+      toast({ title: "이미 가입된 이메일", description: "해당 이메일로 이미 가입된 계정이 있습니다. 기존 가입 방법으로 로그인해주세요.", variant: "destructive" })
     }
   }, [error])
 

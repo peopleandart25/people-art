@@ -544,11 +544,14 @@ export default function OnboardingPage() {
   const handleSendPhoneOtp = async () => {
     if (!formData.phone) return
     setPhoneVerifying(true)
-    const { createClient } = await import("@/lib/supabase/client")
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({ phone: formatPhoneToE164(formData.phone) })
-    if (error) {
-      toast({ title: "인증번호 발송 실패", description: error.message, variant: "destructive" })
+    const res = await fetch("/api/sms/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: formData.phone }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      toast({ title: "인증번호 발송 실패", description: err.error ?? "잠시 후 다시 시도해주세요.", variant: "destructive" })
     } else {
       setPhoneOtpSent(true)
       toast({ title: "인증번호 발송", description: "휴대폰으로 인증번호가 발송되었습니다." })
@@ -559,11 +562,14 @@ export default function OnboardingPage() {
   const handleVerifyPhoneOtp = async () => {
     if (!phoneOtp) return
     setPhoneVerifying(true)
-    const { createClient } = await import("@/lib/supabase/client")
-    const supabase = createClient()
-    const { error } = await supabase.auth.verifyOtp({ phone: formatPhoneToE164(formData.phone), token: phoneOtp, type: "sms" })
-    if (error) {
-      toast({ title: "인증 실패", description: "인증번호가 올바르지 않습니다.", variant: "destructive" })
+    const res = await fetch("/api/sms/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: formData.phone, otp: phoneOtp }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      toast({ title: "인증 실패", description: err.error ?? "인증번호가 올바르지 않습니다.", variant: "destructive" })
     } else {
       setPhoneVerified(true)
       toast({ title: "인증 완료", description: "휴대폰 번호가 인증되었습니다." })

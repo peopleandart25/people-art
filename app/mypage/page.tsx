@@ -76,9 +76,6 @@ export default function MyPage() {
   const [errorModal, setErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
-  const [emailChangeMode, setEmailChangeMode] = useState(false)
-  const [newEmail, setNewEmail] = useState("")
-  const [emailChanging, setEmailChanging] = useState(false)
   const [eventApplications, setEventApplications] = useState<{
     id: string
     event_id: string
@@ -95,7 +92,7 @@ export default function MyPage() {
 
   // 폼 상태
   const [formData, setFormData] = useState({
-    name: "", activityName: "", phone: "", gender: "", birthDate: "",
+    name: "", activityName: "", phone: "", contactEmail: "", gender: "", birthDate: "",
     height: "", weight: "", bio: "", etcInfo: "",
     school: "", isCustomSchool: false, department: "", graduationStatus: "재학",
     instagram: "", youtube: "", tiktok: "",
@@ -126,6 +123,7 @@ export default function MyPage() {
       name: authProfile?.name ?? "",
       activityName: authProfile?.activity_name ?? "",
       phone: authProfile?.phone ?? "",
+      contactEmail: authProfile?.email ?? "",
       gender: artistProfile?.gender ?? "",
       birthDate: artistProfile?.birth_date ?? "",
       height: artistProfile?.height?.toString() ?? "",
@@ -270,20 +268,6 @@ export default function MyPage() {
     setVideos(prev => prev.filter(v => v.id !== videoId))
   }
 
-  const handleEmailChange = async () => {
-    if (!newEmail.trim()) return
-    setEmailChanging(true)
-    const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ email: newEmail })
-    setEmailChanging(false)
-    if (error) {
-      alert(error.message)
-    } else {
-      alert("인증 메일을 발송했습니다. 새 이메일을 확인해주세요.")
-      setEmailChangeMode(false)
-    }
-  }
-
   const handlePortfolioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) setPortfolioFile({ name: file.name, url: URL.createObjectURL(file), file })
@@ -323,6 +307,7 @@ export default function MyPage() {
         name: formData.name,
         activityName: formData.activityName,
         phone: formData.phone,
+        contactEmail: formData.contactEmail,
         gender: formData.gender,
         birthDate: formData.birthDate,
         height: formData.height,
@@ -503,9 +488,6 @@ export default function MyPage() {
             {/* 계정 정보 */}
             <Card className="border border-border">
               <CardContent className="pt-5 pb-4 space-y-2">
-                <p className="text-xs text-muted-foreground">이메일</p>
-                <p className="text-sm font-medium text-foreground truncate">{user?.email ?? "-"}</p>
-                <div className="h-px bg-border my-1" />
                 <p className="text-xs text-muted-foreground">이름</p>
                 <p className="text-sm font-medium text-foreground">{authProfile?.name ?? "-"}</p>
                 <div className="h-px bg-border my-1" />
@@ -689,21 +671,6 @@ export default function MyPage() {
                     <Input id="activityName" value={formData.activityName} onChange={e => setFormData(p => ({ ...p, activityName: e.target.value }))} placeholder="활동명 (본명과 다른 경우)" />
                   </div>
                   <div className="space-y-2">
-                    <Label>이메일</Label>
-                    {emailChangeMode ? (
-                      <div className="flex gap-2">
-                        <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="새 이메일 주소" type="email" className="flex-1" />
-                        <Button size="sm" disabled={emailChanging} onClick={handleEmailChange}>확인</Button>
-                        <Button size="sm" variant="outline" onClick={() => setEmailChangeMode(false)}>취소</Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Input value={user?.email ?? authProfile?.email ?? ""} readOnly className="bg-muted flex-1" />
-                        <Button size="sm" variant="outline" onClick={() => { setNewEmail(""); setEmailChangeMode(true) }}>변경</Button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="birthDate">생년월일</Label>
                     <Input id="birthDate" type="date" value={formData.birthDate} onChange={e => setFormData(p => ({ ...p, birthDate: e.target.value }))} />
                   </div>
@@ -745,9 +712,19 @@ export default function MyPage() {
                       )}
                     </div>
                   </div>
-                  <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-                    <Label>이메일</Label>
-                    <Input value={user?.email ?? ""} disabled className="bg-muted/30" />
+                  <div className="space-y-2">
+                    <Label>계정 이메일</Label>
+                    <Input value={user?.email ?? ""} readOnly className="bg-muted/30" placeholder="계정 이메일" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactEmail">지원 이메일</Label>
+                    <Input
+                      id="contactEmail"
+                      value={formData.contactEmail}
+                      onChange={e => setFormData(p => ({ ...p, contactEmail: e.target.value }))}
+                      type="email"
+                      placeholder="에이전시 지원 시 사용할 이메일"
+                    />
                   </div>
                 </div>
 

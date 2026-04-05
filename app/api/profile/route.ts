@@ -22,6 +22,7 @@ export async function GET() {
 
   return NextResponse.json({
     ...profile,
+    email: profile?.email ?? user.email ?? null,
     membership_expires_at: membership?.expires_at ?? null,
     membership_auto_renew: membership?.auto_renew ?? false,
     membership_is_active: !!membership,
