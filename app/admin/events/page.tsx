@@ -80,12 +80,12 @@ const resultColors: Record<string, string> = {
 
 const resultOptions = ["검토중", "다음기회에", "합격"]
 
-async function uploadEventImage(file: File, eventId: string): Promise<string | null> {
+async function uploadEventImage(file: File, eventId: string): Promise<string> {
   const supabase = createClient()
   const ext = file.name.split(".").pop()
   const path = `${eventId}/${Date.now()}.${ext}`
   const { error } = await supabase.storage.from("event-images").upload(path, file, { upsert: true })
-  if (error) return null
+  if (error) throw new Error(`이미지 업로드 실패: ${error.message}`)
   const { data } = supabase.storage.from("event-images").getPublicUrl(path)
   return data.publicUrl
 }
@@ -215,18 +215,24 @@ export default function AdminEventsPage() {
     setSaving(true); setError(null)
     const supabase = createClient()
     let imageUrl: string | null = editingEvent?.image_url ?? null
-    if (imageFile) {
-      const eventId = editingEvent?.id ?? String(Date.now())
       const uploaded = await uploadEventImage(imageFile, eventId)
-      if (uploaded) imageUrl = uploaded
+    try {
+      if (imageFile) {
+        const eventId = editingEvent?.id ?? String(Date.now())
+        imageUrl = await uploadEventImage(imageFile, eventId)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "이미지 업로드 실패")
+      setSaving(false)
+      return
     }
     const payload = { title: form.title, type: form.type, status: form.status, description: form.description || null, director: form.director || null, project_name: form.project_name || null, location: form.location || null, event_time: form.event_time || null, deadline: form.deadline || null, is_member_only: form.is_member_only, image_url: imageUrl }
     if (editingEvent) {
       const { error } = await supabase.from("events").update(payload).eq("id", editingEvent.id)
-      if (error) setError(error.message)
+      if (error) { setError(error.message); setSaving(false); return }
     } else {
       const { error } = await supabase.from("events").insert(payload)
-      if (error) setError(error.message)
+      if (error) { setError(error.message); setSaving(false); return }
     }
     await fetchEvents(); setDialogOpen(false); setSaving(false)
   }
