@@ -14,25 +14,16 @@ async function requireAdmin() {
   return user
 }
 
-export async function POST(request: Request) {
+// Signed Upload URL 발급 (클라이언트가 직접 Supabase에 업로드)
+export async function GET() {
   const user = await requireAdmin()
   if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
 
-  const formData = await request.formData()
-  const file = formData.get("file") as File | null
-  if (!file) return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 })
-  if (!file.name.endsWith(".pptx")) return NextResponse.json({ error: ".pptx 파일만 업로드할 수 있습니다." }, { status: 400 })
-
-  const buffer = Buffer.from(await file.arrayBuffer())
   const serviceClient = createServiceClient()
-
-  const { error } = await serviceClient.storage
+  const { data, error } = await serviceClient.storage
     .from(BUCKET)
-    .upload(FILE_NAME, buffer, {
-      contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      upsert: true,
-    })
+    .createSignedUploadUrl(FILE_NAME)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  if (error || !data) return NextResponse.json({ error: error?.message ?? "URL 발급 실패" }, { status: 500 })
+  return NextResponse.json({ signedUrl: data.signedUrl, token: data.token })
 }

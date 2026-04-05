@@ -58,18 +58,32 @@ export default function AdminTemplatePage() {
       return
     }
     setUploading(true)
-    const formData = new FormData()
-    formData.append("file", selectedFile)
-    const res = await fetch("/api/admin/template", { method: "POST", body: formData })
-    setUploading(false)
-    if (!res.ok) {
-      const err = await res.json()
-      toast({ title: "업로드 실패", description: err.error, variant: "destructive" })
-    } else {
+    try {
+      // 1. 서버에서 signed upload URL 발급
+      const signRes = await fetch("/api/admin/template")
+      if (!signRes.ok) {
+        const err = await signRes.json()
+        toast({ title: "업로드 실패", description: err.error, variant: "destructive" })
+        return
+      }
+      const { signedUrl } = await signRes.json()
+
+      // 2. 클라이언트에서 Supabase Storage에 직접 업로드
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+        body: selectedFile,
+      })
+      if (!uploadRes.ok) {
+        toast({ title: "업로드 실패", description: "파일 업로드 중 오류가 발생했습니다.", variant: "destructive" })
+        return
+      }
       toast({ title: "업로드 성공", description: "프로필 양식이 업데이트되었습니다." })
       setSelectedFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
       window.location.reload()
+    } finally {
+      setUploading(false)
     }
   }
 
