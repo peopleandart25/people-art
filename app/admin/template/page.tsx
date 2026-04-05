@@ -71,7 +71,10 @@ export default function AdminTemplatePage() {
       // 2. 클라이언트에서 Supabase Storage에 직접 업로드
       const uploadRes = await fetch(signedUrl, {
         method: "PUT",
-        headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          "x-upsert": "true",
+        },
         body: selectedFile,
       })
       if (!uploadRes.ok) {
