@@ -231,11 +231,14 @@ export default function AdminEventsPage() {
       return
     }
     const payload = { title: form.title, type: form.type, status: form.status, description: form.description || null, director: form.director || null, project_name: form.project_name || null, location: form.location || null, event_time: form.event_time || null, deadline: form.deadline || null, is_member_only: form.is_member_only, image_url: imageUrl }
+    console.log("[handleSave] payload.image_url:", payload.image_url)
     if (editingEvent) {
-      const { error } = await supabase.from("events").update(payload).eq("id", editingEvent.id)
+      const { data, error } = await supabase.from("events").update(payload).eq("id", editingEvent.id).select("image_url")
+      console.log("[handleSave] update result:", { data, error })
       if (error) { setError(error.message); setSaving(false); return }
     } else {
-      const { error } = await supabase.from("events").insert(payload)
+      const { data, error } = await supabase.from("events").insert(payload).select("image_url")
+      console.log("[handleSave] insert result:", { data, error })
       if (error) { setError(error.message); setSaving(false); return }
     }
     await fetchEvents(); setDialogOpen(false); setSaving(false)
