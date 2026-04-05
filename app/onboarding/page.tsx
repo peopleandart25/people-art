@@ -188,6 +188,7 @@ export default function OnboardingPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractionProgress, setExtractionProgress] = useState(0)
+  const [isCompleting, setIsCompleting] = useState(false)
 
   // 추출된 데이터
   const [formData, setFormData] = useState({
@@ -420,6 +421,8 @@ export default function OnboardingPage() {
   }
 
   const handleComplete = async () => {
+    if (isCompleting) return
+    setIsCompleting(true)
     // 경력 데이터를 careerList 형식으로 변환
     const careerList = formData.career
       .filter(c => c.title.trim() !== "")
@@ -477,10 +480,12 @@ export default function OnboardingPage() {
       if (!res.ok) {
         const err = await res.json()
         toast({ title: "저장 실패", description: err.error ?? "잠시 후 다시 시도해주세요.", variant: "destructive" })
+        setIsCompleting(false)
         return
       }
     } catch {
       toast({ title: "저장 실패", description: "네트워크 오류가 발생했습니다.", variant: "destructive" })
+      setIsCompleting(false)
       return
     }
 
@@ -505,7 +510,7 @@ export default function OnboardingPage() {
       title: "회원가입 완료",
       description: "피플앤아트에 오신 것을 환영합니다!",
     })
-    router.push("/")
+    window.location.href = "/"
   }
 
   // 채널명에서 카테고리 추론
@@ -583,6 +588,15 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* 가입 완료 로딩 오버레이 */}
+      {isCompleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="flex flex-col items-center gap-3 text-white">
+            <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium">가입 정보를 저장하는 중...</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card border-b border-border">
         <div className="mx-auto max-w-7xl px-4 py-4 flex items-center gap-4">
@@ -1168,10 +1182,10 @@ export default function OnboardingPage() {
                   </Button>
                   <Button
                     onClick={handleComplete}
-                    disabled={!canComplete}
+                    disabled={!canComplete || isCompleting}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                   >
-                    가입 완료
+                    {isCompleting ? "저장 중..." : "가입 완료"}
                     <CheckCircle2 className="h-4 w-4 ml-2" />
                   </Button>
                 </div>

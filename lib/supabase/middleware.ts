@@ -50,7 +50,7 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (!profile || profile.role !== 'admin') {
+    if (!profile || !['admin', 'sub_admin'].includes(profile.role)) {
       return NextResponse.redirect(new URL('/', 'https://people-art.co.kr'))
     }
   }

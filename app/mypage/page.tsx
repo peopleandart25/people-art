@@ -493,7 +493,7 @@ export default function MyPage() {
                 <div className="h-px bg-border my-1" />
                 <p className="text-xs text-muted-foreground">멤버십</p>
                 <p className="text-sm font-medium text-foreground">
-                  {authProfile?.role === "admin" ? "관리자" : isPremium ? "멤버십 회원" : "일반 회원"}
+                  {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "sub_admin" ? "서브 관리자" : isPremium ? "멤버십 회원" : "일반 회원"}
                 </p>
                 {isPremium && (
                   <>
