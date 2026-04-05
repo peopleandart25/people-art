@@ -515,8 +515,10 @@ export default function MembershipPage() {
       })
 
       router.refresh()
-    } catch {
-      toast({ title: "결제 중 오류가 발생했습니다.", variant: "destructive" })
+    } catch (err) {
+      console.error("[결제 오류]", err)
+      const message = err instanceof Error ? err.message : String(err)
+      toast({ title: "결제 중 오류가 발생했습니다.", description: message, variant: "destructive" })
     } finally {
       setIsProcessing(false)
     }
