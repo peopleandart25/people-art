@@ -472,6 +472,7 @@ export default function MembershipPage() {
           storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
           channelKey: "channel-key-6cb34a6a-ff25-4297-a3ad-036bdadfd2aa",
           billingKeyMethod: "EASY_PAY",
+          issueName: "피플앤아트 멤버십",
           customer: {
             customerId: user.id,
             email: user.email ?? undefined,
