@@ -105,7 +105,6 @@ export default function AdminAgenciesPage() {
   const handleSubmit = async () => {
     if (!form.name.trim()) { toast({ title: "기관명을 입력해주세요.", variant: "destructive" }); return }
     setSubmitting(true)
-    const supabase = createClient()
     const payload = {
       name: form.name.trim(),
       category: form.category,
@@ -116,12 +115,12 @@ export default function AdminAgenciesPage() {
       is_active: form.is_active,
     }
     if (editTarget) {
-      const { error } = await supabase.from("support_agencies").update(payload).eq("id", editTarget.id)
-      if (error) { toast({ title: "수정 실패", variant: "destructive" }); setSubmitting(false); return }
+      const res = await fetch("/api/admin/agencies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editTarget.id, ...payload }) })
+      if (!res.ok) { toast({ title: "수정 실패", variant: "destructive" }); setSubmitting(false); return }
       toast({ title: "수정되었습니다." })
     } else {
-      const { error } = await supabase.from("support_agencies").insert(payload)
-      if (error) { toast({ title: "추가 실패", variant: "destructive" }); setSubmitting(false); return }
+      const res = await fetch("/api/admin/agencies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      if (!res.ok) { toast({ title: "추가 실패", variant: "destructive" }); setSubmitting(false); return }
       toast({ title: "추가되었습니다." })
     }
     setIsDialogOpen(false)
@@ -131,15 +130,14 @@ export default function AdminAgenciesPage() {
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`"${name}"을(를) 삭제하시겠습니까?`)) return
-    const supabase = createClient()
-    await supabase.from("support_agencies").delete().eq("id", id)
+    const res = await fetch("/api/admin/agencies", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+    if (!res.ok) { toast({ title: "삭제 실패", variant: "destructive" }); return }
     toast({ title: "삭제되었습니다." })
     await fetchAgencies()
   }
 
   const toggleActive = async (agency: Agency) => {
-    const supabase = createClient()
-    await supabase.from("support_agencies").update({ is_active: !agency.is_active }).eq("id", agency.id)
+    await fetch("/api/admin/agencies", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: agency.id, is_active: !agency.is_active }) })
     await fetchAgencies()
   }
 

@@ -134,7 +134,6 @@ export default function AdminNewsPage() {
     if (!form.title.trim()) { setError("제목을 입력해주세요."); return }
     setSaving(true)
     setError(null)
-    const supabase = createClient()
 
     let imageUrl: string | null | undefined = undefined
     if (newsImageFile) {
@@ -160,12 +159,16 @@ export default function AdminNewsPage() {
 
     if (imageUrl !== undefined) payload.image_url = imageUrl
 
-    if (editingNews) {
-      const { error } = await supabase.from("news").update(payload).eq("id", editingNews.id)
-      if (error) { setError(error.message); setSaving(false); return }
-    } else {
-      const { error } = await supabase.from("news").insert(payload)
-      if (error) { setError(error.message); setSaving(false); return }
+    const res = await fetch("/api/admin/news", {
+      method: editingNews ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingNews ? { id: editingNews.id, ...payload } : payload),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      setError(err.error ?? "저장 실패")
+      setSaving(false)
+      return
     }
 
     await fetchNews()
@@ -175,10 +178,17 @@ export default function AdminNewsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("이 뉴스를 삭제하시겠습니까?")) return
-    const supabase = createClient()
-    const { error } = await supabase.from("news").delete().eq("id", id)
-    if (error) setError(error.message)
-    else await fetchNews()
+    const res = await fetch("/api/admin/news", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      setError(err.error ?? "삭제 실패")
+      return
+    }
+    await fetchNews()
   }
 
   const updateForm = (key: keyof NewsForm, value: string | boolean) => {

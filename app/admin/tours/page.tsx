@@ -115,16 +115,15 @@ export default function AdminToursPage() {
     if (!form.title.trim()) { setError("제목을 입력해주세요."); return }
     setSaving(true)
     setError(null)
-    const supabase = createClient()
 
     const payload = { title: form.title, category: form.category || null, status: form.status }
 
     if (editingTour) {
-      const { error } = await supabase.from("tours").update(payload).eq("id", editingTour.id)
-      if (error) { setError(error.message); setSaving(false); return }
+      const res = await fetch("/api/admin/tours", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editingTour.id, ...payload }) })
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? "수정 실패"); setSaving(false); return }
     } else {
-      const { error } = await supabase.from("tours").insert(payload)
-      if (error) { setError(error.message); setSaving(false); return }
+      const res = await fetch("/api/admin/tours", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? "추가 실패"); setSaving(false); return }
     }
 
     await fetchTours()
@@ -134,9 +133,8 @@ export default function AdminToursPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("이 투어를 삭제하시겠습니까?")) return
-    const supabase = createClient()
-    const { error } = await supabase.from("tours").delete().eq("id", id)
-    if (error) setError(error.message)
+    const res = await fetch("/api/admin/tours", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? "삭제 실패") }
     else await fetchTours()
   }
 

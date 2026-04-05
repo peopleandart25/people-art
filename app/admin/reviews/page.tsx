@@ -73,10 +73,10 @@ export default function AdminReviewsPage() {
 
   async function handleToggleHidden(review: Review) {
     setTogglingId(review.id)
-    const supabase = createClient()
-    const { error } = await supabase.from("reviews").update({ is_hidden: !review.is_hidden }).eq("id", review.id)
-    if (error) {
-      setError(error.message)
+    const res = await fetch("/api/admin/reviews", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: review.id, is_hidden: !review.is_hidden }) })
+    if (!res.ok) {
+      const d = await res.json()
+      setError(d.error ?? "처리 실패")
     } else {
       setReviews((prev) => prev.map((r) => r.id === review.id ? { ...r, is_hidden: !r.is_hidden } : r))
     }

@@ -118,11 +118,15 @@ export default function AdminTemplatePage() {
       {/* 미리보기 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-base font-semibold text-gray-700 mb-4">미리보기</h2>
-        <iframe
-          src={PREVIEW_URL}
-          className="w-full h-[600px] rounded-lg border border-gray-200"
-          title="프로필 양식 미리보기"
-        />
+        {fileInfo ? (
+          <iframe
+            src={PREVIEW_URL}
+            className="w-full h-[600px] rounded-lg border border-gray-200"
+            title="프로필 양식 미리보기"
+          />
+        ) : (
+          <p className="text-sm text-gray-400">업로드된 파일이 없습니다. 먼저 양식 파일을 업로드해주세요.</p>
+        )}
       </div>
 
       {/* 업로드 섹션 */}

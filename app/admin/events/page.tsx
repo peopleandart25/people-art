@@ -218,7 +218,6 @@ export default function AdminEventsPage() {
   async function handleSave() {
     if (!form.title.trim()) { setError("제목을 입력해주세요."); return }
     setSaving(true); setError(null)
-    const supabase = createClient()
     let imageUrl: string | null = editingEvent?.image_url ?? null
     try {
       if (imageFile) {
@@ -231,25 +230,35 @@ export default function AdminEventsPage() {
       return
     }
     const payload = { title: form.title, type: form.type, status: form.status, description: form.description || null, director: form.director || null, project_name: form.project_name || null, location: form.location || null, event_time: form.event_time || null, deadline: form.deadline || null, is_member_only: form.is_member_only, image_url: imageUrl }
-    console.log("[handleSave] payload.image_url:", payload.image_url)
-    if (editingEvent) {
-      const { data, error } = await supabase.from("events").update(payload).eq("id", editingEvent.id).select("image_url")
-      console.log("[handleSave] update result:", { data, error })
-      if (error) { setError(error.message); setSaving(false); return }
-    } else {
-      const { data, error } = await supabase.from("events").insert(payload).select("image_url")
-      console.log("[handleSave] insert result:", { data, error })
-      if (error) { setError(error.message); setSaving(false); return }
+
+    const res = await fetch("/api/admin/events", {
+      method: editingEvent ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingEvent ? { id: editingEvent.id, ...payload } : payload),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      setError(err.error ?? "저장 실패")
+      setSaving(false)
+      return
     }
     await fetchEvents(); setDialogOpen(false); setSaving(false)
   }
 
   async function handleDelete(id: string) {
     if (!confirm("이 이벤트를 삭제하시겠습니까?")) return
-    const supabase = createClient()
-    const { error } = await supabase.from("events").delete().eq("id", id)
-    if (error) setError(error.message)
-    else { if (expandedEventId === id) setExpandedEventId(null); await fetchEvents() }
+    const res = await fetch("/api/admin/events", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      setError(err.error ?? "삭제 실패")
+      return
+    }
+    if (expandedEventId === id) setExpandedEventId(null)
+    await fetchEvents()
   }
 
   const updateForm = (key: keyof EventForm, value: string | boolean) => setForm((prev) => ({ ...prev, [key]: value }))

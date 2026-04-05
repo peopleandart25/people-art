@@ -118,7 +118,7 @@ export default function AdminBannersPage() {
   }
 
   async function uploadImage(file: File): Promise<string> {
-    const supabase = createClient()
+    const supabase = createClient() // Storage 직접 접근 (RLS 허용)
     const ext = file.name.split(".").pop()
     const path = `${Date.now()}.${ext}`
     const { error } = await supabase.storage.from("banners").upload(path, file, { upsert: true })
@@ -132,17 +132,16 @@ export default function AdminBannersPage() {
     if (!editingBanner && !imageFile) { setError("이미지를 선택해주세요."); return }
     setSaving(true)
     setError(null)
-    const supabase = createClient()
     try {
       let image_url = editingBanner?.image_url ?? ""
       if (imageFile) image_url = await uploadImage(imageFile)
       const payload = { title: form.title, image_url, link_url: form.link_url || null, sort_order: form.sort_order, is_active: form.is_active }
       if (editingBanner) {
-        const { error } = await supabase.from("banners").update(payload).eq("id", editingBanner.id)
-        if (error) throw new Error(error.message)
+        const res = await fetch("/api/admin/banners", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editingBanner.id, ...payload }) })
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "수정 실패") }
       } else {
-        const { error } = await supabase.from("banners").insert(payload)
-        if (error) throw new Error(error.message)
+        const res = await fetch("/api/admin/banners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "추가 실패") }
       }
       await fetchBanners()
       setDialogOpen(false)
@@ -155,9 +154,8 @@ export default function AdminBannersPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("이 배너를 삭제하시겠습니까?")) return
-    const supabase = createClient()
-    const { error } = await supabase.from("banners").delete().eq("id", id)
-    if (error) setError(error.message)
+    const res = await fetch("/api/admin/banners", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? "삭제 실패") }
     else await fetchBanners()
   }
 

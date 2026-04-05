@@ -135,7 +135,6 @@ export default function AdminPartnersPage() {
     if (!form.name.trim()) { setError("이름을 입력해주세요."); return }
     setSaving(true)
     setError(null)
-    const supabase = createClient()
 
     let imageUrl: string | null | undefined = undefined
     if (partnerLogoFile) {
@@ -161,11 +160,11 @@ export default function AdminPartnersPage() {
     else if (!editingPartner) payload.image_url = form.image_url || null
 
     if (editingPartner) {
-      const { error } = await supabase.from("partners").update(payload).eq("id", editingPartner.id)
-      if (error) { setError(error.message); setSaving(false); return }
+      const res = await fetch("/api/admin/partners", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editingPartner.id, ...payload }) })
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? "수정 실패"); setSaving(false); return }
     } else {
-      const { error } = await supabase.from("partners").insert(payload)
-      if (error) { setError(error.message); setSaving(false); return }
+      const res = await fetch("/api/admin/partners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? "추가 실패"); setSaving(false); return }
     }
 
     await fetchPartners()
@@ -175,9 +174,8 @@ export default function AdminPartnersPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("이 파트너를 삭제하시겠습니까?")) return
-    const supabase = createClient()
-    const { error } = await supabase.from("partners").delete().eq("id", id)
-    if (error) setError(error.message)
+    const res = await fetch("/api/admin/partners", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? "삭제 실패") }
     else await fetchPartners()
   }
 
