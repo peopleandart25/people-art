@@ -22,7 +22,7 @@ export async function GET() {
   const serviceClient = createServiceClient()
   const { data, error } = await serviceClient.storage
     .from(BUCKET)
-    .createSignedUploadUrl(FILE_NAME)
+    .createSignedUploadUrl(FILE_NAME, { upsert: true })
 
   if (error || !data) return NextResponse.json({ error: error?.message ?? "URL 발급 실패" }, { status: 500 })
   return NextResponse.json({ signedUrl: data.signedUrl, token: data.token })
