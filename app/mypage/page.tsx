@@ -413,6 +413,23 @@ export default function MyPage() {
         </div>
       </div>
 
+      {/* 온보딩 미완료 안내 배너 */}
+      {!profileLoading && !fullProfile.artistProfile && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-amber-800">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p className="text-sm font-medium">프로필 정보가 등록되지 않았습니다. 서비스를 이용하려면 프로필을 먼저 등록해주세요.</p>
+            </div>
+            <Link href="/onboarding">
+              <Button size="sm" className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white border-0">
+                프로필 등록하기
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 이벤트 지원 결과 + 프로필 지원 내역 — 상단 고정 */}
       <div className="container mx-auto px-4 pt-8 pb-2">
         <div className="grid gap-4 lg:grid-cols-2">

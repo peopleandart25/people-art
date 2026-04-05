@@ -28,13 +28,14 @@ export async function POST(request: Request) {
     }
   }
 
-  // 1. profiles 기본 정보 업데이트
+  // 1. profiles 기본 정보 업데이트 + 온보딩 완료 시 status '활성'으로 변경
   const { error: profileError } = await serviceClient
     .from("profiles")
     .update({
       name: name || null,
       phone: phone || null,
       email: email || null,
+      status: "활성",
       updated_at: new Date().toISOString(),
     })
     .eq("id", user.id)

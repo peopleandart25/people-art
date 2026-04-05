@@ -65,11 +65,12 @@ type SupportHistory = {
 
 // ─── 상수 ───────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = ["전체", "활성", "정지", "탈퇴"] as const
+const STATUS_OPTIONS = ["전체", "활성", "비활성", "정지", "탈퇴"] as const
 const MEMBERSHIP_OPTIONS = ["전체", "활성", "비활성"] as const
 
 const STATUS_BADGE: Record<string, string> = {
   활성: "bg-green-100 text-green-700 border-green-200",
+  비활성: "bg-yellow-100 text-yellow-700 border-yellow-200",
   탈퇴: "bg-red-100 text-red-700 border-red-200",
   정지: "bg-gray-100 text-gray-600 border-gray-200",
 }

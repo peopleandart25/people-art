@@ -17,13 +17,26 @@ function formatToNational(phone: string): string {
 }
 
 export async function POST(request: Request) {
-  const { phone } = await request.json()
+  const { phone, checkDuplicate } = await request.json()
   if (!phone) return NextResponse.json({ error: "전화번호가 필요합니다." }, { status: 400 })
+
+  const serviceClient = createServiceClient()
+
+  // 이미 가입된 번호인지 확인 (온보딩 시에만)
+  if (checkDuplicate !== false) {
+    const { data: existing } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("phone", phone)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json({ error: "이미 가입된 휴대폰 번호입니다.", code: "phone_already_exists" }, { status: 409 })
+    }
+  }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
-
-  const serviceClient = createServiceClient()
   const { error: dbError } = await serviceClient
     .from("phone_verifications")
     .upsert({ phone, otp, expires_at: expiresAt }, { onConflict: "phone" })

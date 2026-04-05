@@ -218,6 +218,7 @@ export default function OnboardingPage() {
 
   // 휴대폰 OTP 인증
   const [phoneOtpSent, setPhoneOtpSent] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [phoneOtp, setPhoneOtp] = useState("")
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [phoneVerifying, setPhoneVerifying] = useState(false)
@@ -549,6 +550,7 @@ export default function OnboardingPage() {
   const handleSendPhoneOtp = async () => {
     if (!formData.phone) return
     setPhoneVerifying(true)
+    setPhoneError(null)
     const res = await fetch("/api/sms/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -556,7 +558,11 @@ export default function OnboardingPage() {
     })
     if (!res.ok) {
       const err = await res.json()
-      toast({ title: "인증번호 발송 실패", description: err.error ?? "잠시 후 다시 시도해주세요.", variant: "destructive" })
+      if (err.code === "phone_already_exists") {
+        setPhoneError("이미 가입된 휴대폰 번호입니다.")
+      } else {
+        toast({ title: "인증번호 발송 실패", description: err.error ?? "잠시 후 다시 시도해주세요.", variant: "destructive" })
+      }
     } else {
       setPhoneOtpSent(true)
       toast({ title: "인증번호 발송", description: "휴대폰으로 인증번호가 발송되었습니다." })
@@ -867,6 +873,7 @@ export default function OnboardingPage() {
                               setFormData((prev) => ({ ...prev, phone: e.target.value }))
                               setPhoneVerified(false)
                               setPhoneOtpSent(false)
+                              setPhoneError(null)
                             }}
                             placeholder="010-1234-5678"
                             className="pl-10"
@@ -880,6 +887,11 @@ export default function OnboardingPage() {
                         )}
                         {phoneVerified && <span className="flex items-center text-green-600 text-sm shrink-0 gap-1"><Check className="h-4 w-4" />인증완료</span>}
                       </div>
+                      {phoneError && (
+                        <p className="text-sm text-red-500 flex items-center gap-1">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />{phoneError}
+                        </p>
+                      )}
                       {phoneOtpSent && !phoneVerified && (
                         <div className="flex gap-2">
                           <Input
