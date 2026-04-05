@@ -21,6 +21,7 @@ import {
   FileText,
   Image,
   Settings,
+  Home,
 } from "lucide-react"
 
 const menuItems = [
@@ -139,6 +140,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Badge className="bg-orange-500 text-white text-xs border-0">관리자</Badge>
             </div>
           )}
+          <Link href="/" title={isCollapsed ? "사용자 패널" : undefined}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`${isCollapsed ? "w-9 h-9 p-0" : "w-full text-xs"} text-gray-300 border-gray-600 hover:bg-gray-800 hover:text-white bg-transparent`}
+            >
+              <Home className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span className="ml-1">사용자 패널</span>}
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
