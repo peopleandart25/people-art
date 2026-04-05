@@ -387,6 +387,8 @@ export default function MyPage() {
                 <h1 className="text-xl font-bold text-foreground">마이페이지</h1>
                 {authProfile?.role === "admin" ? (
                   <Badge className="bg-red-500 text-white gap-1 border-0 hover:bg-red-500"><Shield className="h-3 w-3" />관리자</Badge>
+                ) : authProfile?.role === "sub_admin" ? (
+                  <Badge className="bg-amber-500 text-white gap-1 border-0 hover:bg-amber-500"><Shield className="h-3 w-3" />서브관리자</Badge>
                 ) : isPremium ? (
                   <Badge className="gold-badge gap-1"><Crown className="h-3 w-3" />멤버십</Badge>
                 ) : (
@@ -395,7 +397,7 @@ export default function MyPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {authProfile?.role === "admin" && (
+              {(authProfile?.role === "admin" || authProfile?.role === "sub_admin") && (
                 <Link href="/admin">
                   <Button variant="outline" size="sm" className="gap-2">
                     <Shield className="h-4 w-4" />관리자 패널
