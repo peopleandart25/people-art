@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,6 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { ChevronRight, Calendar, Crown, LogIn, UserPlus } from "lucide-react"
 import { useUser } from "@/contexts/user-context"
-import { createClient } from "@/lib/supabase/client"
 
 type Event = {
   id: string
@@ -19,25 +18,12 @@ type Event = {
   is_member_only: boolean | null
 }
 
-export function EventsSection() {
+export function EventsSection({ events = [] }: { events?: Event[] }) {
   const router = useRouter()
   const { status } = useUser()
-  const [events, setEvents] = useState<Event[]>([])
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("events")
-      .select("id, title, type, status, deadline, is_member_only")
-      .order("created_at", { ascending: false })
-      .limit(6)
-      .then(({ data }) => {
-        if (data) setEvents(data)
-      })
-  }, [])
 
   const handleApply = (event: Event) => {
     setSelectedEvent(event)

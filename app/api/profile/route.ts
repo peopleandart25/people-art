@@ -20,11 +20,14 @@ export async function GET() {
       .maybeSingle(),
   ])
 
-  return NextResponse.json({
-    ...profile,
-    email: profile?.email ?? user.email ?? null,
-    membership_expires_at: membership?.expires_at ?? null,
-    membership_auto_renew: membership?.auto_renew ?? false,
-    membership_is_active: !!membership,
-  })
+  return NextResponse.json(
+    {
+      ...profile,
+      email: profile?.email ?? user.email ?? null,
+      membership_expires_at: membership?.expires_at ?? null,
+      membership_auto_renew: membership?.auto_renew ?? false,
+      membership_is_active: !!membership,
+    },
+    { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
+  )
 }

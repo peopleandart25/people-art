@@ -450,6 +450,12 @@ export default function ArtistsPage() {
   const { toast } = useToast()
 
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [inputValue, setInputValue] = useState(searchQuery)
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(inputValue), 300)
+    return () => clearTimeout(t)
+  }, [inputValue, setSearchQuery])
 
   // Guest 상태에서 아티스트 상세 페이지 접근 차단
   const handleArtistClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -481,16 +487,16 @@ export default function ArtistsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="이름, 특기, 외국어로 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
                 className="pl-10 h-12 text-base"
               />
-              {searchQuery && (
+              {inputValue && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => { setInputValue(""); setSearchQuery("") }}
                 >
                   <X className="h-4 w-4" />
                 </Button>

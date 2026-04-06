@@ -11,21 +11,13 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
-import { useArtistsSafe } from "@/contexts/artist-context"
 import { useUserSafe, isLoggedIn as checkLoggedIn } from "@/contexts/user-context"
 import { useToast } from "@/hooks/use-toast"
 
-/**
- * 아티스트 자동 무한 슬라이더 컴포넌트
- * 
- * 특징:
- * - PC: 6개, 태블릿: 4개, 모바일: 2개 표시
- * - Autoplay + 무한 루프
- * - 클릭 시 아티스트 상세 페이지로 이동
- */
-export function ArtistSlider() {
+type SliderArtist = { id: string; name: string; profileImage: string | null }
+
+export function ArtistSlider({ artists = [] }: { artists?: SliderArtist[] }) {
   const router = useRouter()
-  const { artists } = useArtistsSafe()
   const { status } = useUserSafe()
   const { toast } = useToast()
   const [isMounted, setIsMounted] = useState(false)
@@ -36,7 +28,6 @@ export function ArtistSlider() {
 
   const isLoggedIn = isMounted && checkLoggedIn(status)
 
-  // Guest 상태에서 아티스트 상세 페이지 접근 차단
   const handleArtistClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isLoggedIn) {
       e.preventDefault()
@@ -49,11 +40,7 @@ export function ArtistSlider() {
     }
   }
 
-  // 공개된 아티스트만 필터링
-  const publicArtists = artists.filter((artist) => artist.isPublic)
-
-  // 아티스트가 없거나 마운트 전이면 렌더링하지 않음
-  if (!isMounted || publicArtists.length === 0) {
+  if (!isMounted || artists.length === 0) {
     return null
   }
 
@@ -98,7 +85,7 @@ export function ArtistSlider() {
           className="w-full"
         >
           <CarouselContent className="-ml-2 md:-ml-4">
-            {publicArtists.map((artist) => (
+            {artists.map((artist) => (
               <CarouselItem
                 key={artist.id}
                 className="pl-2 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6"

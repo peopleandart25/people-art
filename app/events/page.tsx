@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Calendar, ChevronRight, Crown, LogIn, UserPlus, Ticket } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight, Crown, LogIn, UserPlus, Ticket } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/use-auth"
 import type { Database } from "@/lib/supabase/types"
@@ -22,26 +22,31 @@ export default function EventsPage() {
   const { isLoggedIn } = useAuth()
 
   const [events, setEvents] = useState<EventRow[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
     const fetchEvents = async () => {
+      setLoading(true)
       const supabase = createClient()
-      const { data } = await supabase
+      const from = (currentPage - 1) * ITEMS_PER_PAGE
+      const to = from + ITEMS_PER_PAGE - 1
+      const { data, count } = await supabase
         .from("events")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
+        .range(from, to)
       setEvents(data ?? [])
+      setTotalCount(count ?? 0)
       setLoading(false)
     }
     fetchEvents()
-  }, [])
+  }, [currentPage])
 
-  const totalPages = Math.ceil(events.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const currentItems = events.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+  const currentItems = events
 
   const handleEventClick = (e: React.MouseEvent) => {
     if (!isLoggedIn) {
@@ -51,9 +56,11 @@ export default function EventsPage() {
   }
 
   const getPageNumbers = () => {
-    const pages: number[] = []
-    for (let i = 1; i <= totalPages; i++) pages.push(i)
-    return pages
+    const maxVisible = 5
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2))
+    const end = Math.min(totalPages, start + maxVisible - 1)
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1)
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
   }
 
   if (loading) {
@@ -161,6 +168,13 @@ export default function EventsPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-1 mt-12">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="min-w-[36px] h-9 px-2 text-sm font-medium rounded transition-colors disabled:opacity-30 text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
                 {getPageNumbers().map((pageNum) => (
                   <button
                     key={pageNum}
@@ -174,6 +188,13 @@ export default function EventsPage() {
                     {pageNum}
                   </button>
                 ))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="min-w-[36px] h-9 px-2 text-sm font-medium rounded transition-colors disabled:opacity-30 text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
             )}
           </>

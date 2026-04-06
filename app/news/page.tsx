@@ -14,26 +14,31 @@ const ITEMS_PER_PAGE = 8
 
 export default function NewsListPage() {
   const [news, setNews] = useState<NewsRow[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     const fetchNews = async () => {
+      setLoading(true)
       const supabase = createClient()
-      const { data } = await supabase
+      const from = (currentPage - 1) * ITEMS_PER_PAGE
+      const to = from + ITEMS_PER_PAGE - 1
+      const { data, count } = await supabase
         .from("news")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("is_published", true)
         .order("published_at", { ascending: false })
+        .range(from, to)
       setNews(data ?? [])
+      setTotalCount(count ?? 0)
       setLoading(false)
     }
     fetchNews()
-  }, [])
+  }, [currentPage])
 
-  const totalPages = Math.ceil(news.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const currentItems = news.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+  const currentItems = news
 
   const getPageNumbers = () => {
     const maxVisible = 10

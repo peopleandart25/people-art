@@ -8,7 +8,6 @@ import { ChevronRight, ChevronLeft, Newspaper } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useEmblaCarousel from "embla-carousel-react"
 import Autoplay from "embla-carousel-autoplay"
-import { createClient } from "@/lib/supabase/client"
 
 type NewsItem = {
   id: string
@@ -17,23 +16,9 @@ type NewsItem = {
   published_at: string | null
 }
 
-export function NewsSection() {
+export function NewsSection({ newsItems = [] }: { newsItems?: NewsItem[] }) {
   const [isPaused, setIsPaused] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [newsItems, setNewsItems] = useState<NewsItem[]>([])
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("news")
-      .select("id, title, image_url, published_at")
-      .eq("is_published", true)
-      .order("published_at", { ascending: false })
-      .limit(12)
-      .then(({ data }) => {
-        if (data) setNewsItems(data)
-      })
-  }, [])
 
   const autoplayPlugin = Autoplay({
     delay: 3500,

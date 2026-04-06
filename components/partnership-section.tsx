@@ -8,7 +8,6 @@ import { ChevronRight, ChevronLeft, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useEmblaCarousel from "embla-carousel-react"
 import Autoplay from "embla-carousel-autoplay"
-import { createClient } from "@/lib/supabase/client"
 
 type Partner = {
   id: string
@@ -18,21 +17,8 @@ type Partner = {
   link: string | null
 }
 
-export function PartnershipSection() {
+export function PartnershipSection({ partners = [] }: { partners?: Partner[] }) {
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [partners, setPartners] = useState<Partner[]>([])
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("partners")
-      .select("id, name, description, image_url, link")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .then(({ data }) => {
-        if (data) setPartners(data)
-      })
-  }, [])
 
   const autoplayPlugin = Autoplay({
     delay: 4000,

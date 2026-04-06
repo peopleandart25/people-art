@@ -118,18 +118,15 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
         { data: careers },
         { data: videoAssets },
         { data: statusTagJoins },
-        { data: allTags },
       ] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", ap.user_id).single(),
         supabase.from("artist_photos").select("url, is_main, sort_order").eq("user_id", ap.user_id).order("sort_order"),
         supabase.from("career_items").select("id, category, year, title, role, sort_order").eq("user_id", ap.user_id).order("sort_order"),
         supabase.from("video_assets").select("id, type, name, url, platform, sort_order").eq("user_id", ap.user_id).order("sort_order"),
-        supabase.from("artist_status_tags").select("tag_id").eq("artist_id", ap.id),
-        supabase.from("status_tags").select("id, name"),
+        supabase.from("artist_status_tags").select("tag_id, status_tags(name)").eq("artist_id", ap.id),
       ])
 
-      const tagMap = new Map((allTags ?? []).map(t => [t.id, t.name as string]))
-      const tags = (statusTagJoins ?? []).map(j => tagMap.get(j.tag_id)).filter(Boolean) as string[]
+      const tags = (statusTagJoins ?? []).map(j => (j.status_tags as { name: string } | null)?.name).filter(Boolean) as string[]
 
       const mainPhoto = (photos ?? []).find(p => p.is_main)
       const subPhotos = (photos ?? []).filter(p => !p.is_main).map(p => p.url)

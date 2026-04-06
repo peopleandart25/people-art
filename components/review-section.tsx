@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { ChevronRight } from "lucide-react"
 import { ReviewTable } from "@/components/review-table"
 import { Review, toReview, maskAuthorId, categoryColors } from "@/contexts/review-context"
@@ -14,25 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
 
-export function ReviewSection() {
-  const [reviews, setReviews] = useState<Review[]>([])
+export function ReviewSection({ rawReviews = [] }: { rawReviews?: Record<string, unknown>[] }) {
+  const reviews = rawReviews.map(toReview)
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
-
-  useEffect(() => {
-    const fetchReviews = async () => {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from("reviews")
-        .select("*")
-        .eq("is_hidden", false)
-        .order("created_at", { ascending: false })
-        .limit(5)
-      setReviews((data ?? []).map(toReview))
-    }
-    fetchReviews()
-  }, [])
 
   return (
     <section id="review" className="py-16 lg:py-24 bg-muted/30">

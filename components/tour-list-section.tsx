@@ -1,10 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, Film, Tv, Sparkles } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 type Tour = {
   id: string
@@ -20,21 +18,7 @@ function isNew(createdAt: string | null): boolean {
   return diffMs < 7 * 24 * 60 * 60 * 1000
 }
 
-export function TourListSection() {
-  const [tours, setTours] = useState<Tour[]>([])
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("tours")
-      .select("id, title, category, status, created_at")
-      .order("created_at", { ascending: false })
-      .limit(6)
-      .then(({ data }) => {
-        if (data) setTours(data)
-      })
-  }, [])
-
+export function TourListSection({ tours = [] }: { tours?: Tour[] }) {
   if (tours.length === 0) return null
 
   return (
