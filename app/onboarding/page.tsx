@@ -234,7 +234,7 @@ export default function OnboardingPage() {
   }
 
   const canProceedToStep2 = !!(formData.name && formData.email && formData.phone && phoneVerified)
-  const canComplete = !!(canProceedToStep2 && formData.bio)
+  const canComplete = canProceedToStep2
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -568,7 +568,7 @@ export default function OnboardingPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="bio">자기소개 <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="bio">자기소개 <span className="text-muted-foreground text-xs font-normal">(선택)</span></Label>
                   <Textarea
                     id="bio"
                     value={formData.bio}
