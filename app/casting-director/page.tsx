@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +35,20 @@ import {
 } from "lucide-react"
 
 type ActiveView = "projects" | "register" | "bookmarks" | "profile"
+
+type BookmarkItem = {
+  id: string
+  created_at: string
+  artist_profile_id: string
+  artist_profiles: {
+    id: string
+    gender: string | null
+    birth_date: string | null
+    height: number | null
+    profiles: { name: string | null } | null
+    artist_photos: { url: string; is_main: boolean }[]
+  } | null
+}
 
 type Casting = {
   id: string
@@ -132,6 +148,8 @@ export default function CastingDirectorPage() {
 
   const [applicationsMap, setApplicationsMap] = useState<Record<string, Application[]>>({})
   const [loadingApps, setLoadingApps] = useState(false)
+  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   const fetchCastings = useCallback(async () => {
     setLoadingData(true)
@@ -171,11 +189,30 @@ export default function CastingDirectorPage() {
     }
   }, [loading, profile, router, fetchCastings])
 
+  const fetchBookmarks = useCallback(async () => {
+    setBookmarkLoading(true)
+    try {
+      const res = await fetch("/api/director/bookmarks")
+      const data = await res.json()
+      if (Array.isArray(data)) setBookmarks(data)
+    } catch {
+      setError("보관함을 불러오지 못했습니다.")
+    } finally {
+      setBookmarkLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (activeView === "profile") {
       router.push("/mypage")
     }
   }, [activeView, router])
+
+  useEffect(() => {
+    if (activeView === "bookmarks") {
+      fetchBookmarks()
+    }
+  }, [activeView, fetchBookmarks])
 
   useEffect(() => {
     if (selectedCastingId && !applicationsMap[selectedCastingId]) {
@@ -897,27 +934,88 @@ export default function CastingDirectorPage() {
         {/* ── bookmarks 뷰 ── */}
         {activeView === "bookmarks" && (
           <div className="px-6 py-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Bookmark className="w-5 h-5 text-purple-500" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Bookmark className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">나의 배우 보관함</h2>
+                  <p className="text-sm text-gray-500">관심 있는 배우들을 저장하고 관리하세요.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">나의 배우 보관함</h2>
-                <p className="text-sm text-gray-500">관심 있는 배우들을 저장하고 관리하세요.</p>
-              </div>
+              <span className="text-sm text-gray-400">{bookmarks.length}명 저장됨</span>
             </div>
 
-            <div className="mt-8 flex flex-col items-center justify-center py-24 text-gray-400 gap-4">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
-                <Bookmark className="w-8 h-8 opacity-40" />
+            {bookmarkLoading ? (
+              <div className="flex items-center justify-center py-24">
+                <div className="w-7 h-7 border-4 border-purple-400 border-t-transparent rounded-full animate-spin" />
               </div>
-              <div className="text-center">
-                <p className="text-base font-medium text-gray-500">보관함이 비어있습니다</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  배우 프로필에서 북마크 버튼을 눌러 저장해보세요
-                </p>
+            ) : bookmarks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
+                  <Bookmark className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-medium text-gray-500">보관함이 비어있습니다</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    배우 프로필에서 북마크 버튼을 눌러 저장해보세요
+                  </p>
+                </div>
+                <Link href="/artists">
+                  <Button variant="outline" size="sm" className="mt-2">배우 목록 보기</Button>
+                </Link>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {bookmarks.map((bm) => {
+                  const ap = bm.artist_profiles
+                  const name = ap?.profiles?.name ?? "-"
+                  const mainPhoto = ap?.artist_photos?.find(p => p.is_main)?.url
+                    ?? ap?.artist_photos?.[0]?.url ?? null
+                  const birthYear = ap?.birth_date ? new Date(ap.birth_date).getFullYear() : null
+                  const age = birthYear ? new Date().getFullYear() - birthYear : null
+
+                  return (
+                    <div key={bm.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      <Link href={`/artists/${bm.artist_profile_id}`}>
+                        <div className="aspect-[3/4] relative bg-gray-100">
+                          {mainPhoto ? (
+                            <Image src={mainPhoto} alt={name} fill className="object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Users className="w-10 h-10 text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <p className="font-semibold text-gray-900 text-sm truncate">{name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {[ap?.gender, age ? `${age}세` : null].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                      </Link>
+                      <div className="px-3 pb-3">
+                        <button
+                          onClick={async () => {
+                            const res = await fetch("/api/director/bookmarks", {
+                              method: "DELETE",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ artist_profile_id: bm.artist_profile_id }),
+                            })
+                            if (res.ok) setBookmarks(prev => prev.filter(b => b.id !== bm.id))
+                          }}
+                          className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1 flex items-center justify-center gap-1"
+                        >
+                          <X className="w-3 h-3" />
+                          보관함에서 제거
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </main>

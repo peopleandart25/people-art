@@ -4,10 +4,10 @@ import React, { useState, useEffect, use } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { 
-  ArrowLeft, 
-  User, 
-  Download, 
+import {
+  ArrowLeft,
+  User,
+  Download,
   FileText,
   Video,
   Shield,
@@ -26,6 +26,8 @@ import {
   ExternalLink,
   Lock,
   Crown,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -91,13 +93,16 @@ interface ArtistData {
 
 export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
   const { id } = use(params)
-  const { isPremium, isAdmin } = useAuth()
+  const { isPremium, isAdmin, profile } = useAuth()
 
   const canViewRestricted = isPremium || isAdmin
+  const isCastingDirector = profile?.role === "casting_director"
 
   const [artist, setArtist] = useState<ArtistData | null>(null)
   const [loadingArtist, setLoadingArtist] = useState(true)
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -176,6 +181,27 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
     fetchArtist()
   }, [id])
 
+  useEffect(() => {
+    if (!isCastingDirector || !id) return
+    fetch(`/api/director/bookmarks?artist_profile_id=${id}`)
+      .then(r => r.json())
+      .then(d => setIsBookmarked(!!d.bookmarked))
+      .catch(() => {})
+  }, [id, isCastingDirector])
+
+  async function toggleBookmark() {
+    if (!isCastingDirector || !artist) return
+    setBookmarkLoading(true)
+    const method = isBookmarked ? "DELETE" : "POST"
+    const res = await fetch("/api/director/bookmarks", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artist_profile_id: id }),
+    })
+    if (res.ok) setIsBookmarked(!isBookmarked)
+    setBookmarkLoading(false)
+  }
+
   if (loadingArtist) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -242,11 +268,28 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
     <div className="min-h-screen bg-gray-50">
       {/* 상단 네비게이션 */}
       <div className="border-b border-gray-200 bg-white sticky top-0 z-40">
-        <div className="mx-auto max-w-6xl px-4 py-3">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
           <Link href="/artists" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 transition-colors">
             <ArrowLeft className="h-4 w-4 mr-1" />
             아티스트 목록
           </Link>
+          {isCastingDirector && (
+            <button
+              onClick={toggleBookmark}
+              disabled={bookmarkLoading}
+              aria-label={isBookmarked ? "보관함에서 제거" : "보관함에 저장"}
+              className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                isBookmarked
+                  ? "bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100"
+                  : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              {isBookmarked
+                ? <><BookmarkCheck className="h-4 w-4" />보관함에 저장됨</>
+                : <><Bookmark className="h-4 w-4" />보관함에 저장</>
+              }
+            </button>
+          )}
         </div>
       </div>
 
