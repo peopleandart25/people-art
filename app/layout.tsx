@@ -3,6 +3,7 @@ import { Noto_Sans_KR, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { UserProvider } from '@/contexts/user-context'
 import { AuthProvider } from '@/contexts/auth-context'
+import { ArtistProvider } from '@/contexts/artist-context'
 import { RootLayoutShell } from '@/components/root-layout-shell'
 import './globals.css'
 
@@ -42,9 +43,11 @@ export default function RootLayout({
       <body className={`${notoSansKR.variable} font-sans antialiased`}>
         <AuthProvider>
           <UserProvider>
-            <RootLayoutShell>
-              {children}
-            </RootLayoutShell>
+            <ArtistProvider>
+              <RootLayoutShell>
+                {children}
+              </RootLayoutShell>
+            </ArtistProvider>
           </UserProvider>
         </AuthProvider>
         <Analytics />

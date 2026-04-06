@@ -66,7 +66,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="mx-auto flex h-16 lg:h-24 max-w-7xl items-center justify-between px-4 lg:px-8">
         {/* Logo - [관리 필드: siteInfo.logo] - 클릭 시 메인 페이지로 이동 */}
-        <Link href="/" className="flex items-center shrink-0 mr-8 ml-2">
+        <Link href="/" className="flex items-center shrink-0 mr-4 ml-1">
           <Image
             src="/images/logo.png"
             alt="피플앤아트 로고"
@@ -78,13 +78,13 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex lg:items-center lg:gap-1">
+        <nav className="hidden lg:flex lg:items-center lg:gap-0">
           {navItems.map((item, index) => (
             <Link
               key={item.href ? item.href : `nav-${index}`}
               href={item.href ? item.href : "#"}
               onClick={(e) => handleNavClick(e, item.href || "#")}
-              className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap"
             >
               {item.label ? item.label : "메뉴"}
             </Link>
@@ -92,7 +92,7 @@ export function Header() {
         </nav>
 
         {/* Desktop Auth Buttons */}
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden items-center gap-1 lg:flex shrink-0">
           {isLoggedIn ? (
             <>
               {/* 등급 뱃지 */}
@@ -108,25 +108,25 @@ export function Header() {
                 </Badge>
               )}
               {/* 잔여 포인트 표시 */}
-              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 mr-1">
-                <Coins className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-primary">
+              <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1">
+                <Coins className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-semibold text-primary whitespace-nowrap">
                   {(profile?.points ?? 0).toLocaleString()}P
                 </span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2"
+                className="gap-1 whitespace-nowrap text-xs px-2"
                 onClick={() => router.push(profile?.role === "casting_director" ? "/casting-director" : "/mypage")}
               >
-                <User className="h-4 w-4" />
+                <User className="h-3.5 w-3.5" />
                 {profile?.role === "casting_director" ? "디렉터 대시보드" : "마이페이지"}
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-2"
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 whitespace-nowrap text-xs px-2"
                 onClick={() => {
                   signOut()
                   router.push("/")

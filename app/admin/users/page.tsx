@@ -80,11 +80,12 @@ const MEMBERSHIP_BADGE: Record<string, string> = {
   비활성: "bg-gray-100 text-gray-500 border-gray-200",
 }
 
-const ROLE_OPTIONS = ["user", "sub_admin", "admin"] as const
+const ROLE_OPTIONS = ["user", "casting_director", "sub_admin", "admin"] as const
 
 const ROLE_LABELS: Record<string, string> = {
   user: "User",
   basic: "User",
+  casting_director: "캐스팅 디렉터",
   sub_admin: "Sub Admin",
   admin: "Admin",
 }
@@ -523,6 +524,8 @@ export default function AdminUsersPage() {
                             ? "bg-orange-50 text-orange-600 border-orange-200"
                             : user.role === "sub_admin"
                             ? "bg-amber-50 text-amber-600 border-amber-200"
+                            : user.role === "casting_director"
+                            ? "bg-purple-50 text-purple-600 border-purple-200"
                             : "bg-gray-50 text-gray-400 border-gray-200"
                         }`}>
                           {ROLE_LABELS[user.role] ?? user.role}
