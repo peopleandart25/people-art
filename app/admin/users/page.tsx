@@ -85,7 +85,7 @@ const ROLE_OPTIONS = ["user", "casting_director", "sub_admin", "admin"] as const
 const ROLE_LABELS: Record<string, string> = {
   user: "User",
   basic: "User",
-  casting_director: "캐스팅 디렉터",
+  casting_director: "Casting Director",
   sub_admin: "Sub Admin",
   admin: "Admin",
 }

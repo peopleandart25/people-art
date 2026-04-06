@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Menu, User, LogIn, Coins, Crown, Shield } from "lucide-react"
+import { Menu, User, LogIn, Coins, Crown, Shield, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
@@ -84,7 +84,7 @@ export function Header() {
               key={item.href ? item.href : `nav-${index}`}
               href={item.href ? item.href : "#"}
               onClick={(e) => handleNavClick(e, item.href || "#")}
-              className="px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap"
+              className="px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap"
             >
               {item.label ? item.label : "메뉴"}
             </Link>
@@ -114,15 +114,38 @@ export function Header() {
                   {(profile?.points ?? 0).toLocaleString()}P
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 whitespace-nowrap text-xs px-2"
-                onClick={() => router.push(profile?.role === "casting_director" ? "/casting-director" : "/mypage")}
-              >
-                <User className="h-3.5 w-3.5" />
-                {profile?.role === "casting_director" ? "디렉터 대시보드" : "마이페이지"}
-              </Button>
+              {profile?.role === "casting_director" ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1 whitespace-nowrap text-xs px-2"
+                    onClick={() => router.push("/casting-director")}
+                  >
+                    <Briefcase className="h-3.5 w-3.5" />
+                    디렉터 대시보드
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1 whitespace-nowrap text-xs px-2"
+                    onClick={() => router.push("/mypage")}
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    마이페이지
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 whitespace-nowrap text-xs px-2"
+                  onClick={() => router.push("/mypage")}
+                >
+                  <User className="h-3.5 w-3.5" />
+                  마이페이지
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -226,17 +249,35 @@ export function Header() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-2"
-                      onClick={() => {
-                        setIsOpen(false)
-                        router.push(profile?.role === "casting_director" ? "/casting-director" : "/mypage")
-                      }}
-                    >
-                      <User className="h-4 w-4" />
-                      {profile?.role === "casting_director" ? "디렉터 대시보드" : "마이페이지"}
-                    </Button>
+                    {profile?.role === "casting_director" ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2"
+                          onClick={() => { setIsOpen(false); router.push("/casting-director") }}
+                        >
+                          <Briefcase className="h-4 w-4" />
+                          디렉터 대시보드
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2"
+                          onClick={() => { setIsOpen(false); router.push("/mypage") }}
+                        >
+                          <User className="h-4 w-4" />
+                          마이페이지
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-2"
+                        onClick={() => { setIsOpen(false); router.push("/mypage") }}
+                      >
+                        <User className="h-4 w-4" />
+                        마이페이지
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start gap-2"
