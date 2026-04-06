@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -23,6 +23,8 @@ import {
   Phone,
   Check,
   X,
+  Upload,
+  FileText,
 } from "lucide-react"
 import { AlertCircle } from "lucide-react"
 
@@ -35,6 +37,8 @@ export default function OnboardingPage() {
   const totalSteps = 2
 
   const [isCompleting, setIsCompleting] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const portfolioRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -112,6 +116,29 @@ export default function OnboardingPage() {
         role: c.role,
       }))
 
+    // PDF 포트폴리오 Storage 업로드
+    let portfolioUrl: string | null = null
+    let portfolioFileName: string | null = null
+    if (uploadedFile) {
+      try {
+        const supabase = createClient()
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          const path = `${authUser.id}/portfolio.pdf`
+          const { error: uploadError } = await supabase.storage
+            .from("portfolios")
+            .upload(path, uploadedFile, { upsert: true })
+          if (!uploadError) {
+            const { data } = supabase.storage.from("portfolios").getPublicUrl(path)
+            portfolioUrl = data.publicUrl
+            portfolioFileName = uploadedFile.name
+          }
+        }
+      } catch {
+        // 업로드 실패해도 나머지 저장은 진행
+      }
+    }
+
     try {
       const res = await fetch("/api/onboarding", {
         method: "POST",
@@ -128,6 +155,8 @@ export default function OnboardingPage() {
           bio: formData.bio,
           etcInfo: formData.etcInfo,
           careerList,
+          portfolioUrl,
+          portfolioFileName,
         }),
       })
       if (!res.ok) {
@@ -278,6 +307,48 @@ export default function OnboardingPage() {
                 <CardDescription>프로필에 사용될 기본 정보를 입력해주세요</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* PDF 업로드 */}
+                <div className="space-y-2">
+                  <Label>포트폴리오 PDF</Label>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 shrink-0"
+                      onClick={() => portfolioRef.current?.click()}
+                    >
+                      <Upload className="h-4 w-4" />
+                      PDF 선택
+                    </Button>
+                    {uploadedFile ? (
+                      <div className="flex items-center gap-2 text-sm text-foreground min-w-0">
+                        <FileText className="h-4 w-4 text-orange-500 shrink-0" />
+                        <span className="truncate">{uploadedFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setUploadedFile(null)}
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">선택된 파일 없음</span>
+                    )}
+                  </div>
+                  <input
+                    ref={portfolioRef}
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) setUploadedFile(file)
+                    }}
+                  />
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">이름 (본명) <span className="text-destructive">*</span></Label>
