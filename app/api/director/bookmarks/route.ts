@@ -44,16 +44,38 @@ export async function GET(request: Request) {
     .select(`
       id, created_at, artist_profile_id,
       artist_profiles(
-        id, gender, birth_date, height,
-        profiles(name),
-        artist_photos(url, is_main)
+        id, user_id, gender, birth_date, height,
+        profiles(name)
       )
     `)
     .eq("director_id", user.id)
     .order("created_at", { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  // artist_photos는 user_id 기준이라 별도 조회
+  const userIds = (data ?? [])
+    .map((b: any) => b.artist_profiles?.user_id)
+    .filter(Boolean)
+
+  const photosMap: Record<string, string | null> = {}
+  if (userIds.length > 0) {
+    const { data: photos } = await serviceClient
+      .from("artist_photos")
+      .select("user_id, url, is_main")
+      .in("user_id", userIds)
+      .eq("is_main", true)
+    for (const p of photos ?? []) {
+      photosMap[p.user_id] = p.url
+    }
+  }
+
+  const result = (data ?? []).map((b: any) => ({
+    ...b,
+    main_photo: photosMap[b.artist_profiles?.user_id] ?? null,
+  }))
+
+  return NextResponse.json(result)
 }
 
 // POST /api/director/bookmarks — add

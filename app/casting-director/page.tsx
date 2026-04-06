@@ -40,13 +40,14 @@ type BookmarkItem = {
   id: string
   created_at: string
   artist_profile_id: string
+  main_photo: string | null
   artist_profiles: {
     id: string
+    user_id: string
     gender: string | null
     birth_date: string | null
     height: number | null
     profiles: { name: string | null } | null
-    artist_photos: { url: string; is_main: boolean }[]
   } | null
 }
 
@@ -975,8 +976,7 @@ export default function CastingDirectorPage() {
                 {bookmarks.map((bm) => {
                   const ap = bm.artist_profiles
                   const name = ap?.profiles?.name ?? "-"
-                  const mainPhoto = ap?.artist_photos?.find(p => p.is_main)?.url
-                    ?? ap?.artist_photos?.[0]?.url ?? null
+                  const mainPhoto = bm.main_photo
                   const birthYear = ap?.birth_date ? new Date(ap.birth_date).getFullYear() : null
                   const age = birthYear ? new Date().getFullYear() - birthYear : null
 
