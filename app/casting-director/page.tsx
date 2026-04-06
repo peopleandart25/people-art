@@ -194,7 +194,11 @@ export default function CastingDirectorPage() {
     try {
       const res = await fetch("/api/director/bookmarks")
       const data = await res.json()
-      if (Array.isArray(data)) setBookmarks(data)
+      if (!res.ok) {
+        setError(data.error ?? "보관함을 불러오지 못했습니다.")
+      } else if (Array.isArray(data)) {
+        setBookmarks(data)
+      }
     } catch {
       setError("보관함을 불러오지 못했습니다.")
     } finally {

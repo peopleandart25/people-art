@@ -38,13 +38,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ bookmarked: !!data })
   }
 
-  const { data, error } = await supabase
+  const serviceClient = createServiceClient()
+  const { data, error } = await serviceClient
     .from("actor_bookmarks")
     .select(`
       id, created_at, artist_profile_id,
-      artist_profiles!artist_profile_id(
+      artist_profiles(
         id, gender, birth_date, height,
-        profiles!user_id(name),
+        profiles(name),
         artist_photos(url, is_main)
       )
     `)
