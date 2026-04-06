@@ -22,6 +22,7 @@ import {
   Image,
   Settings,
   Home,
+  Film,
 } from "lucide-react"
 
 const menuItems = [
@@ -29,6 +30,7 @@ const menuItems = [
   { label: "회원 관리", href: "/admin/users", icon: Users, adminOnly: true },
   { label: "배우 관리", href: "/admin/artists", icon: Star, adminOnly: false },
   { label: "이벤트 관리", href: "/admin/events", icon: Calendar, adminOnly: false },
+  { label: "캐스팅 관리", href: "/admin/casting", icon: Film, adminOnly: false },
   { label: "뉴스 관리", href: "/admin/news", icon: Newspaper, adminOnly: false },
   { label: "투어 관리", href: "/admin/tours", icon: Map, adminOnly: false },
   { label: "파트너 관리", href: "/admin/partners", icon: Building, adminOnly: true },

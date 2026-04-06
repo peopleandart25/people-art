@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 const navItems = [
   { label: "피플앤아트", href: "/about" },
   { label: "소식", href: "/news" },
+  { label: "캐스팅", href: "/casting" },
   { label: "이벤트", href: "/events" },
   { label: "아티스트", href: "/artists" },
   { label: "투어리스트", href: "/tour" },
@@ -34,7 +35,9 @@ export function Header() {
     "/",           // 메인 페이지
     "/about",      // 회사소개
     "/news",       // 소식
+    "/casting",    // 캐스팅 목록 (상세는 별도 처리)
     "/events",     // 이벤트 목록 (상세는 별도 처리)
+    "/artists",    // 아티스트
     "/partners",   // 제휴업체
     "/partnership",// 제휴업체 (별칭)
     "/membership", // 멤버십
@@ -111,14 +114,14 @@ export function Header() {
                   {(profile?.points ?? 0).toLocaleString()}P
                 </span>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="gap-2"
-                onClick={() => router.push("/mypage")}
+                onClick={() => router.push(profile?.role === "casting_director" ? "/casting-director" : "/mypage")}
               >
                 <User className="h-4 w-4" />
-                마이페이지
+                {profile?.role === "casting_director" ? "디렉터 대시보드" : "마이페이지"}
               </Button>
               <Button 
                 variant="outline" 
@@ -223,16 +226,16 @@ export function Header() {
                         </span>
                       </div>
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full justify-start gap-2"
                       onClick={() => {
                         setIsOpen(false)
-                        router.push("/mypage")
+                        router.push(profile?.role === "casting_director" ? "/casting-director" : "/mypage")
                       }}
                     >
                       <User className="h-4 w-4" />
-                      마이페이지
+                      {profile?.role === "casting_director" ? "디렉터 대시보드" : "마이페이지"}
                     </Button>
                     <Button 
                       variant="ghost" 
