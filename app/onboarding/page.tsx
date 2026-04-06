@@ -38,6 +38,7 @@ export default function OnboardingPage() {
 
   const [isCompleting, setIsCompleting] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const portfolioRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -309,32 +310,51 @@ export default function OnboardingPage() {
               <CardContent className="space-y-6">
                 {/* PDF 업로드 */}
                 <div className="space-y-2">
-                  <Label>포트폴리오 PDF</Label>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 shrink-0"
-                      onClick={() => portfolioRef.current?.click()}
-                    >
-                      <Upload className="h-4 w-4" />
-                      PDF 선택
-                    </Button>
+                  <Label>파일 업로드</Label>
+                  <div
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/5"
+                        : uploadedFile
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                    }`}
+                    onClick={() => portfolioRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                    onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setIsDragging(false)
+                      const file = e.dataTransfer.files[0]
+                      if (file?.type === "application/pdf") setUploadedFile(file)
+                    }}
+                  >
                     {uploadedFile ? (
-                      <div className="flex items-center gap-2 text-sm text-foreground min-w-0">
-                        <FileText className="h-4 w-4 text-orange-500 shrink-0" />
-                        <span className="truncate">{uploadedFile.name}</span>
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="h-8 w-8 text-primary shrink-0" />
+                        <div className="text-left min-w-0">
+                          <p className="font-medium text-foreground truncate">{uploadedFile.name}</p>
+                          <p className="text-xs text-muted-foreground">{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setUploadedFile(null)}
-                          className="text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={(e) => { e.stopPropagation(); setUploadedFile(null) }}
+                          className="ml-auto text-muted-foreground hover:text-destructive shrink-0"
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-5 w-5" />
                         </button>
                       </div>
                     ) : (
-                      <span className="text-sm text-muted-foreground">선택된 파일 없음</span>
+                      <div className="space-y-2">
+                        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">
+                          클릭하거나 파일을 드래그해서 업로드하세요
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          기존 PDF를 사용하면 프로필 정보를 보다 편리하게<br />
+                          관리할 수 있습니다. pdf, ppt/x 파일을 업로드할 수 있습니다.
+                        </p>
+                      </div>
                     )}
                   </div>
                   <input
