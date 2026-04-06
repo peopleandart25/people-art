@@ -139,9 +139,8 @@ const quickLinks = quickLinksData.map((link) => ({
   Icon: iconMap[link.iconType] || Icon3DDocument,
 }))
 
-// [관리자 안내] 슬라이드 데이터는 data/content.ts의 heroBanners에서 관리합니다
-// 배경색, 제목, 설명, CTA 버튼 등을 수정하면 자동 반영됩니다
-const slides = heroBanners.map((banner) => ({
+// 정적 폴백 슬라이드 (DB 배너가 없을 때 사용)
+const staticSlides = heroBanners.map((banner) => ({
   id: banner.id,
   badge: banner.badge,
   title: banner.title[0],
@@ -149,10 +148,17 @@ const slides = heroBanners.map((banner) => ({
   description: banner.description,
   primaryBtn: banner.ctaButton,
   secondaryBtn: banner.secondaryButton,
-  bgStyle: banner.backgroundImage 
+  bgStyle: banner.backgroundImage
     ? { backgroundImage: `url(${banner.backgroundImage})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { background: banner.backgroundColor },
 }))
+
+type DBBanner = {
+  id: string
+  title: string
+  image_url: string | null
+  link_url: string | null
+}
 
 export function HeroBanner() {
   const router = useRouter()
@@ -163,10 +169,38 @@ export function HeroBanner() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [direction, setDirection] = useState<"left" | "right">("right")
   const [isAnimating, setIsAnimating] = useState(false)
+  // null = 로딩 중 (정적 데이터 표시), [] = DB 배너 없음 (폴백), array = DB 배너 사용
+  const [dbBanners, setDbBanners] = useState<DBBanner[] | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    fetch("/api/banners")
+      .then((res) => res.json())
+      .then((data) => {
+        setDbBanners(Array.isArray(data) ? data : [])
+        setCurrentSlide(0)
+      })
+      .catch(() => setDbBanners([]))
+  }, [])
+
+  // DB 배너가 있으면 DB 데이터로, 없으면 정적 데이터로 폴백
+  const slides = dbBanners && dbBanners.length > 0
+    ? dbBanners.map((banner) => ({
+        id: banner.id,
+        badge: "",
+        title: banner.title,
+        highlight: "",
+        description: "",
+        primaryBtn: banner.link_url ? { text: "자세히 보기", link: banner.link_url } : null,
+        secondaryBtn: null,
+        bgStyle: banner.image_url && banner.image_url.startsWith("http")
+          ? { backgroundImage: `url(${encodeURI(banner.image_url)})`, backgroundSize: "cover", backgroundPosition: "center" }
+          : { background: "linear-gradient(135deg, #1c1917 0%, #292524 100%)" },
+      }))
+    : staticSlides
 
   // 로그인 상태 확인
   const isLoggedIn = isMounted && status !== "guest"
@@ -198,23 +232,25 @@ export function HeroBanner() {
     }
   }
 
+  const slidesLength = slides.length
+
   // 다음 슬라이드
   const nextSlide = useCallback(() => {
     if (isAnimating) return
     setIsAnimating(true)
     setDirection("right")
-    setCurrentSlide((prev) => (prev + 1) % slides.length)
+    setCurrentSlide((prev) => (prev + 1) % slidesLength)
     setTimeout(() => setIsAnimating(false), 500)
-  }, [isAnimating])
+  }, [isAnimating, slidesLength])
 
   // 이전 슬라이드
   const prevSlide = useCallback(() => {
     if (isAnimating) return
     setIsAnimating(true)
     setDirection("left")
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)
+    setCurrentSlide((prev) => (prev - 1 + slidesLength) % slidesLength)
     setTimeout(() => setIsAnimating(false), 500)
-  }, [isAnimating])
+  }, [isAnimating, slidesLength])
 
   // 특정 슬라이드로 이동
   const goToSlide = (index: number) => {
@@ -280,13 +316,15 @@ export function HeroBanner() {
             key={currentSlide}
             className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary w-fit">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
-              </span>
-              {slide.badge}
-            </div>
+            {slide.badge && (
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary w-fit">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                </span>
+                {slide.badge}
+              </div>
+            )}
             
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-foreground text-balance">
               {slide.title}<br />
