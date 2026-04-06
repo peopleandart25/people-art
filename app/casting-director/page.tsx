@@ -46,6 +46,7 @@ type Casting = {
   is_urgent: boolean
   created_at: string
   casting_applications: { count: number }[]
+  creator: { name: string | null; activity_name: string | null; email: string | null } | null
 }
 
 type Application = {
@@ -347,6 +348,12 @@ export default function CastingDirectorPage() {
                           {appCount}명
                         </div>
                       </div>
+                      {casting.creator && (
+                        <div className="mt-1.5 text-[10px] text-gray-400 flex items-center gap-1">
+                          <Briefcase className="w-3 h-3" />
+                          {casting.creator.activity_name ?? casting.creator.name ?? casting.creator.email ?? "-"}
+                        </div>
+                      )}
                       {/* 수정/삭제 버튼 */}
                       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -558,6 +565,12 @@ export default function CastingDirectorPage() {
                           <Users className="w-3.5 h-3.5" />
                           {selectedCasting.casting_applications?.[0]?.count ?? 0}명 지원
                         </span>
+                        {selectedCasting.creator && (
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="w-3.5 h-3.5" />
+                            {selectedCasting.creator.activity_name ?? selectedCasting.creator.name ?? selectedCasting.creator.email ?? "-"}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">

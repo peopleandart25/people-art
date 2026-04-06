@@ -158,6 +158,7 @@ export default function AdminUsersPage() {
   const [newStatus, setNewStatus] = useState("")
   const [newStatusReason, setNewStatusReason] = useState("")
   const [updating, setUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // 활동내역
   const [payments, setPayments] = useState<Payment[]>([])
@@ -300,15 +301,19 @@ export default function AdminUsersPage() {
     if (!confirm(`[${selectedUser.name ?? selectedUser.email}] 회원의 모든 데이터를 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return
 
     setUpdating(true)
+    setIsDeleting(true)
     const res = await fetch(`/api/admin/users/${selectedUser.id}`, { method: "DELETE" })
     if (!res.ok) {
       const err = await res.json()
       setError(err.error ?? "삭제 실패")
+      setUpdating(false)
+      setIsDeleting(false)
     } else {
-      await fetchProfiles()
       setDialogOpen(false)
+      await fetchProfiles()
+      setUpdating(false)
+      setIsDeleting(false)
     }
-    setUpdating(false)
   }
 
   async function handleSave() {
@@ -664,9 +669,14 @@ export default function AdminUsersPage() {
                     variant="outline"
                     onClick={handleDeleteUser}
                     disabled={updating}
-                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 min-w-[90px]"
                   >
-                    회원 삭제
+                    {isDeleting ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        삭제 중...
+                      </span>
+                    ) : "회원 삭제"}
                   </Button>
                   <div className="flex gap-2">
                     <Button

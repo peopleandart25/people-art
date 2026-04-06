@@ -32,51 +32,11 @@ export async function DELETE(
     return NextResponse.json({ error: "자기 자신은 삭제할 수 없습니다." }, { status: 400 })
   }
 
-  // Cascade 삭제 — FK 의존 순서대로 (자식 → 부모)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tables: any[] = [
-    "career_items",
-    "artist_photos",
-    "social_links",
-    "video_assets",
-    "artist_profiles",
-    "payments",
-    "memberships",
-    "event_applications",
-    "support_history",
-    "tour_participations",
-    "agency_applications",
-    "reviews",
-  ]
-
-  for (const table of tables) {
-    const { error } = await serviceClient.from(table).delete().eq("user_id", targetUserId)
-    if (error) {
-      return NextResponse.json(
-        { error: `${table} 삭제 실패`, detail: error.message },
-        { status: 500 }
-      )
-    }
-  }
-
-  // profiles 삭제
-  const { error: profileError } = await serviceClient
-    .from("profiles")
-    .delete()
-    .eq("id", targetUserId)
-
-  if (profileError) {
-    return NextResponse.json(
-      { error: "profiles 삭제 실패", detail: profileError.message },
-      { status: 500 }
-    )
-  }
-
-  // auth.users 삭제 (Supabase Admin API)
+  // auth.users 삭제 → profiles CASCADE → 모든 하위 데이터 자동 삭제
   const { error: authError } = await serviceClient.auth.admin.deleteUser(targetUserId)
   if (authError) {
     return NextResponse.json(
-      { error: "auth 사용자 삭제 실패", detail: authError.message },
+      { error: "사용자 삭제 실패", detail: authError.message },
       { status: 500 }
     )
   }

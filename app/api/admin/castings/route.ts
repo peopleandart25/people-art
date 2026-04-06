@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await serviceClient
     .from("castings")
-    .select("*, casting_applications(count)")
+    .select("*, casting_applications(count), creator:profiles!created_by(name, activity_name, email)")
     .order("created_at", { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

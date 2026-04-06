@@ -37,6 +37,7 @@ type Casting = {
   is_urgent: boolean
   created_at: string
   casting_applications: { count: number }[]
+  creator: { name: string | null; activity_name: string | null; email: string | null } | null
 }
 
 type Application = {
@@ -247,6 +248,7 @@ export default function AdminCastingPage() {
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">제목</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">카테고리</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">작성자</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">상태</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">마감일</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">작성일</th>
@@ -272,6 +274,16 @@ export default function AdminCastingPage() {
                           </div>
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-600 whitespace-nowrap">{casting.category}</td>
+                        <td className="px-6 py-3 text-sm whitespace-nowrap">
+                          {casting.creator ? (
+                            <div>
+                              <p className="font-medium text-gray-800">{casting.creator.activity_name ?? casting.creator.name ?? "-"}</p>
+                              <p className="text-xs text-gray-400">{casting.creator.email ?? ""}</p>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
                         <td className="px-6 py-3 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${casting.is_closed ? "bg-gray-100 text-gray-600" : "bg-green-100 text-green-700"}`}>
                             {casting.is_closed ? "마감" : "모집중"}
@@ -321,7 +333,7 @@ export default function AdminCastingPage() {
 
                       {isExpanded && (
                         <tr className="border-b border-orange-100">
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <div className="bg-orange-50/50 border-t border-orange-100">
                               <div className="px-6 py-3 border-b border-orange-100">
                                 <p className="text-sm font-semibold text-gray-800">{casting.title} — 지원자 목록</p>
@@ -397,7 +409,7 @@ export default function AdminCastingPage() {
                 })}
                 {castings.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400">
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-400">
                       <div className="flex flex-col items-center gap-2">
                         <Film className="w-8 h-8 opacity-30" />
                         캐스팅 공고가 없습니다

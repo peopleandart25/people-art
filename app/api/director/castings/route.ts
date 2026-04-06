@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   // 본인 캐스팅 목록
   const { data, error } = await serviceClient
     .from("castings")
-    .select("*, casting_applications(count)")
+    .select("*, casting_applications(count), creator:profiles!created_by(name, activity_name, email)")
     .eq("created_by", user.id)
     .order("created_at", { ascending: false })
 
