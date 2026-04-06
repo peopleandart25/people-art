@@ -687,7 +687,7 @@ export default function MyPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="activityName">활동명</Label>
-                    <Input id="activityName" value={formData.activityName} onChange={e => setFormData(p => ({ ...p, activityName: e.target.value }))} placeholder="활동명 (본명과 다른 경우)" />
+                    <Input id="activityName" value={formData.activityName} onChange={e => setFormData(p => ({ ...p, activityName: e.target.value }))} placeholder="본명과 동일한 경우 본명으로 기입" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="birthDate">생년월일</Label>

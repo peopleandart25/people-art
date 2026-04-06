@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, phone, email, birthDate, gender, height, weight, bio, etcInfo, careerList, portfolioUrl, portfolioFileName } = body
+  const { name, activityName, phone, email, birthDate, gender, height, weight, bio, etcInfo, careerList } = body
 
   const serviceClient = createServiceClient()
 
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     .from("profiles")
     .update({
       name: name || null,
+      activity_name: activityName || null,
       phone: phone || null,
       email: email || null,
       status: "활성",
@@ -57,8 +58,6 @@ export async function POST(request: Request) {
         weight: weight ? Number(weight) : null,
         etc_info: etcInfo || null,
         is_public: true,
-        portfolio_url: portfolioUrl || null,
-        portfolio_file_name: portfolioFileName || null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }
