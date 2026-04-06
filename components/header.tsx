@@ -169,10 +169,10 @@ export function Header() {
                 <LogIn className="h-4 w-4" />
                 로그인
               </Button>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => router.push("/login")}
+                onClick={() => router.push("/login?mode=signup")}
               >
                 <User className="h-4 w-4" />
                 회원가입
@@ -303,11 +303,11 @@ export function Header() {
                       <LogIn className="h-4 w-4" />
                       로그인
                     </Button>
-                    <Button 
+                    <Button
                       className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => {
                         setIsOpen(false)
-                        router.push("/login")
+                        router.push("/login?mode=signup")
                       }}
                     >
                       <User className="h-4 w-4" />

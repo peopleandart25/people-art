@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Phone, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -19,6 +18,9 @@ function LoginContent() {
   const { toast } = useToast()
   const supabase = createClient()
 
+  const [mode, setMode] = useState<"login" | "signup">(
+    searchParams.get("mode") === "signup" ? "signup" : "login"
+  )
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<"kakao" | "google" | "naver" | null>(null)
@@ -184,12 +186,7 @@ function LoginContent() {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md border-border shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">로그인</TabsTrigger>
-              <TabsTrigger value="signup">회원가입</TabsTrigger>
-            </TabsList>
-
+          <div className="w-full">
             {/* 소셜 로그인 버튼 (공통) */}
             <div className="px-6 pt-6 space-y-3">
               <Button
@@ -252,8 +249,8 @@ function LoginContent() {
               </div>
             </div>
 
-            {/* 로그인 탭 */}
-            <TabsContent value="login">
+            {/* 로그인 폼 */}
+            {mode === "login" && (
               <form onSubmit={handleEmailLogin}>
                 <CardHeader className="pt-4">
                   <CardTitle className="text-xl">이메일 로그인</CardTitle>
@@ -286,16 +283,22 @@ function LoginContent() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="pt-4">
+                <CardFooter className="pt-4 flex flex-col gap-3">
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "로그인 중..." : "로그인"}
                   </Button>
+                  <p className="text-sm text-center text-muted-foreground">
+                    아직 계정이 없으신가요?{" "}
+                    <button type="button" onClick={() => setMode("signup")} className="text-primary font-medium hover:underline">
+                      회원가입
+                    </button>
+                  </p>
                 </CardFooter>
               </form>
-            </TabsContent>
+            )}
 
-            {/* 회원가입 탭 */}
-            <TabsContent value="signup">
+            {/* 회원가입 폼 */}
+            {mode === "signup" && (
               <form onSubmit={handleEmailSignup}>
                 <CardHeader className="pt-4">
                   <CardTitle className="text-xl">이메일 회원가입</CardTitle>
@@ -379,10 +382,16 @@ function LoginContent() {
                   <p className="text-xs text-center text-muted-foreground">
                     가입 시 <a href="#" className="underline">이용약관</a>과 <a href="#" className="underline">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
                   </p>
+                  <p className="text-sm text-center text-muted-foreground">
+                    이미 계정이 있으신가요?{" "}
+                    <button type="button" onClick={() => setMode("login")} className="text-primary font-medium hover:underline">
+                      로그인
+                    </button>
+                  </p>
                 </CardFooter>
               </form>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </Card>
       </main>
     </div>

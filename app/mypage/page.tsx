@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import {
   ArrowLeft, Camera, Upload, X, Plus, Trash2, Star, FileText, Video,
   Link2, Sparkles, Check, ChevronsUpDown, ExternalLink, Crown, Shield,
-  Instagram, Youtube, AlertCircle, GraduationCap, Save, Send,
+  Instagram, Youtube, AlertCircle, GraduationCap, Save, Send, Briefcase,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
@@ -389,6 +389,8 @@ export default function MyPage() {
                   <Badge className="bg-red-500 text-white gap-1 border-0 hover:bg-red-500"><Shield className="h-3 w-3" />관리자</Badge>
                 ) : authProfile?.role === "sub_admin" ? (
                   <Badge className="bg-amber-500 text-white gap-1 border-0 hover:bg-amber-500"><Shield className="h-3 w-3" />서브관리자</Badge>
+                ) : authProfile?.role === "casting_director" ? (
+                  <Badge className="bg-blue-500 text-white gap-1 border-0 hover:bg-blue-500"><Briefcase className="h-3 w-3" />캐스팅 디렉터</Badge>
                 ) : isPremium ? (
                   <Badge className="gold-badge gap-1"><Crown className="h-3 w-3" />멤버십</Badge>
                 ) : (
@@ -512,7 +514,7 @@ export default function MyPage() {
                 <div className="h-px bg-border my-1" />
                 <p className="text-xs text-muted-foreground">멤버십</p>
                 <p className="text-sm font-medium text-foreground">
-                  {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "sub_admin" ? "서브 관리자" : isPremium ? "멤버십 회원" : "일반 회원"}
+                  {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "sub_admin" ? "서브 관리자" : authProfile?.role === "casting_director" ? "캐스팅 디렉터" : isPremium ? "멤버십 회원" : "일반 회원"}
                 </p>
                 {isPremium && (
                   <>
