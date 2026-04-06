@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -17,17 +15,24 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Briefcase,
+  FolderOpen,
+  User,
+  PlusCircle,
+  Bookmark,
+  Users,
+  Calendar,
   Film,
   Plus,
-  Users,
   Pencil,
   Trash2,
-  Calendar,
-  FileText,
+  Send,
   ExternalLink,
-  ChevronRight,
-  Briefcase,
+  X,
+  FileText,
 } from "lucide-react"
+
+type ActiveView = "projects" | "register" | "bookmarks" | "profile"
 
 type Casting = {
   id: string
@@ -82,6 +87,18 @@ const defaultForm: CastingForm = {
   is_closed: false, is_urgent: false,
 }
 
+const categoryStyle: Record<string, { icon: string; badge: string; folder: string }> = {
+  "영화": { icon: "text-orange-400", badge: "bg-orange-100 text-orange-600", folder: "bg-orange-50" },
+  "드라마": { icon: "text-blue-400", badge: "bg-blue-100 text-blue-600", folder: "bg-blue-50" },
+  "광고": { icon: "text-green-400", badge: "bg-green-100 text-green-600", folder: "bg-green-50" },
+  "웹드라마": { icon: "text-blue-400", badge: "bg-blue-100 text-blue-600", folder: "bg-blue-50" },
+  "뮤직비디오": { icon: "text-purple-400", badge: "bg-purple-100 text-purple-600", folder: "bg-purple-50" },
+  "기타": { icon: "text-purple-400", badge: "bg-purple-100 text-purple-600", folder: "bg-purple-50" },
+}
+
+const getCategoryStyle = (category: string) =>
+  categoryStyle[category] ?? categoryStyle["기타"]
+
 const statusColors: Record<string, string> = {
   "대기": "bg-yellow-100 text-yellow-700 border-yellow-200",
   "합격": "bg-green-100 text-green-700 border-green-200",
@@ -89,7 +106,16 @@ const statusColors: Record<string, string> = {
   "탈락": "bg-gray-100 text-gray-600 border-gray-200",
 }
 
-type ActiveTab = "castings" | "register"
+const CATEGORIES = ["영화", "드라마", "웹드라마", "광고", "뮤직비디오", "기타"] as const
+const GENDERS = ["남자", "여자", "무관"] as const
+const STATUS_OPTIONS = ["대기", "합격", "보류", "탈락"] as const
+
+const SIDEBAR_MENUS = [
+  { id: "profile" as ActiveView, icon: User, label: "내 프로필 관리", shortLabel: "프로필" },
+  { id: "projects" as ActiveView, icon: FolderOpen, label: "나의 캐스팅 프로젝트", shortLabel: "캐스팅" },
+  { id: "register" as ActiveView, icon: PlusCircle, label: "새 공고 등록하기", shortLabel: "등록" },
+  { id: "bookmarks" as ActiveView, icon: Bookmark, label: "나의 배우 보관함", shortLabel: "보관함", badge: 0 },
+]
 
 export default function CastingDirectorPage() {
   const router = useRouter()
@@ -97,7 +123,7 @@ export default function CastingDirectorPage() {
 
   const [castings, setCastings] = useState<Casting[]>([])
   const [loadingData, setLoadingData] = useState(true)
-  const [activeTab, setActiveTab] = useState<ActiveTab>("castings")
+  const [activeView, setActiveView] = useState<ActiveView>("projects")
   const [selectedCastingId, setSelectedCastingId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CastingForm>(defaultForm)
@@ -107,6 +133,34 @@ export default function CastingDirectorPage() {
   const [applicationsMap, setApplicationsMap] = useState<Record<string, Application[]>>({})
   const [loadingApps, setLoadingApps] = useState(false)
 
+  const fetchCastings = useCallback(async () => {
+    setLoadingData(true)
+    try {
+      const res = await fetch("/api/director/castings")
+      const data = await res.json()
+      if (Array.isArray(data)) setCastings(data)
+    } catch {
+      setError("데이터를 불러오지 못했습니다.")
+    } finally {
+      setLoadingData(false)
+    }
+  }, [])
+
+  const fetchApplications = useCallback(async (castingId: string) => {
+    setLoadingApps(true)
+    try {
+      const res = await fetch(`/api/director/castings?casting_id=${castingId}`)
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setApplicationsMap((prev) => ({ ...prev, [castingId]: data }))
+      }
+    } catch {
+      setError("지원자 목록을 불러오지 못했습니다.")
+    } finally {
+      setLoadingApps(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!loading) {
       if (profile?.role !== "casting_director") {
@@ -115,56 +169,50 @@ export default function CastingDirectorPage() {
       }
       fetchCastings()
     }
-  }, [loading, profile, router])
+  }, [loading, profile, router, fetchCastings])
+
+  useEffect(() => {
+    if (activeView === "profile") {
+      router.push("/mypage")
+    }
+  }, [activeView, router])
 
   useEffect(() => {
     if (selectedCastingId && !applicationsMap[selectedCastingId]) {
       fetchApplications(selectedCastingId)
     }
-    // applicationsMap은 의도적으로 제외 - 캐시된 경우 재요청 방지
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCastingId])
+  }, [selectedCastingId, fetchApplications])
 
-  async function fetchCastings() {
-    setLoadingData(true)
-    const res = await fetch("/api/director/castings")
-    const data = await res.json()
-    if (Array.isArray(data)) setCastings(data)
-    setLoadingData(false)
-  }
+  const handleStatusChange = useCallback(
+    async (castingId: string, applicationId: string, admin_status: string) => {
+      const res = await fetch("/api/director/castings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: applicationId, admin_status }),
+      })
+      if (!res.ok) {
+        setError("상태 변경에 실패했습니다.")
+        return
+      }
+      setApplicationsMap((prev) => ({
+        ...prev,
+        [castingId]: (prev[castingId] ?? []).map((a) =>
+          a.id === applicationId ? { ...a, admin_status } : a
+        ),
+      }))
+    },
+    []
+  )
 
-  async function fetchApplications(castingId: string) {
-    setLoadingApps(true)
-    const res = await fetch(`/api/director/castings?casting_id=${castingId}`)
-    const data = await res.json()
-    if (Array.isArray(data)) {
-      setApplicationsMap((prev) => ({ ...prev, [castingId]: data }))
-    }
-    setLoadingApps(false)
-  }
-
-  async function handleStatusChange(castingId: string, applicationId: string, admin_status: string) {
-    await fetch("/api/director/castings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ application_id: applicationId, admin_status }),
-    })
-    setApplicationsMap((prev) => ({
-      ...prev,
-      [castingId]: (prev[castingId] ?? []).map((a) =>
-        a.id === applicationId ? { ...a, admin_status } : a
-      ),
-    }))
-  }
-
-  function openAdd() {
+  const openAdd = useCallback(() => {
     setEditingId(null)
     setForm(defaultForm)
     setError(null)
-    setActiveTab("register")
-  }
+    setActiveView("register")
+  }, [])
 
-  function openEdit(casting: Casting) {
+  const openEdit = useCallback((casting: Casting) => {
     setEditingId(casting.id)
     setForm({
       title: casting.title,
@@ -182,11 +230,14 @@ export default function CastingDirectorPage() {
       is_urgent: casting.is_urgent,
     })
     setError(null)
-    setActiveTab("register")
-  }
+    setActiveView("register")
+  }, [])
 
-  async function handleSave() {
-    if (!form.title.trim()) { setError("제목을 입력해주세요."); return }
+  const handleSave = useCallback(async () => {
+    if (!form.title.trim()) {
+      setError("제목을 입력해주세요.")
+      return
+    }
     setSaving(true)
     setError(null)
 
@@ -222,156 +273,312 @@ export default function CastingDirectorPage() {
     await fetchCastings()
     setEditingId(null)
     setForm(defaultForm)
-    setActiveTab("castings")
+    setActiveView("projects")
     setSaving(false)
-  }
+  }, [editingId, form, fetchCastings])
 
-  async function handleDelete(id: string) {
-    if (!confirm("이 공고를 삭제하시겠습니까?")) return
-    const res = await fetch("/api/director/castings", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    })
-    if (!res.ok) { const err = await res.json(); setError(err.error ?? "삭제 실패"); return }
-    if (selectedCastingId === id) setSelectedCastingId(null)
-    await fetchCastings()
-  }
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!confirm("이 공고를 삭제하시겠습니까?")) return
+      const res = await fetch("/api/director/castings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setError(err.error ?? "삭제 실패")
+        return
+      }
+      if (selectedCastingId === id) setSelectedCastingId(null)
+      await fetchCastings()
+    },
+    [selectedCastingId, fetchCastings]
+  )
 
-  const updateForm = (key: keyof CastingForm, value: string | boolean) =>
-    setForm((prev) => ({ ...prev, [key]: value }))
+  const updateForm = useCallback(
+    (key: keyof CastingForm, value: string | boolean) =>
+      setForm((prev) => ({ ...prev, [key]: value })),
+    []
+  )
+
+  const handleCancelForm = useCallback(() => {
+    setActiveView("projects")
+    setEditingId(null)
+    setForm(defaultForm)
+  }, [])
+
+  const handleMenuClick = useCallback((id: ActiveView) => {
+    if (id === "register") {
+      setEditingId(null)
+      setForm(defaultForm)
+      setError(null)
+    }
+    setActiveView(id)
+  }, [])
+
+  const activeCastings = useMemo(() => castings.filter((c) => !c.is_closed), [castings])
+  const totalApplicants = useMemo(
+    () => castings.reduce((sum, c) => sum + (c.casting_applications?.[0]?.count ?? 0), 0),
+    [castings]
+  )
+  const selectedCasting = useMemo(
+    () => castings.find((c) => c.id === selectedCastingId) ?? null,
+    [castings, selectedCastingId]
+  )
+  const applications = useMemo(
+    () => (selectedCastingId ? (applicationsMap[selectedCastingId] ?? null) : null),
+    [selectedCastingId, applicationsMap]
+  )
 
   if (loading || loadingData) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-[#F8F7F4]">
+        <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   if (profile?.role !== "casting_director") return null
 
-  const selectedCasting = castings.find((c) => c.id === selectedCastingId) ?? null
-  const applications = selectedCastingId ? (applicationsMap[selectedCastingId] ?? null) : null
-
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
-      {/* ── 좌측 사이드바 ── */}
-      <aside className="w-full md:w-64 md:shrink-0 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
-        {/* 헤더 */}
-        <div className="px-5 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <Briefcase className="h-5 w-5 text-primary" />
-            <h1 className="text-base font-bold text-gray-900">디렉터 대시보드</h1>
+    <div className="flex min-h-screen bg-[#F8F7F4]">
+      {/* ── 왼쪽 사이드바 (데스크탑) ── */}
+      <aside className="hidden md:flex w-64 shrink-0 bg-white border-r border-gray-100 flex-col">
+        <div className="px-5 py-6 border-b border-gray-100">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+              <FolderOpen className="w-4 h-4 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">캐스팅 워크스페이스</p>
+              <p className="text-[10px] text-gray-400">캐스팅 디렉터 전용</p>
+            </div>
           </div>
-          <p className="text-xs text-gray-400 truncate">{profile?.name ?? ""}</p>
         </div>
 
-        {/* 메뉴 탭 */}
-        <div className="flex border-b border-gray-100">
-          <button
-            onClick={() => setActiveTab("castings")}
-            className={`flex-1 py-3 text-xs font-semibold transition-colors ${
-              activeTab === "castings"
-                ? "text-primary border-b-2 border-primary"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            내 공고
-          </button>
-          <button
-            onClick={() => { setEditingId(null); setForm(defaultForm); setError(null); setActiveTab("register") }}
-            className={`flex-1 py-3 text-xs font-semibold transition-colors ${
-              activeTab === "register"
-                ? "text-primary border-b-2 border-primary"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            공고 등록
-          </button>
-        </div>
+        <nav className="flex-1 py-3">
+          {SIDEBAR_MENUS.map((menu) => {
+            const Icon = menu.icon
+            const isActive = activeView === menu.id
+            return (
+              <button
+                key={menu.id}
+                onClick={() => handleMenuClick(menu.id)}
+                aria-label={menu.label}
+                className={`px-4 py-3 flex items-center gap-3 text-sm font-medium rounded-lg mx-2 w-[calc(100%-16px)] cursor-pointer transition-colors ${
+                  isActive ? "bg-orange-50 text-orange-600" : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1 text-left">{menu.label}</span>
+                {menu.badge !== undefined && menu.badge > 0 && (
+                  <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {menu.badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </nav>
+      </aside>
 
-        {/* 공고 목록 */}
-        {activeTab === "castings" && (
-          <div className="flex-1 overflow-y-auto max-h-64 md:max-h-none">
+      {/* ── 모바일 탭 바 ── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-50">
+        {SIDEBAR_MENUS.map((menu) => {
+          const Icon = menu.icon
+          const isActive = activeView === menu.id
+          return (
+            <button
+              key={menu.id}
+              onClick={() => handleMenuClick(menu.id)}
+              aria-label={menu.label}
+              className={`flex-1 py-3 flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
+                isActive ? "text-orange-600" : "text-gray-400"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="leading-none">{menu.shortLabel}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── 메인 컨텐츠 ── */}
+      <main className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0">
+        {error && activeView !== "register" && (
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} aria-label="에러 닫기">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ── projects 뷰 ── */}
+        {activeView === "projects" && (
+          <div className="px-6 py-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-blue-500 font-medium mb-1">진행 중인 캐스팅</p>
+                    <p className="text-3xl font-bold text-blue-600">{activeCastings.length}</p>
+                    <p className="text-xs text-blue-400 mt-1">건</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-200/50 rounded-xl flex items-center justify-center">
+                    <Briefcase className="w-6 h-6 text-blue-500" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-2xl p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm text-orange-500 font-medium">신규 지원자</p>
+                      <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">NEW</span>
+                    </div>
+                    <p className="text-3xl font-bold text-orange-500">{totalApplicants}</p>
+                    <p className="text-xs text-orange-400 mt-1">명</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-200/50 rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-orange-500" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-2xl p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-green-500 font-medium mb-1">보낸 제안</p>
+                    <p className="text-lg font-medium text-green-500 mt-1">준비 중</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-200/50 rounded-xl flex items-center justify-center">
+                    <Send className="w-6 h-6 text-green-500" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">나의 캐스팅 프로젝트</h2>
+                <p className="text-sm text-gray-500 mt-1">등록한 캐스팅 공고를 관리합니다.</p>
+              </div>
+              <Button
+                onClick={openAdd}
+                className="bg-orange-500 hover:bg-orange-600 text-white gap-1.5 shrink-0"
+                size="sm"
+              >
+                <Plus className="w-4 h-4" />
+                새 공고 등록
+              </Button>
+            </div>
+
             {castings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-gray-400 gap-2 px-4">
-                <Film className="w-8 h-8 opacity-30" />
-                <p className="text-xs text-center">등록된 공고가 없습니다</p>
-                <Button onClick={openAdd} variant="outline" size="sm" className="text-xs">
-                  <Plus className="w-3 h-3 mr-1" />
-                  공고 등록
+              <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
+                  <Film className="w-8 h-8 opacity-40" />
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-medium text-gray-500">등록된 공고가 없습니다</p>
+                  <p className="text-sm text-gray-400 mt-1">첫 캐스팅 공고를 등록해보세요</p>
+                </div>
+                <Button onClick={openAdd} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
+                  <Plus className="w-4 h-4" />
+                  공고 등록하기
                 </Button>
               </div>
             ) : (
-              <div className="p-2 space-y-1">
+              <div
+                className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${selectedCastingId ? "lg:grid-cols-2" : ""}`}
+              >
                 {castings.map((casting) => {
                   const appCount = casting.casting_applications?.[0]?.count ?? 0
+                  const style = getCategoryStyle(casting.category)
                   const isSelected = selectedCastingId === casting.id
                   return (
-                    <button
+                    <div
                       key={casting.id}
-                      onClick={() => setSelectedCastingId(casting.id)}
-                      className={`w-full text-left rounded-lg p-3 transition-colors group ${
+                      onClick={() => setSelectedCastingId(isSelected ? null : casting.id)}
+                      className={`bg-white rounded-2xl border p-5 hover:shadow-md transition-all cursor-pointer group relative ${
                         isSelected
-                          ? "bg-primary/10 border border-primary/30"
-                          : "hover:bg-gray-50 border border-transparent"
+                          ? "border-orange-300 shadow-md ring-1 ring-orange-200"
+                          : "border-gray-100"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-1 mb-1.5">
-                        <span className={`text-xs font-semibold leading-tight line-clamp-2 ${isSelected ? "text-primary" : "text-gray-800"}`}>
-                          {casting.title}
-                        </span>
-                        {casting.is_urgent && (
-                          <Badge className="bg-red-500 text-white text-[10px] px-1 py-0 shrink-0">긴급</Badge>
+                      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEdit(casting)
+                          }}
+                          aria-label="공고 수정"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(casting.id)
+                          }}
+                          aria-label="공고 삭제"
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-start justify-between mb-3">
+                        <div
+                          className={`w-10 h-10 ${style.folder} rounded-xl flex items-center justify-center`}
+                        >
+                          <FolderOpen className={`w-5 h-5 ${style.icon}`} />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {casting.is_urgent && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                              긴급
+                            </span>
+                          )}
+                          <span
+                            className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                              casting.is_closed
+                                ? "bg-gray-100 text-gray-500 border-gray-200"
+                                : "bg-green-50 text-green-600 border-green-200"
+                            }`}
+                          >
+                            {casting.is_closed ? "마감" : "진행중"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}>
+                        {casting.category}
+                      </span>
+
+                      <p className="text-base font-bold text-gray-900 mt-2 leading-snug line-clamp-2">
+                        {casting.title}
+                      </p>
+                      {casting.role_type && (
+                        <p className="text-sm text-gray-500 mt-0.5 truncate">{casting.role_type}</p>
+                      )}
+
+                      <div className="border-t border-gray-100 mt-4 pt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>지원자 {appCount}명</span>
+                        </div>
+                        {casting.deadline && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>{casting.deadline.slice(0, 10)}</span>
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                          {casting.category}
-                        </Badge>
-                        <span className={`text-[10px] px-1.5 py-0 rounded-full border font-medium ${
-                          casting.is_closed
-                            ? "bg-gray-100 text-gray-500 border-gray-200"
-                            : "bg-green-50 text-green-600 border-green-200"
-                        }`}>
-                          {casting.is_closed ? "마감" : "모집중"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                          <Calendar className="w-3 h-3" />
-                          {casting.deadline ? casting.deadline.slice(0, 10) : "기한 없음"}
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                          <Users className="w-3 h-3" />
-                          {appCount}명
-                        </div>
-                      </div>
-                      {casting.creator && (
-                        <div className="mt-1.5 text-[10px] text-gray-400 flex items-center gap-1">
-                          <Briefcase className="w-3 h-3" />
-                          {casting.creator.activity_name ?? casting.creator.name ?? casting.creator.email ?? "-"}
-                        </div>
-                      )}
-                      {/* 수정/삭제 버튼 */}
-                      <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEdit(casting) }}
-                          className="flex items-center gap-0.5 text-[10px] text-gray-500 hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
-                        >
-                          <Pencil className="w-3 h-3" />
-                          수정
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(casting.id) }}
-                          className="flex items-center gap-0.5 text-[10px] text-gray-500 hover:text-red-500 px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          삭제
-                        </button>
-                      </div>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -379,300 +586,339 @@ export default function CastingDirectorPage() {
           </div>
         )}
 
-        {/* 공고 등록 탭의 사이드바는 비워둠 */}
-        {activeTab === "register" && <div className="flex-1" />}
+        {/* ── 지원자 슬라이드 패널 ── */}
+        {activeView === "projects" && selectedCasting && (
+          <div className="fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white border-l border-gray-200 shadow-2xl z-40 flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between">
+              <div className="flex-1 min-w-0 pr-4">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  {selectedCasting.is_urgent && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                      긴급
+                    </span>
+                  )}
+                  <span
+                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      getCategoryStyle(selectedCasting.category).badge
+                    }`}
+                  >
+                    {selectedCasting.category}
+                  </span>
+                  <span
+                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      selectedCasting.is_closed
+                        ? "bg-gray-100 text-gray-500 border-gray-200"
+                        : "bg-green-50 text-green-600 border-green-200"
+                    }`}
+                  >
+                    {selectedCasting.is_closed ? "마감" : "진행중"}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 truncate">{selectedCasting.title}</h3>
+                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                  {selectedCasting.deadline && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {selectedCasting.deadline.slice(0, 10)} 마감
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" />
+                    {selectedCasting.casting_applications?.[0]?.count ?? 0}명
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => openEdit(selectedCasting)}
+                  aria-label="공고 수정"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedCasting.id)}
+                  aria-label="공고 삭제"
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSelectedCastingId(null)}
+                  aria-label="패널 닫기"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
-        {/* 사이드바 하단 */}
-        <div className="p-3 border-t border-gray-100">
-          <Button onClick={openAdd} size="sm" className="w-full gap-1.5 text-xs">
-            <Plus className="w-3.5 h-3.5" />
-            새 공고 등록
-          </Button>
-        </div>
-      </aside>
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-5 py-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">지원자 목록</p>
 
-      {/* ── 우측 메인 영역 ── */}
-      <main className="flex-1 min-w-0 overflow-y-auto">
-        {error && (
-          <div className="m-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
+                {loadingApps ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-6 h-6 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : !applications || applications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+                    <Users className="w-10 h-10 opacity-30" />
+                    <p className="text-sm">아직 지원자가 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {applications.map((app) => (
+                      <div key={app.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">
+                              {app.profile?.name ?? "이름 없음"}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              지원일:{" "}
+                              {app.applied_at
+                                ? new Date(app.applied_at).toLocaleDateString("ko-KR")
+                                : "-"}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                              statusColors[app.admin_status] ?? statusColors["대기"]
+                            }`}
+                          >
+                            {app.admin_status}
+                          </span>
+                        </div>
+
+                        <div className="space-y-0.5 text-xs text-gray-500 mb-3">
+                          {app.profile?.email && (
+                            <p className="truncate">{app.profile.email}</p>
+                          )}
+                          {app.profile?.phone && <p>{app.profile.phone}</p>}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2">
+                          {app.portfolio_url ? (
+                            <a
+                              href={app.portfolio_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 hover:underline"
+                            >
+                              <FileText className="w-3 h-3" />
+                              포트폴리오 보기
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-300">포트폴리오 없음</span>
+                          )}
+                          <Select
+                            value={app.admin_status}
+                            onValueChange={(v) =>
+                              handleStatusChange(selectedCasting.id, app.id, v)
+                            }
+                          >
+                            <SelectTrigger className="h-7 text-xs w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUS_OPTIONS.map((s) => (
+                                <SelectItem key={s} value={s} className="text-xs">
+                                  {s}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* 공고 등록/수정 탭 */}
-        {activeTab === "register" && (
+        {/* ── register 뷰 ── */}
+        {activeView === "register" && (
           <div className="max-w-2xl mx-auto px-6 py-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              {editingId ? "공고 수정" : "공고 등록"}
-            </h2>
-            <div className="space-y-5 bg-white rounded-xl border border-gray-200 p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900">
+                {editingId ? "캐스팅 공고 수정" : "새 캐스팅 공고 등록"}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                캐스팅 공고를 등록하면 관리자 승인 후 노출됩니다.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 space-y-5">
               <div className="space-y-2">
-                <Label>제목 *</Label>
-                <Input value={form.title} onChange={(e) => updateForm("title", e.target.value)} placeholder="캐스팅 공고 제목" />
+                <Label htmlFor="title">작품명 / 프로젝트명 *</Label>
+                <Input
+                  id="title"
+                  value={form.title}
+                  onChange={(e) => updateForm("title", e.target.value)}
+                  placeholder="예: 넷플릭스 오리지널 시리즈 야간경비"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>카테고리</Label>
+                  <Label htmlFor="category">분류 *</Label>
                   <Select value={form.category} onValueChange={(v) => updateForm("category", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="category">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {["영화", "드라마", "웹드라마", "광고", "뮤직비디오", "기타"].map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>역할</Label>
-                  <Select value={form.role_type || "직접입력"} onValueChange={(v) => updateForm("role_type", v === "직접입력" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="역할 선택" /></SelectTrigger>
-                    <SelectContent>
-                      {["주연", "조연", "단역", "엑스트라", "기타"].map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="role_type">배역명</Label>
+                  <Input
+                    id="role_type"
+                    value={form.role_type}
+                    onChange={(e) => updateForm("role_type", e.target.value)}
+                    placeholder="예: 박준혁 (30대 초반 경비원)"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>성별</Label>
+                  <Label htmlFor="gender">성별</Label>
                   <Select value={form.gender} onValueChange={(v) => updateForm("gender", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="gender">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {["남자", "여자", "무관"].map((g) => (
-                        <SelectItem key={g} value={g}>{g}</SelectItem>
+                      {GENDERS.map((g) => (
+                        <SelectItem key={g} value={g}>
+                          {g}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>마감일</Label>
-                  <Input type="date" value={form.deadline} onChange={(e) => updateForm("deadline", e.target.value)} />
+                  <Label htmlFor="birth_year_start">출생연도 시작</Label>
+                  <Input
+                    id="birth_year_start"
+                    type="number"
+                    value={form.birth_year_start}
+                    onChange={(e) => updateForm("birth_year_start", e.target.value)}
+                    placeholder="예: 1990"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>출생년도 (시작)</Label>
-                  <Input type="number" value={form.birth_year_start} onChange={(e) => updateForm("birth_year_start", e.target.value)} placeholder="예: 1990" />
+                  <Label htmlFor="work_period">촬영일정</Label>
+                  <Input
+                    id="work_period"
+                    value={form.work_period}
+                    onChange={(e) => updateForm("work_period", e.target.value)}
+                    placeholder="예: 2025년 8월 1일~15일"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>출생년도 (종료)</Label>
-                  <Input type="number" value={form.birth_year_end} onChange={(e) => updateForm("birth_year_end", e.target.value)} placeholder="예: 2005" />
+                  <Label htmlFor="deadline">지원 마감일 *</Label>
+                  <Input
+                    id="deadline"
+                    type="date"
+                    value={form.deadline}
+                    onChange={(e) => updateForm("deadline", e.target.value)}
+                  />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>촬영 장소</Label>
-                  <Input value={form.location} onChange={(e) => updateForm("location", e.target.value)} placeholder="서울 강남구" />
-                </div>
-                <div className="space-y-2">
-                  <Label>출연료</Label>
-                  <Input value={form.fee} onChange={(e) => updateForm("fee", e.target.value)} placeholder="협의 후 결정" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>촬영 기간</Label>
-                <Input value={form.work_period} onChange={(e) => updateForm("work_period", e.target.value)} placeholder="예: 2025년 8월 1일~15일" />
               </div>
 
               <div className="space-y-2">
-                <Label>공고 내용</Label>
-                <Textarea value={form.description} onChange={(e) => updateForm("description", e.target.value)} placeholder="캐스팅 공고 상세 내용을 입력하세요" rows={5} />
+                <Label htmlFor="description">상세 내용</Label>
+                <Textarea
+                  id="description"
+                  value={form.description}
+                  onChange={(e) => updateForm("description", e.target.value)}
+                  placeholder="캐스팅 공고 상세 내용을 입력하세요"
+                  rows={5}
+                />
+              </div>
+
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
+                <p className="text-sm text-gray-400">파일 첨부 (선택)</p>
+                <p className="text-xs text-gray-300 mt-1">대본, 콘티 등 관련 파일을 첨부하세요</p>
               </div>
 
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.is_urgent} onChange={(e) => updateForm("is_urgent", e.target.checked)} className="w-4 h-4 accent-red-500" />
+                  <input
+                    type="checkbox"
+                    checked={form.is_urgent}
+                    onChange={(e) => updateForm("is_urgent", e.target.checked)}
+                    className="w-4 h-4 accent-red-500"
+                  />
                   긴급 공고
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={form.is_closed} onChange={(e) => updateForm("is_closed", e.target.checked)} className="w-4 h-4 accent-gray-500" />
+                  <input
+                    type="checkbox"
+                    checked={form.is_closed}
+                    onChange={(e) => updateForm("is_closed", e.target.checked)}
+                    className="w-4 h-4 accent-gray-500"
+                  />
                   마감 처리
                 </label>
               </div>
 
               {error && <p className="text-sm text-red-500">{error}</p>}
 
-              <div className="flex gap-2 justify-end pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => { setActiveTab("castings"); setEditingId(null); setForm(defaultForm) }}
-                  disabled={saving}
-                >
+              <div className="flex gap-3 justify-end pt-2">
+                <Button variant="outline" onClick={handleCancelForm} disabled={saving}>
                   취소
                 </Button>
-                <Button onClick={handleSave} disabled={saving} className="bg-gray-900 hover:bg-gray-700 text-white">
-                  {saving ? "저장 중..." : "저장"}
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  {saving ? "저장 중..." : "저장하기"}
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* 내 공고 탭 */}
-        {activeTab === "castings" && (
-          <>
-            {!selectedCasting ? (
-              /* 공고 미선택 안내 */
-              <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-gray-400 gap-4">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                  <ChevronRight className="w-8 h-8 text-gray-300" />
-                </div>
-                <div className="text-center">
-                  <p className="text-base font-medium text-gray-500">공고를 선택하세요</p>
-                  <p className="text-sm text-gray-400 mt-1">좌측 사이드바에서 공고를 선택하면 지원자 목록을 확인할 수 있습니다</p>
-                </div>
-                {castings.length === 0 && (
-                  <Button onClick={openAdd} variant="outline" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    첫 공고 등록하기
-                  </Button>
-                )}
+        {/* ── bookmarks 뷰 ── */}
+        {activeView === "bookmarks" && (
+          <div className="px-6 py-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Bookmark className="w-5 h-5 text-purple-500" />
               </div>
-            ) : (
-              /* 지원자 목록 */
-              <div className="px-6 py-6">
-                {/* 공고 요약 헤더 */}
-                <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {selectedCasting.is_urgent && (
-                          <Badge className="bg-red-500 text-white text-xs">긴급</Badge>
-                        )}
-                        <Badge variant="outline" className="text-xs">{selectedCasting.category}</Badge>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                          selectedCasting.is_closed
-                            ? "bg-gray-100 text-gray-500 border-gray-200"
-                            : "bg-green-50 text-green-600 border-green-200"
-                        }`}>
-                          {selectedCasting.is_closed ? "마감" : "모집중"}
-                        </span>
-                      </div>
-                      <h2 className="text-lg font-bold text-gray-900">{selectedCasting.title}</h2>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                        {selectedCasting.deadline && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {selectedCasting.deadline.slice(0, 10)} 마감
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5" />
-                          {selectedCasting.casting_applications?.[0]?.count ?? 0}명 지원
-                        </span>
-                        {selectedCasting.creator && (
-                          <span className="flex items-center gap-1">
-                            <Briefcase className="w-3.5 h-3.5" />
-                            {selectedCasting.creator.activity_name ?? selectedCasting.creator.name ?? selectedCasting.creator.email ?? "-"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(selectedCasting)}
-                        className="gap-1.5 text-xs"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        수정
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(selectedCasting.id)}
-                        className="gap-1.5 text-xs text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        삭제
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 지원자 목록 */}
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">지원자 목록</h3>
-
-                {loadingApps ? (
-                  <div className="flex items-center justify-center py-20">
-                    <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : !applications || applications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                    <Users className="w-10 h-10 opacity-30 mb-3" />
-                    <p className="text-sm">아직 지원자가 없습니다</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {applications.map((app) => (
-                      <Card key={app.id} className="border border-gray-200 shadow-none">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <p className="font-semibold text-gray-900 text-sm">
-                                {app.profile?.name ?? "이름 없음"}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {app.applied_at ? new Date(app.applied_at).toLocaleDateString("ko-KR") : "-"} 지원
-                              </p>
-                            </div>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${statusColors[app.admin_status] ?? statusColors["대기"]}`}>
-                              {app.admin_status}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1 text-xs text-gray-600 mb-3">
-                            {app.profile?.email && (
-                              <p className="truncate">{app.profile.email}</p>
-                            )}
-                            {app.profile?.phone && (
-                              <p>{app.profile.phone}</p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2">
-                            {app.portfolio_url ? (
-                              <a
-                                href={app.portfolio_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-primary hover:underline"
-                              >
-                                <FileText className="w-3 h-3" />
-                                포트폴리오
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            ) : (
-                              <span className="text-xs text-gray-300">포트폴리오 없음</span>
-                            )}
-                            <Select
-                              value={app.admin_status}
-                              onValueChange={(v) => handleStatusChange(selectedCasting.id, app.id, v)}
-                            >
-                              <SelectTrigger className="h-7 text-xs w-24">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {["대기", "합격", "보류", "탈락"].map((s) => (
-                                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">나의 배우 보관함</h2>
+                <p className="text-sm text-gray-500">관심 있는 배우들을 저장하고 관리하세요.</p>
               </div>
-            )}
-          </>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center justify-center py-24 text-gray-400 gap-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
+                <Bookmark className="w-8 h-8 opacity-40" />
+              </div>
+              <div className="text-center">
+                <p className="text-base font-medium text-gray-500">보관함이 비어있습니다</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  배우 프로필에서 북마크 버튼을 눌러 저장해보세요
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
