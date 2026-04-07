@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { heroBanners, quickLinks as quickLinksData } from "@/data/content"
 import { useUserSafe } from "@/contexts/user-context"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/use-auth"
 
 // 3D 스타일 아이콘 컴포넌트들
 function Icon3DDocument() {
@@ -124,6 +125,52 @@ function Icon3DCrown() {
   )
 }
 
+function Icon3DSend() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-full h-full">
+      <defs>
+        <linearGradient id="sendGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </linearGradient>
+        <filter id="sendShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.2"/>
+        </filter>
+      </defs>
+      <g filter="url(#sendShadow)">
+        <path d="M8 32L56 8L40 56L30 36L8 32Z" fill="url(#sendGrad1)" />
+        <path d="M30 36L56 8L40 56L30 36Z" fill="#c2410c" opacity="0.4" />
+        <path d="M30 36L40 56" stroke="#fdba74" strokeWidth="2" strokeLinecap="round" />
+      </g>
+    </svg>
+  )
+}
+
+function Icon3DList() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-full h-full">
+      <defs>
+        <linearGradient id="listGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </linearGradient>
+        <filter id="listShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.2"/>
+        </filter>
+      </defs>
+      <g filter="url(#listShadow)">
+        <rect x="12" y="10" width="40" height="44" rx="4" fill="white" stroke="#e7e5e4" strokeWidth="1.5" />
+        <circle cx="20" cy="24" r="3" fill="url(#listGrad1)" />
+        <rect x="27" y="22" width="18" height="4" rx="2" fill="#d6d3d1" />
+        <circle cx="20" cy="36" r="3" fill="url(#listGrad1)" />
+        <rect x="27" y="34" width="14" height="4" rx="2" fill="#d6d3d1" />
+        <circle cx="20" cy="48" r="3" fill="#d6d3d1" />
+        <rect x="27" y="46" width="16" height="4" rx="2" fill="#e7e5e4" />
+      </g>
+    </svg>
+  )
+}
+
 // 아이콘 타입 매핑
 // [관리자 안내] iconType에 따라 3D 아이콘이 자동 선택됩니다
 const iconMap: Record<string, React.ComponentType> = {
@@ -131,6 +178,8 @@ const iconMap: Record<string, React.ComponentType> = {
   download: Icon3DDownload,
   headset: Icon3DHeadset,
   crown: Icon3DCrown,
+  send: Icon3DSend,
+  list: Icon3DList,
 }
 
 // 데이터 파일에서 가져온 quickLinks를 아이콘 컴포넌트와 매핑
@@ -138,6 +187,28 @@ const quickLinks = quickLinksData.map((link) => ({
   ...link,
   Icon: iconMap[link.iconType] || Icon3DDocument,
 }))
+
+// 프리미엄 전용 추가 타일
+const premiumExtraLinks = [
+  {
+    id: "premium-1",
+    iconType: "send",
+    Icon: Icon3DSend,
+    lines: ["받은 캐스팅 제안"],
+    sublabel: undefined,
+    href: "/received-proposals",
+    isExternal: false,
+  },
+  {
+    id: "premium-2",
+    iconType: "list",
+    Icon: Icon3DList,
+    lines: ["지원의뢰"],
+    sublabel: undefined,
+    href: "/mypage?tab=applications",
+    isExternal: false,
+  },
+]
 
 // 정적 폴백 슬라이드 (DB 배너가 없을 때 사용)
 const staticSlides = heroBanners.map((banner) => ({
@@ -164,6 +235,7 @@ export function HeroBanner() {
   const router = useRouter()
   const { status } = useUserSafe()
   const { toast } = useToast()
+  const { isPremium, profile } = useAuth()
   const [isMounted, setIsMounted] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
@@ -355,7 +427,20 @@ export function HeroBanner() {
 
           {/* Right - Quick Links Grid */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {quickLinks.map((link, index) => {
+            {(() => {
+              const isArtistPremium = isPremium && profile?.role !== "casting_director" && profile?.role !== "admin"
+              // 프리미엄이면: 멤버십 가입 → 멤버십 관리로 교체 + 2개 추가
+              let displayLinks = quickLinks.map((link) => {
+                if (link.id === "quick-4" && isArtistPremium) {
+                  return { ...link, lines: ["멤버십 관리"], href: "/membership" }
+                }
+                return link
+              })
+              if (isArtistPremium) {
+                displayLinks = [...displayLinks, ...premiumExtraLinks]
+              }
+              return displayLinks
+            })().map((link, index) => {
               // 외부 링크인 경우 (고객센터 등)
               const isExternal = "isExternal" in link && link.isExternal
               
