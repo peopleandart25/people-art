@@ -402,6 +402,19 @@ const castingDirectorLinks = [
 ]
 
 function CastingDirectorLinksGrid() {
+  const [activeCastingCount, setActiveCastingCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch("/api/director/castings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setActiveCastingCount(data.filter((c: { is_closed: boolean }) => !c.is_closed).length)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const tileClass = "group flex flex-col items-center justify-center rounded-2xl bg-card p-3 sm:p-4 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[130px] sm:h-[150px] lg:h-[180px]"
   const iconClass = "relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mb-3"
   return (
@@ -423,6 +436,9 @@ function CastingDirectorLinksGrid() {
             {link.lines.map((line, i) => (
               <span key={i} className="font-semibold text-foreground text-xs sm:text-sm leading-snug">{line}</span>
             ))}
+            {link.id === "cd-3" && activeCastingCount !== null && (
+              <span className="text-[11px] text-orange-500 font-medium mt-0.5">{activeCastingCount}건 진행중</span>
+            )}
           </div>
         </Link>
       ))}

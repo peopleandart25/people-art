@@ -53,12 +53,17 @@ export async function GET(request: Request) {
 
   const enriched = await Promise.all(
     proposals.map(async (p) => {
-      const [{ data: artistProfile }, castingResult] = await Promise.all([
+      const [{ data: artistProfile }, { data: artistArtistProfile }, castingResult] = await Promise.all([
         serviceClient
           .from("profiles")
           .select("name, activity_name")
           .eq("id", p.artist_user_id)
           .single(),
+        serviceClient
+          .from("artist_profiles")
+          .select("portfolio_url")
+          .eq("user_id", p.artist_user_id)
+          .maybeSingle(),
         p.casting_id
           ? serviceClient
               .from("castings")
@@ -68,10 +73,12 @@ export async function GET(request: Request) {
           : Promise.resolve({ data: null }),
       ])
       const ap = artistProfile as { name: string | null; activity_name: string | null } | null
+      const aap = artistArtistProfile as { portfolio_url: string | null } | null
       return {
         ...p,
         artist_name: ap?.activity_name ?? ap?.name ?? "이름 없음",
         casting_title: (castingResult.data as { title: string } | null)?.title ?? null,
+        portfolio_url: aap?.portfolio_url ?? null,
       }
     })
   )

@@ -107,6 +107,7 @@ type ShortlistItem = {
     weight: number | null
   } | null
   main_photo: string | null
+  portfolio_url: string | null
 }
 
 type ProposalRecord = {
@@ -119,6 +120,7 @@ type ProposalRecord = {
   artist_user_id: string
   artist_name: string
   casting_title: string | null
+  portfolio_url: string | null
 }
 
 type CastingForm = {
@@ -1362,6 +1364,21 @@ export default function CastingDirectorPage() {
                                   제안
                                 </Button>
                               </div>
+                              {item.portfolio_url && (() => {
+                                const birthYear = item.artist_profile?.birth_date ? String(new Date(item.artist_profile.birth_date).getFullYear()).slice(2) : null
+                                const filename = [birthYear ? `${birthYear}년` : null, item.name, "프로필"].filter(Boolean).join("_") + ".pdf"
+                                return (
+                                  <a
+                                    href={`/api/pdf-proxy?url=${encodeURIComponent(item.portfolio_url!)}&filename=${encodeURIComponent(filename)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-1.5 w-full text-xs text-gray-500 hover:text-blue-500 transition-colors py-1 flex items-center justify-center gap-1 border border-gray-200 rounded-lg"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                    PDF 다운로드
+                                  </a>
+                                )
+                              })()}
                             </div>
                           </div>
                         )
@@ -1411,13 +1428,26 @@ export default function CastingDirectorPage() {
                             {new Date(p.created_at).toLocaleDateString("ko-KR")}
                           </p>
                         </div>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border ${
-                            PROPOSAL_STATUS_COLOR[p.status]
-                          }`}
-                        >
-                          {PROPOSAL_STATUS_LABEL[p.status]}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {p.portfolio_url && (
+                            <a
+                              href={`/api/pdf-proxy?url=${encodeURIComponent(p.portfolio_url)}&filename=${encodeURIComponent(p.artist_name + "_프로필.pdf")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-gray-400 hover:text-blue-500 transition-colors flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              PDF
+                            </a>
+                          )}
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium border ${
+                              PROPOSAL_STATUS_COLOR[p.status]
+                            }`}
+                          >
+                            {PROPOSAL_STATUS_LABEL[p.status]}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

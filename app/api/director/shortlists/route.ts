@@ -46,7 +46,7 @@ export async function GET(request: Request) {
         serviceClient.from("profiles").select("name, activity_name").eq("id", item.artist_user_id).single(),
         serviceClient
           .from("artist_profiles")
-          .select("id, gender, birth_date, height, weight")
+          .select("id, gender, birth_date, height, weight, portfolio_url")
           .eq("user_id", item.artist_user_id)
           .single(),
         serviceClient
@@ -58,11 +58,13 @@ export async function GET(request: Request) {
       ])
 
       const np = profile as { name: string | null; activity_name: string | null } | null
+      const ap = artistProfile as { id: string; gender: string | null; birth_date: string | null; height: number | null; weight: number | null; portfolio_url: string | null } | null
       return {
         ...item,
         name: np?.activity_name ?? np?.name ?? "이름 없음",
-        artist_profile: artistProfile ?? null,
+        artist_profile: ap ?? null,
         main_photo: (photo as { url: string } | null)?.url ?? null,
+        portfolio_url: ap?.portfolio_url ?? null,
       }
     })
   )
