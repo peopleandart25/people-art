@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table"
 import { CareerItem, VideoItem } from "@/contexts/artist-context"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 
 // ReactPlayer 동적 import (SSR 비활성화) - 표준 경로 사용
@@ -95,6 +96,7 @@ interface ArtistData {
 export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
   const { id } = use(params)
   const { isPremium, isAdmin, profile } = useAuth()
+  const { toast } = useToast()
 
   const canViewRestricted = isPremium || isAdmin
   const isCastingDirector = profile?.role === "casting_director"
@@ -120,7 +122,7 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
       if (res.ok) {
         setShowProposalModal(false)
         setProposalMessage("")
-        alert("캐스팅 제안이 전송되었습니다.")
+        toast({ title: "캐스팅 제안 전송 완료", description: "아티스트에게 제안이 전달되었습니다." })
       }
     } finally {
       setSendingProposal(false)

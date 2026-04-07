@@ -158,7 +158,9 @@ const getCategoryStyle = (category: string) =>
 
 const statusColors: Record<string, string> = {
   "대기": "bg-yellow-100 text-yellow-700 border-yellow-200",
+  "리스트업": "bg-purple-100 text-purple-700 border-purple-200",
   "합격": "bg-green-100 text-green-700 border-green-200",
+  "최종합격": "bg-orange-100 text-orange-700 border-orange-200",
   "보류": "bg-blue-100 text-blue-700 border-blue-200",
   "탈락": "bg-gray-100 text-gray-600 border-gray-200",
 }
@@ -1872,6 +1874,16 @@ function ProfileViewPanel({
         <h3 className="text-sm font-semibold text-gray-700 mb-4">연락처 정보</h3>
 
         <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="dir-name" className="text-xs text-gray-500">이름</Label>
+            <Input
+              id="dir-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="홍길동"
+              className="text-sm"
+            />
+          </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-500">이메일</Label>
             <Input value={email} disabled className="bg-gray-50 text-gray-500 text-sm" />
