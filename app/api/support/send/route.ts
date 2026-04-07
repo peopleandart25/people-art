@@ -80,8 +80,11 @@ export async function POST(request: Request) {
     videoLinks = (videos ?? []).filter(v => v.url).map(v => ({ url: v.url!, name: v.name ?? "영상" }))
   }
 
-  const baseMessage = template?.message?.trim()
-    || `안녕하세요.\n\n피플앤아트(people-art.co.kr)를 통해 프로필을 지원드립니다.\n\n이름: ${name}\n연락처: ${phone}\n이메일: ${replyTo ?? ""}`
+  const customMessage = template?.message?.trim()
+  const contactBlock = `이름: ${name}${phone ? `\n연락처: ${phone}` : ""}${replyTo ? `\n이메일: ${replyTo}` : ""}`
+  const baseMessage = customMessage
+    ? `${customMessage}\n\n---\n${contactBlock}`
+    : `안녕하세요.\n\n피플앤아트(people-art.co.kr)를 통해 프로필을 지원드립니다.\n\n${contactBlock}`
 
   // 이메일 병렬 발송
   const sendResults = await Promise.allSettled(
