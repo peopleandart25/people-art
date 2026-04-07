@@ -31,3 +31,29 @@ export async function GET() {
     { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
   )
 }
+
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const body = await request.json()
+  const { name, phone, activity_name, email } = body as {
+    name?: string
+    phone?: string
+    activity_name?: string
+    email?: string
+  }
+
+  const updatePayload: Record<string, string | null> = {}
+  if (name !== undefined) updatePayload.name = name
+  if (phone !== undefined) updatePayload.phone = phone
+  if (activity_name !== undefined) updatePayload.activity_name = activity_name
+  if (email !== undefined) updatePayload.email = email
+
+  const serviceClient = createServiceClient()
+  const { error } = await serviceClient.from("profiles").update(updatePayload).eq("id", user.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}

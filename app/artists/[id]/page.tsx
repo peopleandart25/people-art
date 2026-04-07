@@ -72,6 +72,7 @@ interface ArtistDetailPageProps {
 
 interface ArtistData {
   id: string
+  userId: string
   name: string
   profileImage: string | null
   subImages: string[]
@@ -103,6 +104,28 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null)
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [showProposalModal, setShowProposalModal] = useState(false)
+  const [proposalMessage, setProposalMessage] = useState("")
+  const [sendingProposal, setSendingProposal] = useState(false)
+
+  const handleSendProposal = async () => {
+    if (!artist) return
+    setSendingProposal(true)
+    try {
+      const res = await fetch("/api/director/proposals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artist_user_ids: [artist.userId], message: proposalMessage }),
+      })
+      if (res.ok) {
+        setShowProposalModal(false)
+        setProposalMessage("")
+        alert("캐스팅 제안이 전송되었습니다.")
+      }
+    } finally {
+      setSendingProposal(false)
+    }
+  }
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -147,6 +170,7 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
 
       setArtist({
         id: ap.id,
+        userId: ap.user_id,
         name: profile?.name ?? "",
         profileImage: mainPhoto?.url ?? null,
         subImages: subPhotos,
@@ -274,21 +298,29 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
             아티스트 목록
           </Link>
           {isCastingDirector && (
-            <button
-              onClick={toggleBookmark}
-              disabled={bookmarkLoading}
-              aria-label={isBookmarked ? "보관함에서 제거" : "보관함에 저장"}
-              className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
-                isBookmarked
-                  ? "bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100"
-                  : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              {isBookmarked
-                ? <><BookmarkCheck className="h-4 w-4" />보관함에 저장됨</>
-                : <><Bookmark className="h-4 w-4" />보관함에 저장</>
-              }
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleBookmark}
+                disabled={bookmarkLoading}
+                aria-label={isBookmarked ? "보관함에서 제거" : "보관함에 저장"}
+                className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                  isBookmarked
+                    ? "bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100"
+                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                {isBookmarked
+                  ? <><BookmarkCheck className="h-4 w-4" />보관함에 저장됨</>
+                  : <><Bookmark className="h-4 w-4" />보관함에 저장</>
+                }
+              </button>
+              <button
+                onClick={() => setShowProposalModal(true)}
+                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border bg-orange-500 text-white border-orange-500 hover:bg-orange-600 transition-colors"
+              >
+                캐스팅 제안하기
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -763,6 +795,45 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 캐스팅 제안 모달 */}
+      {showProposalModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">캐스팅 제안하기</h3>
+              <button onClick={() => setShowProposalModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              <span className="font-semibold text-gray-900">{artist?.name}</span> 님께 캐스팅 제안을 보냅니다.
+            </p>
+            <textarea
+              value={proposalMessage}
+              onChange={(e) => setProposalMessage(e.target.value)}
+              placeholder="제안 메시지를 입력하세요 (선택사항)"
+              rows={4}
+              className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-300"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setShowProposalModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSendProposal}
+                disabled={sendingProposal}
+                className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 disabled:opacity-50"
+              >
+                {sendingProposal ? "전송 중..." : "제안 보내기"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

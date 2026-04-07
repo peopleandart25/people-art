@@ -23,7 +23,8 @@ interface AdjacentEvent {
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { isLoggedIn, isPremium, isAdmin, user } = useAuth()
+  const { isLoggedIn, isPremium, isAdmin, user, profile } = useAuth()
+  const isCastingDirector = profile?.role === "casting_director"
 
   const [eventItem, setEventItem] = useState<EventRow | null>(null)
   const [loading, setLoading] = useState(true)
@@ -217,19 +218,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             <div className="pt-4">
-              <Button
-                onClick={handleApply}
-                disabled={eventItem.status === "마감" || alreadyApplied}
-                size="lg"
-                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground gap-2"
-              >
-                {eventItem.status === "마감"
-                  ? "마감됨"
-                  : alreadyApplied
-                  ? "신청완료"
-                  : "신청하기"}
-                {eventItem.status !== "마감" && !alreadyApplied && <CheckCircle className="h-4 w-4" />}
-              </Button>
+              {isCastingDirector ? (
+                <Button disabled size="lg" className="w-full sm:w-auto bg-muted text-muted-foreground">
+                  본 공고는 아티스트를 위한 공고입니다.
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleApply}
+                  disabled={eventItem.status === "마감" || alreadyApplied}
+                  size="lg"
+                  className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground gap-2"
+                >
+                  {eventItem.status === "마감"
+                    ? "마감됨"
+                    : alreadyApplied
+                    ? "신청완료"
+                    : "신청하기"}
+                  {eventItem.status !== "마감" && !alreadyApplied && <CheckCircle className="h-4 w-4" />}
+                </Button>
+              )}
             </div>
           </div>
         </div>

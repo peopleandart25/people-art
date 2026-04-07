@@ -171,6 +171,95 @@ function Icon3DList() {
   )
 }
 
+function Icon3DPlus() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-full h-full">
+      <defs>
+        <linearGradient id="plusGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </linearGradient>
+        <filter id="plusShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.2"/>
+        </filter>
+      </defs>
+      <g filter="url(#plusShadow)">
+        <circle cx="32" cy="32" r="24" fill="url(#plusGrad1)" />
+        <rect x="29" y="16" width="6" height="32" rx="3" fill="white" />
+        <rect x="16" y="29" width="32" height="6" rx="3" fill="white" />
+      </g>
+    </svg>
+  )
+}
+
+function Icon3DDashboard() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-full h-full">
+      <defs>
+        <linearGradient id="dashGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </linearGradient>
+        <filter id="dashShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.2"/>
+        </filter>
+      </defs>
+      <g filter="url(#dashShadow)">
+        <rect x="8" y="8" width="22" height="22" rx="4" fill="url(#dashGrad1)" />
+        <rect x="34" y="8" width="22" height="22" rx="4" fill="#fed7aa" />
+        <rect x="8" y="34" width="22" height="22" rx="4" fill="#fed7aa" />
+        <rect x="34" y="34" width="22" height="22" rx="4" fill="url(#dashGrad1)" />
+      </g>
+    </svg>
+  )
+}
+
+function Icon3DFilmReel() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-full h-full">
+      <defs>
+        <linearGradient id="filmGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </linearGradient>
+        <filter id="filmShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.2"/>
+        </filter>
+      </defs>
+      <g filter="url(#filmShadow)">
+        <circle cx="32" cy="32" r="22" fill="url(#filmGrad1)" />
+        <circle cx="32" cy="32" r="8" fill="#7c2d12" />
+        <circle cx="32" cy="32" r="4" fill="#fed7aa" />
+        <circle cx="32" cy="13" r="4" fill="white" opacity="0.8" />
+        <circle cx="32" cy="51" r="4" fill="white" opacity="0.8" />
+        <circle cx="13" cy="32" r="4" fill="white" opacity="0.8" />
+        <circle cx="51" cy="32" r="4" fill="white" opacity="0.8" />
+      </g>
+    </svg>
+  )
+}
+
+function Icon3DProposal() {
+  return (
+    <svg viewBox="0 0 64 64" className="w-full h-full">
+      <defs>
+        <linearGradient id="propGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#c2410c" />
+        </linearGradient>
+        <filter id="propShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="3" floodOpacity="0.2"/>
+        </filter>
+      </defs>
+      <g filter="url(#propShadow)">
+        <path d="M8 12h48v28a4 4 0 01-4 4H12a4 4 0 01-4-4V12z" fill="url(#propGrad1)" />
+        <path d="M8 12l24 18L56 12" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
+        <path d="M38 46l4 8 10-18" stroke="#4ade80" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </svg>
+  )
+}
+
 // 아이콘 타입 매핑
 // [관리자 안내] iconType에 따라 3D 아이콘이 자동 선택됩니다
 const iconMap: Record<string, React.ComponentType> = {
@@ -180,6 +269,100 @@ const iconMap: Record<string, React.ComponentType> = {
   crown: Icon3DCrown,
   send: Icon3DSend,
   list: Icon3DList,
+}
+
+type QuickLinkItem = {
+  id: string
+  iconType: string
+  Icon: React.ComponentType
+  lines?: string[]
+  sublabel?: string
+  href: string
+  isExternal?: boolean
+}
+
+function QuickLinksGrid({
+  quickLinks,
+  premiumExtraLinks,
+  isPremiumArtist,
+  onDownloadClick,
+  pendingProposalCount = 0,
+}: {
+  quickLinks: QuickLinkItem[]
+  premiumExtraLinks: QuickLinkItem[]
+  isPremiumArtist: boolean
+  onDownloadClick: (e: React.MouseEvent<HTMLAnchorElement>, id: string) => void
+  pendingProposalCount?: number
+}) {
+  const displayLinks: QuickLinkItem[] = isPremiumArtist
+    ? [
+        ...quickLinks.map((link) =>
+          link.id === "quick-4" ? { ...link, lines: ["멤버십 관리"], href: "/membership" } : link
+        ),
+        ...premiumExtraLinks,
+      ]
+    : quickLinks
+
+  const gridClass = isPremiumArtist
+    ? "grid grid-cols-3 gap-3 sm:gap-4"
+    : "grid grid-cols-2 gap-3 sm:gap-4"
+
+  const tileClass = isPremiumArtist
+    ? "group relative flex flex-col items-center justify-center rounded-2xl bg-card p-2 sm:p-3 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[110px] sm:h-[130px] lg:h-[150px]"
+    : "group relative flex flex-col items-center justify-center rounded-2xl bg-card p-3 sm:p-4 lg:p-5 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[130px] sm:h-[150px] lg:h-[180px]"
+
+  const iconClass = isPremiumArtist
+    ? "relative w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 mb-2"
+    : "relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mb-3"
+
+  return (
+    <div className={gridClass}>
+      {displayLinks.map((link, index) => {
+        const isExternal = !!link.isExternal
+        const style = { animation: `float 3s ease-in-out ${index * 0.15}s infinite` }
+
+        const hasBadge = link.id === "premium-1" && pendingProposalCount > 0
+
+        const content = (
+          <>
+            <div className={`${iconClass} transform group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300`}>
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-2 bg-primary/10 rounded-full blur-sm opacity-60" />
+              <div className="relative z-10 w-full h-full">
+                <link.Icon />
+              </div>
+              {hasBadge && (
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500" />
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col items-center justify-center text-center" style={{ wordBreak: "keep-all" }}>
+              {link.lines?.map((line, i) => (
+                <span key={i} className="font-semibold text-foreground text-xs sm:text-sm leading-snug">{line || "메뉴"}</span>
+              )) ?? <span className="font-semibold text-foreground text-sm">메뉴</span>}
+              {link.sublabel && (
+                <span className="text-xs text-muted-foreground mt-0.5 leading-tight">{link.sublabel}</span>
+              )}
+            </div>
+          </>
+        )
+
+        if (isExternal) {
+          return (
+            <a key={link.id} href={link.href} target="_blank" rel="noopener noreferrer" className={tileClass} style={style}>
+              {content}
+            </a>
+          )
+        }
+        return (
+          <Link key={link.id} href={link.href} onClick={(e) => onDownloadClick(e as React.MouseEvent<HTMLAnchorElement>, link.id)} className={tileClass} style={style}>
+            {content}
+          </Link>
+        )
+      })}
+    </div>
+  )
 }
 
 // 데이터 파일에서 가져온 quickLinks를 아이콘 컴포넌트와 매핑
@@ -210,6 +393,43 @@ const premiumExtraLinks = [
   },
 ]
 
+// 캐스팅디렉터 전용 타일
+const castingDirectorLinks = [
+  { id: "cd-1", Icon: Icon3DPlus, lines: ["새 캐스팅 공고 등록"], href: "/casting-director?view=register" },
+  { id: "cd-2", Icon: Icon3DDashboard, lines: ["전체 대시보드"], href: "/casting-director" },
+  { id: "cd-3", Icon: Icon3DFilmReel, lines: ["진행중인 캐스팅"], href: "/casting-director?view=projects" },
+  { id: "cd-4", Icon: Icon3DProposal, lines: ["보낸 제안 관리"], href: "/casting-director?view=proposals" },
+]
+
+function CastingDirectorLinksGrid() {
+  const tileClass = "group flex flex-col items-center justify-center rounded-2xl bg-card p-3 sm:p-4 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[130px] sm:h-[150px] lg:h-[180px]"
+  const iconClass = "relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mb-3"
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      {castingDirectorLinks.map((link, index) => (
+        <Link
+          key={link.id}
+          href={link.href}
+          className={tileClass}
+          style={{ animation: `float 3s ease-in-out ${index * 0.15}s infinite` }}
+        >
+          <div className={`${iconClass} transform group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300`}>
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-2 bg-primary/10 rounded-full blur-sm opacity-60" />
+            <div className="relative z-10 w-full h-full">
+              <link.Icon />
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center text-center" style={{ wordBreak: "keep-all" }}>
+            {link.lines.map((line, i) => (
+              <span key={i} className="font-semibold text-foreground text-xs sm:text-sm leading-snug">{line}</span>
+            ))}
+          </div>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 // 정적 폴백 슬라이드 (DB 배너가 없을 때 사용)
 const staticSlides = heroBanners.map((banner) => ({
   id: banner.id,
@@ -237,6 +457,7 @@ export function HeroBanner() {
   const { toast } = useToast()
   const { isPremium, profile } = useAuth()
   const [isMounted, setIsMounted] = useState(false)
+  const [pendingProposalCount, setPendingProposalCount] = useState(0)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [direction, setDirection] = useState<"left" | "right">("right")
@@ -247,6 +468,13 @@ export function HeroBanner() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!isPremium || profile?.role === "casting_director" || profile?.role === "admin") return
+    fetch("/api/artist/proposals?count=true")
+      .then((r) => r.json())
+      .then((d) => { if (typeof d?.pending === "number") setPendingProposalCount(d.pending) })
+  }, [isPremium, profile?.role])
 
   useEffect(() => {
     fetch("/api/banners")
@@ -426,84 +654,17 @@ export function HeroBanner() {
           </div>
 
           {/* Right - Quick Links Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {(() => {
-              const isArtistPremium = isPremium && profile?.role !== "casting_director" && profile?.role !== "admin"
-              // 프리미엄이면: 멤버십 가입 → 멤버십 관리로 교체 + 2개 추가
-              let displayLinks = quickLinks.map((link) => {
-                if (link.id === "quick-4" && isArtistPremium) {
-                  return { ...link, lines: ["멤버십 관리"], href: "/membership" }
-                }
-                return link
-              })
-              if (isArtistPremium) {
-                displayLinks = [...displayLinks, ...premiumExtraLinks]
-              }
-              return displayLinks
-            })().map((link, index) => {
-              // 외부 링크인 경우 (고객센터 등)
-              const isExternal = "isExternal" in link && link.isExternal
-              
-              const linkContent = (
-                <>
-                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mb-3 transform group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300">
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-2 bg-primary/10 rounded-full blur-sm opacity-60" />
-                    <div className="relative z-10 w-full h-full">
-                      <link.Icon />
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-center justify-center text-center max-w-full h-auto min-h-[40px]" style={{ wordBreak: "keep-all" }}>
-                    {link?.lines ? link.lines.map((line, lineIndex) => (
-                      <span 
-                        key={lineIndex} 
-                        className="font-semibold text-foreground text-sm leading-snug"
-                      >
-                        {line ? line : "메뉴"}
-                      </span>
-                    )) : <span className="font-semibold text-foreground text-sm leading-snug">메뉴</span>}
-                    {link?.sublabel && (
-                      <span className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                        {link.sublabel}
-                      </span>
-                    )}
-                  </div>
-                </>
-              )
-              
-              const className = "group relative flex flex-col items-center justify-center rounded-2xl bg-card p-3 sm:p-4 lg:p-5 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[130px] sm:h-[150px] lg:h-[180px]"
-              const style = { animation: `float 3s ease-in-out ${index * 0.15}s infinite` }
-              
-              // 외부 링크는 <a> 태그 사용
-              if (isExternal) {
-                return (
-                  <a
-                    key={link?.lines?.[0] ? link.lines[0] : `quick-link-${index}`}
-                    href={link?.href ? link.href : "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={className}
-                    style={style}
-                  >
-                    {linkContent}
-                  </a>
-                )
-              }
-              
-              // 내부 링크는 <Link> 컴포넌트 사용
-              return (
-                <Link
-                  key={link?.lines?.[0] ? link.lines[0] : `quick-link-${index}`}
-                  href={link?.href ? link.href : "#"}
-                  onClick={(e) => handleDownloadClick(e, link.id)}
-                  className={className}
-                  style={style}
-                >
-                  {linkContent}
-                </Link>
-              )
-            })}
-          </div>
+          {profile?.role === "casting_director" ? (
+            <CastingDirectorLinksGrid />
+          ) : (
+            <QuickLinksGrid
+              quickLinks={quickLinks}
+              premiumExtraLinks={premiumExtraLinks}
+              isPremiumArtist={isPremium && profile?.role !== "casting_director" && profile?.role !== "admin"}
+              onDownloadClick={handleDownloadClick}
+              pendingProposalCount={pendingProposalCount}
+            />
+          )}
         </div>
 
         {/* Slider Controls */}

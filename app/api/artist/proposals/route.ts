@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       .eq("artist_user_id", user.id)
       .eq("status", "pending")
 
-    return NextResponse.json({ count: count ?? 0 })
+    return NextResponse.json({ pending: count ?? 0 })
   }
 
   // 프리미엄 회원만 제안 목록 조회 가능
@@ -70,17 +70,24 @@ export async function GET(request: Request) {
         p.casting_id
           ? serviceClient
               .from("castings")
-              .select("title")
+              .select("title, category, role_type, location, work_period, fee, deadline")
               .eq("id", p.casting_id)
               .single()
           : Promise.resolve({ data: null }),
       ])
       const dp = directorProfile as { name: string | null; activity_name: string | null; company: string | null } | null
+      const casting = castingResult.data as { title: string; category: string | null; role_type: string | null; location: string | null; work_period: string | null; fee: string | null; deadline: string | null } | null
       return {
         ...p,
         director_name: dp?.activity_name ?? dp?.name ?? "디렉터",
         director_company: dp?.company ?? null,
-        casting_title: (castingResult.data as { title: string } | null)?.title ?? null,
+        casting_title: casting?.title ?? null,
+        casting_category: casting?.category ?? null,
+        casting_role_type: casting?.role_type ?? null,
+        casting_location: casting?.location ?? null,
+        casting_work_period: casting?.work_period ?? null,
+        casting_fee: casting?.fee ?? null,
+        casting_deadline: casting?.deadline ?? null,
       }
     })
   )

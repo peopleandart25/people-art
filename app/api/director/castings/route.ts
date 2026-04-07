@@ -45,27 +45,48 @@ export async function GET(request: Request) {
       .eq("casting_id", castingId)
       .order("applied_at", { ascending: false })
 
-    if (!apps) return NextResponse.json([])
+    if (!apps || apps.length === 0) return NextResponse.json([])
 
-    const enriched = await Promise.all(
-      apps.map(async (app) => {
-        const [{ data: profile }, { data: artistProfile }] = await Promise.all([
-          serviceClient.from("profiles").select("name, email, phone").eq("id", app.user_id).single(),
-          serviceClient.from("artist_profiles").select("id, portfolio_url, main_photo, gender, birth_date, height, weight").eq("user_id", app.user_id).single(),
-        ])
-        return {
-          ...app,
-          profile: profile ?? null,
-          portfolio_url: artistProfile?.portfolio_url ?? null,
-          artist_profile_id: artistProfile?.id ?? null,
-          main_photo: artistProfile?.main_photo ?? null,
-          gender: artistProfile?.gender ?? null,
-          birth_date: artistProfile?.birth_date ?? null,
-          height: artistProfile?.height ?? null,
-          weight: artistProfile?.weight ?? null,
-        }
-      })
-    )
+    // 배치 쿼리로 N+1 방지 (N×3 쿼리 → 3 쿼리)
+    const userIds = apps.map((a) => a.user_id)
+    const [{ data: profiles }, { data: artistProfiles }] = await Promise.all([
+      serviceClient.from("profiles").select("id, name, email, phone").in("id", userIds),
+      serviceClient.from("artist_profiles").select("id, user_id, portfolio_url, main_photo, gender, birth_date, height, weight").in("user_id", userIds),
+    ])
+
+    const artistProfileIds = (artistProfiles ?? []).map((ap) => ap.id)
+    const { data: allStatusTags } = artistProfileIds.length > 0
+      ? await serviceClient.from("artist_status_tags").select("artist_id, status_tags(name)").in("artist_id", artistProfileIds)
+      : { data: [] }
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
+    const artistProfileMap = new Map((artistProfiles ?? []).map((ap) => [ap.user_id, ap]))
+    const tagMap = new Map<string, string[]>()
+    for (const t of (allStatusTags ?? []) as { artist_id: string; status_tags: { name: string } | null }[]) {
+      const name = t.status_tags?.name
+      if (name) {
+        const list = tagMap.get(t.artist_id) ?? []
+        list.push(name)
+        tagMap.set(t.artist_id, list)
+      }
+    }
+
+    const enriched = apps.map((app) => {
+      const prof = profileMap.get(app.user_id)
+      const ap = artistProfileMap.get(app.user_id)
+      return {
+        ...app,
+        profile: prof ?? null,
+        portfolio_url: ap?.portfolio_url ?? null,
+        artist_profile_id: ap?.id ?? null,
+        main_photo: ap?.main_photo ?? null,
+        gender: ap?.gender ?? null,
+        birth_date: ap?.birth_date ?? null,
+        height: ap?.height ?? null,
+        weight: ap?.weight ?? null,
+        status_tags: ap?.id ? (tagMap.get(ap.id) ?? []) : [],
+      }
+    })
     return NextResponse.json(enriched)
   }
 

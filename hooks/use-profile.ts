@@ -160,6 +160,8 @@ export function useProfile() {
     deletedVideoIds: string[]
     // 상태 태그
     statusTagIds: number[]
+    // 메인페이지 노출 여부
+    showInArtistList: boolean
   }) => {
     if (!user) return false
     setLoading(true)
@@ -183,6 +185,7 @@ export function useProfile() {
         graduation_status: data.graduationStatus || null,
         portfolio_url: data.portfolioUrl,
         portfolio_file_name: data.portfolioFileName,
+        show_in_artist_list: data.showInArtistList,
       }, { onConflict: "user_id" }).select("id").single()
 
       const artistId = ap?.id

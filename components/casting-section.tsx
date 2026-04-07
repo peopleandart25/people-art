@@ -2,34 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { ChevronRight, Calendar, Film, Tv, Video, Camera, Music, Folder, LogIn, UserPlus } from "lucide-react"
 import { useUser } from "@/contexts/user-context"
-
-function CastingCardSkeleton() {
-  return (
-    <Card className="flex flex-col overflow-hidden border border-border">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="h-5 w-20 bg-muted animate-pulse rounded" />
-          <div className="h-5 w-12 bg-muted animate-pulse rounded" />
-        </div>
-      </CardHeader>
-      <CardContent className="pb-4 flex-1">
-        <div className="h-4 w-full bg-muted animate-pulse rounded mb-2" />
-        <div className="h-4 w-2/3 bg-muted animate-pulse rounded mb-1" />
-        <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
-      </CardContent>
-      <CardFooter className="pt-0 mt-auto flex items-center justify-between">
-        <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-        <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-      </CardFooter>
-    </Card>
-  )
-}
 
 type Casting = {
   id: string
@@ -42,6 +19,8 @@ type Casting = {
   deadline: string | null
   is_closed: boolean
   is_urgent: boolean
+  production_company?: string | null
+  fee?: string | null
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -51,6 +30,117 @@ const categoryIcons: Record<string, React.ElementType> = {
   "광고": Camera,
   "뮤직비디오": Music,
   "기타": Folder,
+}
+
+const categoryColors: Record<string, string> = {
+  "영화": "bg-purple-100 text-purple-600",
+  "드라마": "bg-sky-100 text-sky-600",
+  "웹드라마": "bg-sky-100 text-sky-600",
+  "광고": "bg-green-100 text-green-600",
+  "뮤직비디오": "bg-blue-100 text-blue-600",
+  "기타": "bg-gray-100 text-gray-500",
+}
+
+function getDaysLeft(deadline: string | null): string {
+  if (!deadline) return "마감일 미정"
+  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return "마감"
+  if (diff === 0) return "D-0"
+  return `D-${diff}`
+}
+
+function CastingCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3">
+      <div className="flex items-start justify-between">
+        <div className="h-10 w-10 bg-muted animate-pulse rounded-lg" />
+        <div className="flex gap-1">
+          <div className="h-5 w-14 bg-muted animate-pulse rounded-full" />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <div className="h-4 w-full bg-muted animate-pulse rounded" />
+        <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+      </div>
+      <div className="h-3.5 w-1/2 bg-muted animate-pulse rounded" />
+      <div className="h-3.5 w-2/3 bg-muted animate-pulse rounded" />
+    </div>
+  )
+}
+
+function CastingCard({ casting, onClick }: { casting: Casting; onClick: () => void }) {
+  const Icon = categoryIcons[casting.category] ?? Folder
+  const colorClass = categoryColors[casting.category] ?? "bg-gray-100 text-gray-500"
+  const daysLeft = getDaysLeft(casting.deadline)
+  const isExpired = daysLeft === "마감"
+
+  return (
+    <div
+      onClick={onClick}
+      className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3 cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+    >
+      {/* Top row: icon + badges */}
+      <div className="flex items-start justify-between">
+        <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex items-center gap-1 flex-wrap justify-end">
+          <Badge variant="secondary" className="text-xs px-2 py-0.5">{casting.category}</Badge>
+          {casting.is_urgent && (
+            <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">긴급</Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Title */}
+      <h3 className="font-bold text-foreground line-clamp-2 leading-snug text-sm">
+        {casting.title}
+      </h3>
+
+      {/* Role info */}
+      {(casting.gender || casting.birth_year_start || casting.birth_year_end) && (
+        <p className="text-xs text-muted-foreground">
+          {[
+            casting.gender,
+            (casting.birth_year_start || casting.birth_year_end)
+              ? `${casting.birth_year_start ?? "?"}~${casting.birth_year_end ?? "?"}년생`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      )}
+
+      {/* Bottom meta */}
+      <div className="mt-auto flex flex-col gap-1">
+        {casting.production_company && (
+          <p className="text-xs text-muted-foreground">{casting.production_company}</p>
+        )}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {casting.deadline && (
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {casting.deadline.slice(0, 10)}
+            </span>
+          )}
+          {casting.deadline && (
+            <span
+              className={
+                isExpired
+                  ? "text-muted-foreground"
+                  : "text-orange-500 font-medium"
+              }
+            >
+              {isExpired ? "마감" : daysLeft}
+            </span>
+          )}
+        </div>
+        {casting.fee && (
+          <p className="text-xs text-muted-foreground">출연료: {casting.fee}</p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function CastingSection() {
@@ -86,8 +176,8 @@ export function CastingSection() {
         {/* Section Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-foreground lg:text-3xl">CASTING</h2>
-            <p className="text-muted-foreground mt-1">캐스팅 공고 모집</p>
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase mb-1">CASTING</p>
+            <h2 className="text-2xl font-bold text-foreground lg:text-3xl">캐스팅 공고</h2>
           </div>
           <a
             href="/casting"
@@ -99,72 +189,16 @@ export function CastingSection() {
         </div>
 
         {/* Castings Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
           {loading
             ? Array.from({ length: 6 }).map((_, i) => <CastingCardSkeleton key={i} />)
-            : castings.map((casting) => {
-            const Icon = categoryIcons[casting.category] ?? Folder
-            return (
-              <Card
-                key={casting.id}
-                onClick={() => handleCardClick(casting)}
-                className="group flex flex-col overflow-hidden border border-border transition-all hover:shadow-lg hover:border-primary/30 cursor-pointer"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Icon className="h-3 w-3" />
-                      {casting.category}
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                      {casting.is_urgent && (
-                        <Badge className="bg-red-500 text-white text-xs px-1.5 py-0.5">긴급</Badge>
-                      )}
-                      <Badge
-                        variant={casting.is_closed ? "secondary" : "outline"}
-                        className={
-                          casting.is_closed
-                            ? "bg-muted text-muted-foreground"
-                            : "border-green-500 text-green-600 bg-green-50"
-                        }
-                      >
-                        {casting.is_closed ? "마감" : "모집중"}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-4 flex-1">
-                  <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                    {casting.title}
-                  </h3>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    {casting.role_type && (
-                      <p>{casting.role_type} {casting.gender && `· ${casting.gender}`}</p>
-                    )}
-                    {(casting.birth_year_start || casting.birth_year_end) && (
-                      <p>
-                        출생년도: {casting.birth_year_start ?? "?"}~{casting.birth_year_end ?? "?"}년
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-0 mt-auto flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>{casting.deadline ? casting.deadline.slice(0, 10) : "마감일 미정"}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={casting.is_closed ? "secondary" : "default"}
-                    className="text-xs"
-                    disabled={casting.is_closed}
-                  >
-                    {casting.is_closed ? "마감" : "지원하기"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          })}
+            : castings.map((casting) => (
+                <CastingCard
+                  key={casting.id}
+                  casting={casting}
+                  onClick={() => handleCardClick(casting)}
+                />
+              ))}
         </div>
 
         {/* Login Required Modal */}

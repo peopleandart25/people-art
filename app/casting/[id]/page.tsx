@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Calendar, MapPin, Banknote, Clock, User, Users, Film, Tv, Video, Camera, Music, Folder, ArrowLeft, CheckCircle, LogIn } from "lucide-react"
+import { Calendar, Film, Tv, Video, Camera, Music, Folder, ArrowLeft, CheckCircle, LogIn } from "lucide-react"
 import { useUser } from "@/contexts/user-context"
+import { useAuth } from "@/hooks/use-auth"
 
 type Casting = {
   id: string
@@ -25,6 +26,7 @@ type Casting = {
   is_closed: boolean
   is_urgent: boolean
   created_at: string
+  production_company?: string | null
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -36,10 +38,41 @@ const categoryIcons: Record<string, React.ElementType> = {
   "기타": Folder,
 }
 
+const categoryColors: Record<string, string> = {
+  "영화": "bg-purple-100 text-purple-600",
+  "드라마": "bg-sky-100 text-sky-600",
+  "웹드라마": "bg-sky-100 text-sky-600",
+  "광고": "bg-green-100 text-green-600",
+  "뮤직비디오": "bg-blue-100 text-blue-600",
+  "기타": "bg-gray-100 text-gray-500",
+}
+
+function getDaysLeft(deadline: string | null): string {
+  if (!deadline) return ""
+  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return "마감"
+  if (diff === 0) return "D-0"
+  return `D-${diff}`
+}
+
+function isNewCasting(createdAt: string): boolean {
+  const diff = Date.now() - new Date(createdAt).getTime()
+  return diff < 7 * 24 * 60 * 60 * 1000
+}
+
+const NOTICE_ITEMS = [
+  "배우 프로필 제출 시 비매너 행위는 불이익이 있을 수 있습니다.",
+  "제출 자료는 본 캐스팅 목적 이외에는 사용되지 않습니다.",
+  "세부 일정은 캐스팅 확정 후 개별 공지됩니다.",
+  "제출된 프로필은 반환되지 않습니다.",
+]
+
 export default function CastingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const { status } = useUser()
+  const { profile } = useAuth()
+  const isCastingDirector = profile?.role === "casting_director"
 
   const [casting, setCasting] = useState<Casting | null>(null)
   const [loading, setLoading] = useState(true)
@@ -102,150 +135,199 @@ export default function CastingDetailPage({ params }: { params: Promise<{ id: st
   if (!casting) return null
 
   const Icon = categoryIcons[casting.category] ?? Folder
+  const colorClass = categoryColors[casting.category] ?? "bg-gray-100 text-gray-500"
+  const daysLeft = getDaysLeft(casting.deadline)
+  const isExpired = daysLeft === "마감"
+  const isNew = isNewCasting(casting.created_at)
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 lg:px-8 py-12">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          className="mb-6 gap-2 text-muted-foreground"
+    <div className="min-h-screen bg-background pb-32">
+      <div className="mx-auto max-w-2xl px-4 lg:px-8 py-8">
+        {/* Back */}
+        <button
           onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           목록으로
-        </Button>
+        </button>
 
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Icon className="h-3 w-3" />
-              {casting.category}
-            </Badge>
-            {casting.is_urgent && (
-              <Badge className="bg-red-500 text-white">긴급</Badge>
+        {/* Badges */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+            <Icon className="h-3 w-3" />
+            {casting.category}
+          </Badge>
+          {casting.is_urgent && (
+            <Badge className="bg-red-500 text-white text-xs">긴급</Badge>
+          )}
+          <Badge
+            variant={casting.is_closed ? "secondary" : "outline"}
+            className={
+              casting.is_closed
+                ? "bg-muted text-muted-foreground text-xs"
+                : "border-green-500 text-green-600 bg-green-50 text-xs"
+            }
+          >
+            {casting.is_closed ? "마감" : "모집중"}
+          </Badge>
+          {isNew && (
+            <Badge className="bg-orange-500 text-white text-xs">NEW</Badge>
+          )}
+        </div>
+
+        {/* Title */}
+        <h1 className="text-2xl font-bold text-foreground lg:text-3xl mb-4 leading-snug">
+          {casting.title}
+        </h1>
+
+        {/* Deadline row */}
+        {casting.deadline && (
+          <div className="flex items-center gap-3 mb-6">
+            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              마감일: {casting.deadline.slice(0, 10)}
+            </span>
+            {daysLeft && (
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  isExpired
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-orange-100 text-orange-600"
+                }`}
+              >
+                {isExpired ? "마감" : daysLeft}
+              </span>
             )}
-            <Badge
-              variant={casting.is_closed ? "secondary" : "outline"}
-              className={
-                casting.is_closed
-                  ? "bg-muted text-muted-foreground"
-                  : "border-green-500 text-green-600 bg-green-50"
-              }
-            >
-              {casting.is_closed ? "마감" : "모집중"}
-            </Badge>
           </div>
-          <h1 className="text-2xl font-bold text-foreground lg:text-3xl">{casting.title}</h1>
+        )}
+
+        <hr className="border-border mb-6" />
+
+        {/* Info grid: 모집 조건 + 활동 정보 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+          {/* 모집 조건 */}
+          {(casting.gender || casting.birth_year_start || casting.birth_year_end) && (
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded border border-border inline-block" />
+                모집 조건
+              </h2>
+              <dl className="space-y-2 text-sm">
+                {casting.gender && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground w-16 shrink-0">성별</dt>
+                    <dd className="text-foreground">{casting.gender}</dd>
+                  </div>
+                )}
+                {(casting.birth_year_start || casting.birth_year_end) && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground w-16 shrink-0">나이대</dt>
+                    <dd className="text-foreground">
+                      {casting.birth_year_start ?? "?"}~{casting.birth_year_end ?? "?"}년생
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
+          {/* 활동 정보 */}
+          {(casting.work_period || casting.location || casting.fee) && (
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded border border-border inline-block" />
+                활동 정보
+              </h2>
+              <dl className="space-y-2 text-sm">
+                {casting.work_period && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground w-20 shrink-0">활동 기간</dt>
+                    <dd className="text-foreground">{casting.work_period}</dd>
+                  </div>
+                )}
+                {casting.location && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground w-20 shrink-0">활동 장소</dt>
+                    <dd className="text-foreground">{casting.location}</dd>
+                  </div>
+                )}
+                {casting.fee && (
+                  <div className="flex gap-2">
+                    <dt className="text-muted-foreground w-20 shrink-0">응모료</dt>
+                    <dd className="text-foreground">{casting.fee}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
         </div>
 
-        {/* Info Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          {casting.role_type && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <User className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">역할</p>
-                <p className="font-medium text-foreground">{casting.role_type}</p>
-              </div>
-            </div>
-          )}
-          {casting.gender && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <Users className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">성별</p>
-                <p className="font-medium text-foreground">{casting.gender}</p>
-              </div>
-            </div>
-          )}
-          {(casting.birth_year_start || casting.birth_year_end) && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <Calendar className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">출생년도</p>
-                <p className="font-medium text-foreground">
-                  {casting.birth_year_start ?? "?"}~{casting.birth_year_end ?? "?"}년
-                </p>
-              </div>
-            </div>
-          )}
-          {casting.deadline && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <Calendar className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">마감일</p>
-                <p className="font-medium text-foreground">{casting.deadline.slice(0, 10)}</p>
-              </div>
-            </div>
-          )}
-          {casting.work_period && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">촬영 기간</p>
-                <p className="font-medium text-foreground">{casting.work_period}</p>
-              </div>
-            </div>
-          )}
-          {casting.location && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">촬영 장소</p>
-                <p className="font-medium text-foreground">{casting.location}</p>
-              </div>
-            </div>
-          )}
-          {casting.fee && (
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-              <Banknote className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">출연료</p>
-                <p className="font-medium text-foreground">{casting.fee}</p>
-              </div>
-            </div>
-          )}
-        </div>
+        <hr className="border-border mb-6" />
 
         {/* Description */}
         {casting.description && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-foreground mb-3">공고 내용</h2>
-            <div className="p-4 rounded-lg bg-muted/30 border border-border">
+          <>
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded border border-border inline-block" />
+                작품 설명
+              </h2>
               <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {casting.description}
               </p>
             </div>
-          </div>
+            <hr className="border-border mb-6" />
+          </>
         )}
 
         {/* Requirements */}
         {casting.requirements && casting.requirements.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-foreground mb-3">지원 조건</h2>
-            <ul className="space-y-2">
-              {casting.requirements.map((req, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
-                  <span className="text-primary mt-0.5">•</span>
-                  {req}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <>
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded border border-border inline-block" />
+                지원 자격 및 모집사항
+              </h2>
+              <ul className="space-y-2">
+                {casting.requirements.map((req, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-foreground">
+                    <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    {req}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <hr className="border-border mb-6" />
+          </>
         )}
 
-        {/* Apply Button */}
-        {error && (
-          <p className="text-sm text-red-500 mb-3 text-center">{error}</p>
-        )}
-        <div className="sticky bottom-4">
-          {applied ? (
-            <Button
-              disabled
-              className="w-full h-12 text-base bg-green-100 text-green-700 border border-green-200 gap-2"
-            >
+        {/* Notice box */}
+        <div className="rounded-xl bg-orange-50 border border-orange-100 p-4 mb-6">
+          <p className="text-sm font-semibold text-orange-700 mb-2">지원 시 유의사항</p>
+          <ul className="space-y-1.5">
+            {NOTICE_ITEMS.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-1.5 text-xs text-orange-700">
+                <span className="mt-0.5">•</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Fixed bottom apply button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3">
+        <div className="mx-auto max-w-2xl">
+          {error && (
+            <p className="text-xs text-red-500 mb-2 text-center">{error}</p>
+          )}
+          {isCastingDirector ? (
+            <Button disabled className="w-full h-12 text-base bg-muted text-muted-foreground">
+              본 공고는 아티스트를 위한 공고입니다.
+            </Button>
+          ) : applied ? (
+            <Button disabled className="w-full h-12 text-base bg-green-100 text-green-700 border border-green-200 gap-2">
               <CheckCircle className="h-5 w-5" />
               지원 완료
             </Button>
@@ -255,7 +337,7 @@ export default function CastingDetailPage({ params }: { params: Promise<{ id: st
               disabled={casting.is_closed || applying}
               className="w-full h-12 text-base bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
             >
-              {casting.is_closed ? "마감된 공고입니다" : applying ? "지원 중..." : "지원하기"}
+              {casting.is_closed ? "마감된 공고입니다" : applying ? "지원 중..." : "이 공고에 지원하기"}
             </Button>
           )}
         </div>

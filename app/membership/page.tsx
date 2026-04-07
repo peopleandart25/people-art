@@ -280,7 +280,8 @@ const topBenefits = [
 export default function MembershipPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const isCastingDirector = profile?.role === "casting_director"
   
   /**
    * [중앙 집중식 포인트 관리 - Single Source of Truth]
@@ -1441,17 +1442,19 @@ export default function MembershipPage() {
             </div>
 
             {/* 멤버십 가입 버튼 */}
-            <div className="mt-8 text-center">
-              <Button
-                size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-10"
-                onClick={() => {
-                  document.getElementById("payment-form")?.scrollIntoView({ behavior: "smooth" })
-                }}
-              >
-                멤버십 가입하기
-              </Button>
-            </div>
+            {!isCastingDirector && (
+              <div className="mt-8 text-center">
+                <Button
+                  size="lg"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-10"
+                  onClick={() => {
+                    document.getElementById("payment-form")?.scrollIntoView({ behavior: "smooth" })
+                  }}
+                >
+                  멤버십 가입하기
+                </Button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1479,8 +1482,8 @@ export default function MembershipPage() {
           </div>
         </section>
 
-        {/* 결제 폼 - 로그인한 유저에게만 표시 */}
-        {user && <section id="payment-form" className="py-16 bg-muted/30">
+        {/* 결제 폼 - 로그인한 유저에게만 표시 (캐스팅디렉터 제외) */}
+        {user && !isCastingDirector && <section id="payment-form" className="py-16 bg-muted/30">
           <div className="mx-auto max-w-md px-4">
             <Card className="border border-border shadow-sm">
               <CardHeader className="text-center pb-4">

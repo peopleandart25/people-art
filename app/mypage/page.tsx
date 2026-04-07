@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
@@ -99,6 +100,7 @@ export default function MyPage() {
   })
   const [careerList, setCareerList] = useState<{ id: string; category: string; year: string; title: string; role: string }[]>([])
   const [statusTagIds, setStatusTagIds] = useState<number[]>([])
+  const [showInArtistList, setShowInArtistList] = useState(true)
   const [mainPhoto, setMainPhoto] = useState<LocalPhoto | null>(null)
   const [mainPhotoFile, setMainPhotoFile] = useState<File | null>(null)
   const [subPhotos, setSubPhotos] = useState<LocalPhoto[]>([])
@@ -164,6 +166,7 @@ export default function MyPage() {
     })))
 
     setStatusTagIds(tagIds)
+    setShowInArtistList((artistProfile as { show_in_artist_list?: boolean } | null)?.show_in_artist_list ?? true)
 
     if (artistProfile?.portfolio_url) {
       setPortfolioFile({ name: artistProfile.portfolio_file_name ?? "portfolio.pdf", url: artistProfile.portfolio_url })
@@ -358,6 +361,7 @@ export default function MyPage() {
         newVideoFiles: videos.filter(v => v.isNew && v.type === "file" && v.file).map(v => ({ file: v.file!, name: v.name })),
         deletedVideoIds,
         statusTagIds,
+        showInArtistList,
       })
 
       // 지원 템플릿 첨부 파일 업로드
@@ -598,9 +602,21 @@ export default function MyPage() {
             {/* 메인 프로필 사진 */}
             <Card className="border border-border">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-primary" />프로필 사진
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-primary" />프로필 사진
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">메인페이지 노출</span>
+                    <Switch
+                      checked={showInArtistList}
+                      onCheckedChange={setShowInArtistList}
+                    />
+                    <span className={`text-xs font-semibold ${showInArtistList ? "text-green-600" : "text-muted-foreground"}`}>
+                      {showInArtistList ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                </div>
                 <CardDescription>메인 프로필 사진 1장을 등록해주세요</CardDescription>
               </CardHeader>
               <CardContent>
