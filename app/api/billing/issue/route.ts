@@ -82,8 +82,9 @@ export async function POST(request: Request) {
     }
 
     const payment = await payRes.json()
+    console.error("[PortOne 결제 응답]", JSON.stringify(payment))
     if (payment.status !== "PAID") {
-      return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 })
+      return NextResponse.json({ error: `결제가 완료되지 않았습니다. (status: ${payment.status}, code: ${payment.failureCode ?? ""}, msg: ${payment.failureMessage ?? ""})` }, { status: 400 })
     }
 
     portoneCharged = true
