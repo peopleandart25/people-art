@@ -12,6 +12,8 @@ type ApplicationTemplate = {
   include_pdf: boolean
   include_profile_link: boolean
   include_videos: boolean
+  custom_attachment_url: string | null
+  custom_attachment_name: string | null
   updated_at: string
 }
 
@@ -100,6 +102,10 @@ export async function POST(request: Request) {
       if ((template?.include_videos ?? false) && videoLinks.length > 0) {
         body += `🎬 영상 링크:\n`
         videoLinks.forEach(v => { body += `  - ${v.name}: ${v.url}\n` })
+      }
+      if (template?.custom_attachment_url) {
+        const attachName = template.custom_attachment_name ?? "첨부파일"
+        body += `📎 첨부파일: ${attachName} - ${template.custom_attachment_url}\n`
       }
 
       body += "\n검토 부탁드립니다.\n감사합니다."

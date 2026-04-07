@@ -111,7 +111,11 @@ export default function MyPage() {
     include_pdf: true,
     include_profile_link: true,
     include_videos: false,
+    custom_attachment_url: null as string | null,
+    custom_attachment_name: null as string | null,
   })
+  const [templateAttachmentFile, setTemplateAttachmentFile] = useState<File | null>(null)
+  const templateAttachmentRef = useRef<HTMLInputElement>(null)
 
   const mainPhotoRef = useRef<HTMLInputElement>(null)
   const subPhotoRef = useRef<HTMLInputElement>(null)
@@ -167,14 +171,17 @@ export default function MyPage() {
 
     // 지원 템플릿 로드
     const supabase = createClient()
-    supabase.from("application_templates").select("*").eq("user_id", authProfile.id).maybeSingle()
+    supabase.from("application_templates" as never).select("*").eq("user_id", authProfile.id).maybeSingle()
       .then(({ data }) => {
         if (data) {
+          const d = data as Record<string, unknown>
           setAppTemplate({
-            message: data.message ?? "",
-            include_pdf: data.include_pdf,
-            include_profile_link: data.include_profile_link,
-            include_videos: data.include_videos,
+            message: (d.message as string) ?? "",
+            include_pdf: (d.include_pdf as boolean) ?? true,
+            include_profile_link: (d.include_profile_link as boolean) ?? true,
+            include_videos: (d.include_videos as boolean) ?? false,
+            custom_attachment_url: (d.custom_attachment_url as string | null) ?? null,
+            custom_attachment_name: (d.custom_attachment_name as string | null) ?? null,
           })
         }
       })
@@ -353,16 +360,34 @@ export default function MyPage() {
         statusTagIds,
       })
 
-      // 지원 템플릿 저장
+      // 지원 템플릿 첨부 파일 업로드
       const supabase = createClient()
-      await supabase.from("application_templates").upsert({
+      let attachmentUrl = appTemplate.custom_attachment_url
+      let attachmentName = appTemplate.custom_attachment_name
+      if (templateAttachmentFile) {
+        const ext = templateAttachmentFile.name.split(".").pop() ?? "pdf"
+        const path = `${user!.id}/template-attachment.${ext}`
+        const { error: uploadErr } = await supabase.storage.from("portfolios").upload(path, templateAttachmentFile, { upsert: true })
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage.from("portfolios").getPublicUrl(path)
+          attachmentUrl = urlData.publicUrl
+          attachmentName = templateAttachmentFile.name
+        }
+      }
+
+      // 지원 템플릿 저장
+      await supabase.from("application_templates" as never).upsert({
         user_id: user!.id,
         message: appTemplate.message,
         include_pdf: appTemplate.include_pdf,
         include_profile_link: appTemplate.include_profile_link,
         include_videos: appTemplate.include_videos,
+        custom_attachment_url: attachmentUrl,
+        custom_attachment_name: attachmentName,
         updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" })
+      } as never, { onConflict: "user_id" } as never)
+      setAppTemplate(p => ({ ...p, custom_attachment_url: attachmentUrl, custom_attachment_name: attachmentName }))
+      setTemplateAttachmentFile(null)
 
       // 저장 후 상태 초기화
       setMainPhotoFile(null)
@@ -1032,6 +1057,42 @@ export default function MyPage() {
                       <Label htmlFor="includeVideos" className="font-normal cursor-pointer text-sm">영상 링크</Label>
                     </div>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>추가 첨부 파일 (PDF 등)</Label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={templateAttachmentRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) setTemplateAttachmentFile(f)
+                      }}
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={() => templateAttachmentRef.current?.click()}>
+                      파일 선택
+                    </Button>
+                    {templateAttachmentFile ? (
+                      <span className="text-sm text-foreground flex items-center gap-1">
+                        <FileText className="h-4 w-4 text-primary" />
+                        {templateAttachmentFile.name}
+                        <button type="button" onClick={() => setTemplateAttachmentFile(null)} className="text-muted-foreground hover:text-destructive ml-1">✕</button>
+                      </span>
+                    ) : appTemplate.custom_attachment_url ? (
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <a href={appTemplate.custom_attachment_url} target="_blank" rel="noopener noreferrer" className="underline text-primary">
+                          {appTemplate.custom_attachment_name ?? "첨부파일"}
+                        </a>
+                        <button type="button" onClick={() => setAppTemplate(p => ({ ...p, custom_attachment_url: null, custom_attachment_name: null }))} className="text-muted-foreground hover:text-destructive ml-1">✕</button>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">PDF, DOC 파일 (선택)</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">지원 이메일에 링크로 첨부됩니다.</p>
                 </div>
               </CardContent>
             </Card>

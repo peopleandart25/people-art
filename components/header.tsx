@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Menu, User, LogIn, Coins, Crown, Shield, Briefcase } from "lucide-react"
+import { Menu, User, LogIn, Coins, Crown, Shield, Briefcase, Bell, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 
@@ -24,11 +25,46 @@ const navItems = [
   { label: "후기", href: "/reviews" },
 ]
 
+type Notification = {
+  id: string
+  title: string
+  message: string | null
+  type: string
+  is_read: boolean
+  created_at: string
+}
+
 export function Header() {
   const router = useRouter()
   const { isLoggedIn, isPremium, isAdmin, profile, signOut } = useAuth()
   const { toast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [bellOpen, setBellOpen] = useState(false)
+
+  const fetchNotifications = async () => {
+    const res = await fetch("/api/notifications")
+    if (res.ok) {
+      const data = await res.json()
+      setNotifications(data.items ?? [])
+      setUnreadCount(data.unread_count ?? 0)
+    }
+  }
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30000)
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn])
+
+  const markAllRead = async () => {
+    await fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
+    setUnreadCount(0)
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+  }
 
   // 비로그인 상태에서도 접근 가능한 공개 페이지 목록
   const publicRoutes = [
@@ -95,6 +131,61 @@ export function Header() {
         <div className="hidden items-center gap-1 lg:flex shrink-0">
           {isLoggedIn ? (
             <>
+              {/* 알림 벨 */}
+              <Popover open={bellOpen} onOpenChange={setBellOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative h-8 w-8">
+                    <Bell className="h-4 w-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="end">
+                  <div className="flex items-center justify-between px-4 py-3 border-b">
+                    <span className="text-sm font-semibold">알림</span>
+                    {unreadCount > 0 && (
+                      <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={markAllRead}>
+                        모두 읽음
+                      </Button>
+                    )}
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">새 알림이 없습니다.</p>
+                    ) : (
+                      notifications.slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
+                          className={`flex items-start gap-3 px-4 py-3 border-b last:border-0 ${!n.is_read ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {n.type === "casting_proposal" ? (
+                              <Send className="h-4 w-4 text-primary" />
+                            ) : (
+                              <Bell className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium leading-tight">{n.title}</p>
+                            {n.message && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                            )}
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {new Date(n.created_at).toLocaleDateString("ko-KR")}
+                            </p>
+                          </div>
+                          {!n.is_read && (
+                            <span className="mt-1.5 h-2 w-2 rounded-full bg-red-500 shrink-0" />
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
               {/* 등급 뱃지 */}
               {isAdmin ? (
                 <Badge variant="outline" className="border-red-500 text-red-500 bg-red-50 mr-1">
