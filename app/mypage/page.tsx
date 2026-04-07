@@ -106,6 +106,12 @@ export default function MyPage() {
   const [videos, setVideos] = useState<LocalVideo[]>([])
   const [deletedVideoIds, setDeletedVideoIds] = useState<string[]>([])
   const [portfolioFile, setPortfolioFile] = useState<{ name: string; url: string; file?: File } | null>(null)
+  const [appTemplate, setAppTemplate] = useState({
+    message: "",
+    include_pdf: true,
+    include_profile_link: true,
+    include_videos: false,
+  })
 
   const mainPhotoRef = useRef<HTMLInputElement>(null)
   const subPhotoRef = useRef<HTMLInputElement>(null)
@@ -158,6 +164,20 @@ export default function MyPage() {
     if (artistProfile?.portfolio_url) {
       setPortfolioFile({ name: artistProfile.portfolio_file_name ?? "portfolio.pdf", url: artistProfile.portfolio_url })
     }
+
+    // 지원 템플릿 로드
+    const supabase = createClient()
+    supabase.from("application_templates").select("*").eq("user_id", authProfile.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setAppTemplate({
+            message: data.message ?? "",
+            include_pdf: data.include_pdf,
+            include_profile_link: data.include_profile_link,
+            include_videos: data.include_videos,
+          })
+        }
+      })
   }, [fullProfile, authProfile, profileLoading])
 
   // 로그인 체크
@@ -332,6 +352,17 @@ export default function MyPage() {
         deletedVideoIds,
         statusTagIds,
       })
+
+      // 지원 템플릿 저장
+      const supabase = createClient()
+      await supabase.from("application_templates").upsert({
+        user_id: user!.id,
+        message: appTemplate.message,
+        include_pdf: appTemplate.include_pdf,
+        include_profile_link: appTemplate.include_profile_link,
+        include_videos: appTemplate.include_videos,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" })
 
       // 저장 후 상태 초기화
       setMainPhotoFile(null)
@@ -959,6 +990,49 @@ export default function MyPage() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 지원 템플릿 */}
+            <Card className="border border-border">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Send className="h-5 w-5 text-primary" />지원 템플릿
+                </CardTitle>
+                <CardDescription>프로필 지원 시 발송될 메시지와 포함할 자료를 설정해주세요</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="appTemplateMessage">지원 메시지</Label>
+                  <Textarea
+                    id="appTemplateMessage"
+                    value={appTemplate.message}
+                    onChange={e => setAppTemplate(p => ({ ...p, message: e.target.value }))}
+                    placeholder={`안녕하세요.\n\n피플앤아트를 통해 프로필을 지원드립니다.\n\n이름: 홍길동\n연락처: 010-0000-0000\n\n검토 부탁드립니다. 감사합니다.`}
+                    rows={6}
+                  />
+                  <p className="text-xs text-muted-foreground">비워두면 기본 메시지가 자동으로 사용됩니다 ({appTemplate.message.length}자)</p>
+                </div>
+                <div className="space-y-3">
+                  <Label>포함할 자료</Label>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="includePdf" checked={appTemplate.include_pdf}
+                        onCheckedChange={v => setAppTemplate(p => ({ ...p, include_pdf: !!v }))} />
+                      <Label htmlFor="includePdf" className="font-normal cursor-pointer text-sm">PDF 포트폴리오 링크</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="includeProfileLink" checked={appTemplate.include_profile_link}
+                        onCheckedChange={v => setAppTemplate(p => ({ ...p, include_profile_link: !!v }))} />
+                      <Label htmlFor="includeProfileLink" className="font-normal cursor-pointer text-sm">프로필 페이지 링크</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="includeVideos" checked={appTemplate.include_videos}
+                        onCheckedChange={v => setAppTemplate(p => ({ ...p, include_videos: !!v }))} />
+                      <Label htmlFor="includeVideos" className="font-normal cursor-pointer text-sm">영상 링크</Label>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

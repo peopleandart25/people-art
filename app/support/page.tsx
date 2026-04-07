@@ -43,7 +43,8 @@ export default function SupportPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [supportRecords, setSupportRecords] = useState<SupportRecord[]>([])
   const [isMounted, setIsMounted] = useState(false)
-  const [emailProvider, setEmailProvider] = useState<"gmail" | "naver" | "default">("default")
+  const [isSending, setIsSending] = useState(false)
+  const [partialFailedNames, setPartialFailedNames] = useState<string[]>([])
 
   useEffect(() => {
     const fetchAgencies = async () => {
@@ -61,20 +62,43 @@ export default function SupportPage() {
 
   useEffect(() => {
     setIsMounted(true)
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as SupportRecord[]
-        const validRecords = parsed.filter((r) => isWithin30Days(r.last_sent))
-        setSupportRecords(validRecords)
-        if (validRecords.length !== parsed.length) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(validRecords))
+
+    const loadSupportHistory = async () => {
+      // 로그인 사용자는 서버 이력 우선, 비로그인은 localStorage fallback
+      if (isLoggedIn && user) {
+        const supabase = createClient()
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const { data } = await supabase
+          .from("support_history")
+          .select("agency_id, sent_at")
+          .eq("user_id", user.id)
+          .gte("sent_at", thirtyDaysAgo.toISOString().split("T")[0])
+        if (data) {
+          const records = data.map((h) => ({ id: h.agency_id!, last_sent: h.sent_at }))
+          setSupportRecords(records)
+          return
         }
-      } catch {
-        setSupportRecords([])
+      }
+
+      // 비로그인 fallback: localStorage
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as SupportRecord[]
+          const validRecords = parsed.filter((r) => isWithin30Days(r.last_sent))
+          setSupportRecords(validRecords)
+          if (validRecords.length !== parsed.length) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(validRecords))
+          }
+        } catch {
+          setSupportRecords([])
+        }
       }
     }
-  }, [])
+
+    loadSupportHistory()
+  }, [isLoggedIn, user])
 
   const nonMemberTotalSupports = useMemo(() => {
     if (isPremium) return 0
@@ -138,55 +162,50 @@ export default function SupportPage() {
   }
 
   const confirmSend = async () => {
-    const selectedData = selectedAgencies.map((id) => agencies.find((a) => a.id === id)).filter((a): a is Agency => !!a)
-    const emailAddresses = selectedData.map((a) => a.email).join(",")
-    const name = authProfile?.name ?? ""
-    const phone = authProfile?.phone ?? ""
-    const email = user?.email ?? ""
-    const subject = encodeURIComponent(`[프로필 지원] ${name} 배우 프로필 제출`)
-    const body = encodeURIComponent(
-      `안녕하세요.\n\n피플앤아트를 통해 프로필을 지원드립니다.\n\n이름: ${name}\n연락처: ${phone}\n이메일: ${email}\n\n프로필 및 포트폴리오는 첨부 파일로 전달드립니다.\n\n검토 부탁드립니다.\n감사합니다.`
-    )
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-    const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${emailAddresses}&su=${subject}&body=${body}`
-    const naverWebUrl = `https://mail.naver.com/write?to=${emailAddresses}&subject=${subject}&body=${body}`
-    const gmailDeeplinkUrl = `googlegmail://co?to=${emailAddresses}&subject=${subject}&body=${body}`
-    const naverDeeplinkUrl = `navermail://compose?to=${emailAddresses}&subject=${subject}&body=${body}`
-    const mailtoUrl = `mailto:${emailAddresses}?subject=${subject}&body=${body}`
+    setIsSending(true)
+    try {
+      const res = await fetch("/api/support/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agency_ids: selectedAgencies }),
+      })
 
-    if (emailProvider === "gmail") {
-      if (isMobile) {
-        window.location.href = gmailDeeplinkUrl
-        setTimeout(() => { window.location.href = mailtoUrl }, 1500)
-      } else {
-        window.open(gmailWebUrl, "_blank", "noopener,noreferrer")
+      if (!res.ok && res.status !== 207) {
+        const err = await res.json()
+        alert(err.error ?? "발송에 실패했습니다. 다시 시도해주세요.")
+        return
       }
-    } else if (emailProvider === "naver") {
-      if (isMobile) {
-        window.location.href = naverDeeplinkUrl
-        setTimeout(() => { window.location.href = mailtoUrl }, 1500)
+
+      const result = await res.json()
+
+      // 서버 이력 재조회 (로그인 사용자)
+      if (isLoggedIn && user) {
+        const supabase = createClient()
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const { data } = await supabase
+          .from("support_history")
+          .select("agency_id, sent_at")
+          .eq("user_id", user.id)
+          .gte("sent_at", thirtyDaysAgo.toISOString().split("T")[0])
+        if (data) {
+          setSupportRecords(data.map((h) => ({ id: h.agency_id!, last_sent: h.sent_at })))
+        }
       } else {
-        window.open(naverWebUrl, "_blank", "noopener,noreferrer")
+        // 비로그인 fallback: localStorage 갱신
+        const today = getTodayString()
+        const newRecords = [...supportRecords, ...selectedAgencies.map((id) => ({ id, last_sent: today }))]
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newRecords))
+        setSupportRecords(newRecords)
       }
-    } else {
-      window.location.href = mailtoUrl
-    }
-    const today = getTodayString()
-    const newRecords = [...supportRecords, ...selectedAgencies.map((id) => ({ id, last_sent: today }))]
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newRecords))
-    setSupportRecords(newRecords)
 
-    // DB 저장 (로그인한 경우에만)
-    if (user) {
-      const supabase = createClient()
-      await (supabase as any).from("support_history").insert(
-        selectedAgencies.map((agency_id) => ({ user_id: user.id, agency_id, sent_at: today }))
-      )
+      setPartialFailedNames(result.failed ?? [])
+      setShowConfirmModal(false)
+      setShowSuccessModal(true)
+      setSelectedAgencies([])
+    } finally {
+      setIsSending(false)
     }
-
-    setShowConfirmModal(false)
-    setShowSuccessModal(true)
-    setSelectedAgencies([])
   }
 
   const renderPaginationButtons = () => {
@@ -325,8 +344,7 @@ export default function SupportPage() {
           <DialogHeader>
             <DialogTitle>프로필 지원 확인</DialogTitle>
             <DialogDescription>
-              선택한 {selectedAgencies.length}개 기관에 프로필을 지원하시겠습니까?<br />
-              <span className="text-xs text-muted-foreground">(메일 앱이 열리며, 직접 전송 버튼을 눌러 전송해주세요)</span>
+              선택한 {selectedAgencies.length}개 기관에 프로필 이메일을 발송하시겠습니까?
             </DialogDescription>
           </DialogHeader>
           <div className="bg-muted rounded-lg p-4 space-y-2 max-h-60 overflow-y-auto">
@@ -350,30 +368,15 @@ export default function SupportPage() {
               </div>
             </div>
           )}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">이메일 앱 선택</p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { value: "gmail", label: "Gmail" },
-                { value: "naver", label: "네이버" },
-                { value: "default", label: "기본 메일" },
-              ].map(({ value, label }) => (
-                <Button
-                  key={value}
-                  type="button"
-                  variant={emailProvider === value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setEmailProvider(value as "gmail" | "naver" | "default")}
-                  className={emailProvider === value ? "bg-primary text-primary-foreground" : ""}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            마이페이지에서 설정한 지원 템플릿으로 이메일이 발송됩니다.<br />
+            발신자에 내 이름이 표시되며, 회신은 등록된 지원 이메일로 받을 수 있습니다.
+          </p>
           <DialogFooter className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>취소</Button>
-            <Button onClick={confirmSend} className="bg-primary text-primary-foreground hover:bg-primary/90">메일 앱 열기</Button>
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)} disabled={isSending}>취소</Button>
+            <Button onClick={confirmSend} disabled={isSending} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {isSending ? "발송 중..." : "이메일 발송"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -381,15 +384,28 @@ export default function SupportPage() {
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="sm:max-w-md bg-card">
           <DialogHeader>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4"><Check className="h-8 w-8 text-green-600" /></div>
-            <DialogTitle className="text-center text-xl">프로필 지원 준비 완료</DialogTitle>
+            <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full mb-4 ${partialFailedNames.length > 0 ? "bg-yellow-100" : "bg-green-100"}`}>
+              {partialFailedNames.length > 0
+                ? <AlertTriangle className="h-8 w-8 text-yellow-600" />
+                : <Check className="h-8 w-8 text-green-600" />}
+            </div>
+            <DialogTitle className="text-center text-xl">
+              {partialFailedNames.length > 0 ? "일부 발송 완료" : "프로필 지원 완료"}
+            </DialogTitle>
             <DialogDescription className="text-center pt-2">
-              메일 앱에서 전송 버튼을 눌러 프로필을 전달해주세요.<br />
+              {partialFailedNames.length > 0 ? (
+                <>
+                  일부 기관에 발송이 실패했습니다.<br />
+                  <span className="text-xs text-red-500 mt-1 block">실패: {partialFailedNames.join(", ")}</span>
+                </>
+              ) : (
+                <>선택한 기관에 이메일이 발송되었습니다.</>
+              )}
               <span className="text-sm text-muted-foreground mt-2 block">동일 기관에는 30일 이후에 다시 지원할 수 있습니다.</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setShowSuccessModal(false)} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">확인</Button>
+            <Button onClick={() => { setShowSuccessModal(false); setPartialFailedNames([]) }} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">확인</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
