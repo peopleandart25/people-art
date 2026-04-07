@@ -501,7 +501,7 @@ export default function MembershipPage() {
       if (!issueRes.ok) {
         const err = await issueRes.json()
         console.error("[결제 실패 상세]", err)
-        toast({ title: "결제 실패", description: err.error ?? JSON.stringify(err.details ?? err), variant: "destructive" })
+        toast({ title: "결제 실패", description: `${err.error ?? "오류"} / ${JSON.stringify(err.details ?? "")}`, variant: "destructive" })
         return
       }
 
