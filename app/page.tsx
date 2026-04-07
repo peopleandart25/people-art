@@ -12,7 +12,7 @@ import { PartnershipSection } from "@/components/partnership-section"
 import { ReviewSection } from "@/components/review-section"
 import { FaqSection } from "@/components/faq-section"
 import { Badge } from "@/components/ui/badge"
-import { Send } from "lucide-react"
+import { Send, Crown, FileText } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function Home() {
@@ -38,7 +38,7 @@ export default function Home() {
     if (profile?.role === "casting_director" || profile?.role === "admin") return
     fetch("/api/artist/proposals?count=true")
       .then((r) => r.json())
-      .then((d) => { if (typeof d?.count === "number") setPendingCount(d.count) })
+      .then((d) => { if (typeof d?.pending === "number") setPendingCount(d.pending) })
   }, [isLoggedIn, isPremium, profile?.role])
 
   const showArtistTiles =
@@ -57,16 +57,25 @@ export default function Home() {
             <div className="flex flex-wrap gap-3">
               <Link href="/received-proposals">
                 <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 py-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] px-1.5 py-0">
-                    PREMIUM
-                  </Badge>
                   <Send className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">받은 제안</span>
+                  <span className="text-sm font-medium">받은 캐스팅 제안</span>
                   {pendingCount > 0 && (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
                       {pendingCount}
                     </span>
                   )}
+                </div>
+              </Link>
+              <Link href="/membership">
+                <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 py-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                  <Crown className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">멤버십 관리</span>
+                </div>
+              </Link>
+              <Link href="/mypage?tab=applications">
+                <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-white px-4 py-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">지원의뢰</span>
                 </div>
               </Link>
             </div>
