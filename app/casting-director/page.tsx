@@ -6,6 +6,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,6 +36,7 @@ import {
   FileText,
   ChevronLeft,
   Download,
+  Save,
 } from "lucide-react"
 
 type ActiveView = "projects" | "register" | "bookmarks" | "profile" | "proposals"
@@ -83,6 +85,12 @@ type Application = {
   user_id: string
   profile: { name: string | null; email: string | null; phone: string | null } | null
   portfolio_url: string | null
+  artist_profile_id: string | null
+  main_photo: string | null
+  gender: string | null
+  birth_date: string | null
+  height: number | null
+  weight: number | null
 }
 
 type ShortlistItem = {
@@ -294,11 +302,7 @@ export default function CastingDirectorPage() {
     }
   }, [loading, profile, router, fetchCastings])
 
-  useEffect(() => {
-    if (activeView === "profile") {
-      router.push("/mypage")
-    }
-  }, [activeView, router])
+  // profile view는 대시보드 내 인라인 폼으로 처리 (마이페이지 이동 X)
 
   useEffect(() => {
     if (activeView === "bookmarks") {
@@ -990,87 +994,106 @@ export default function CastingDirectorPage() {
                     <p className="text-sm">지원자가 없습니다</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {filteredApplications.map((app) => {
                       const isChecked = selectedApplicants.has(app.user_id)
+                      const birthYear = app.birth_date ? new Date(app.birth_date).getFullYear() : null
+                      const age = birthYear ? new Date().getFullYear() - birthYear : null
+                      const infoLine = [
+                        app.gender,
+                        age ? `${age}세` : null,
+                        app.height ? `${app.height}cm` : null,
+                        app.weight ? `${app.weight}kg` : null,
+                      ].filter(Boolean).join(" · ")
                       return (
                         <div
                           key={app.id}
-                          className={`bg-white rounded-xl border p-4 flex items-center gap-3 transition-colors ${
-                            isChecked ? "border-orange-200 bg-orange-50/30" : "border-gray-100"
+                          className={`bg-white rounded-xl border overflow-hidden shadow-sm transition-all ${
+                            isChecked ? "border-orange-300 ring-2 ring-orange-200" : "border-gray-100 hover:shadow-md"
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleApplicant(app.user_id)}
-                            className="w-4 h-4 accent-orange-500 shrink-0 cursor-pointer"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <p className="font-semibold text-gray-900 text-sm">
+                          {/* 사진 + 체크박스 */}
+                          <div className="aspect-[3/4] relative bg-gray-100">
+                            {app.main_photo ? (
+                              <Image src={app.main_photo} alt={app.profile?.name ?? ""} fill className="object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Users className="w-10 h-10 text-gray-300" />
+                              </div>
+                            )}
+                            {/* 체크박스 */}
+                            <label className="absolute top-2 left-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleApplicant(app.user_id)}
+                                className="w-4 h-4 accent-orange-500"
+                              />
+                            </label>
+                            {/* 상태 badge */}
+                            <span className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColors[app.admin_status] ?? statusColors["대기"]}`}>
+                              {app.admin_status}
+                            </span>
+                          </div>
+
+                          {/* 정보 */}
+                          <div className="p-3 space-y-2">
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm truncate">
                                 {app.profile?.name ?? "이름 없음"}
                               </p>
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                                  statusColors[app.admin_status] ?? statusColors["대기"]
-                                }`}
-                              >
-                                {app.admin_status}
-                              </span>
+                              {infoLine && (
+                                <p className="text-[11px] text-gray-400 mt-0.5 truncate">{infoLine}</p>
+                              )}
+                              <p className="text-[10px] text-gray-300 mt-0.5">
+                                {app.applied_at ? new Date(app.applied_at).toLocaleDateString("ko-KR") : ""}
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-400">
-                              지원일:{" "}
-                              {app.applied_at
-                                ? new Date(app.applied_at).toLocaleDateString("ko-KR")
-                                : "-"}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                            {app.portfolio_url && (
-                              <a
-                                href={app.portfolio_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                상세보기
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs px-2"
-                              onClick={() => handleShortlistAdd(selectedCastingId, [app.user_id])}
-                            >
-                              리스트업
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs px-2 bg-orange-500 hover:bg-orange-600 text-white"
-                              onClick={() => openProposalModal([app.user_id], selectedCastingId)}
-                            >
-                              제안 보내기
-                            </Button>
+
+                            {/* 상태 변경 */}
                             <Select
                               value={app.admin_status}
-                              onValueChange={(v) =>
-                                handleStatusChange(selectedCasting.id, app.id, v)
-                              }
+                              onValueChange={(v) => handleStatusChange(selectedCasting.id, app.id, v)}
                             >
-                              <SelectTrigger className="h-7 text-xs w-20">
+                              <SelectTrigger className="h-7 text-xs w-full">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
                                 {STATUS_OPTIONS.map((s) => (
-                                  <SelectItem key={s} value={s} className="text-xs">
-                                    {s}
-                                  </SelectItem>
+                                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
+
+                            {/* 버튼 */}
+                            <div className="flex gap-1.5">
+                              {app.artist_profile_id && (
+                                <Link
+                                  href={`/artists/${app.artist_profile_id}`}
+                                  target="_blank"
+                                  className="flex-1 h-7 text-[11px] flex items-center justify-center gap-0.5 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 transition-colors"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  상세
+                                </Link>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 h-7 text-[11px] px-1"
+                                onClick={() => handleShortlistAdd(selectedCastingId, [app.user_id])}
+                              >
+                                리스트업
+                              </Button>
+                            </div>
+                            <Button
+                              size="sm"
+                              className="w-full h-7 text-[11px] bg-orange-500 hover:bg-orange-600 text-white"
+                              onClick={() => openProposalModal([app.user_id], selectedCastingId)}
+                            >
+                              <Send className="w-3 h-3 mr-1" />
+                              제안 보내기
+                            </Button>
                           </div>
                         </div>
                       )
@@ -1509,6 +1532,15 @@ export default function CastingDirectorPage() {
           </div>
         )}
 
+        {/* ── profile 뷰 ── */}
+        {activeView === "profile" && profile && (
+          <ProfileViewPanel
+            initialName={profile.name ?? ""}
+            initialPhone={(profile as unknown as { phone?: string }).phone ?? ""}
+            email={profile.email ?? ""}
+          />
+        )}
+
         {/* ── proposals 뷰 ── */}
         {activeView === "proposals" && (
           <div className="px-6 py-8">
@@ -1601,6 +1633,113 @@ export default function CastingDirectorPage() {
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+// ── 프로필 관리 패널 (캐스팅 디렉터 전용) ──────────────────────
+function ProfileViewPanel({
+  initialName,
+  initialPhone,
+  email,
+}: {
+  initialName: string
+  initialPhone: string
+  email: string
+}) {
+  const [name, setName] = useState(initialName)
+  const [phone, setPhone] = useState(initialPhone)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const { toast } = useToast()
+  const supabase = createClient()
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
+      })
+      if (!res.ok) throw new Error()
+      setSaved(true)
+      toast({ title: "저장 완료", description: "프로필이 업데이트되었습니다." })
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      toast({ title: "저장 실패", variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="max-w-xl mx-auto px-6 py-8">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+          <User className="w-5 h-5 text-orange-500" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">내 프로필 관리</h2>
+          <p className="text-sm text-gray-500">캐스팅 디렉터 기본 정보를 관리합니다.</p>
+        </div>
+      </div>
+
+      {/* 아바타 + 이름 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4 flex items-center gap-4">
+        <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center shrink-0">
+          <User className="w-8 h-8 text-orange-400" />
+        </div>
+        <div>
+          <p className="font-bold text-gray-900 text-base">{name || "이름 없음"}</p>
+          <p className="text-sm text-gray-400 mt-0.5">{email}</p>
+          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-600">
+            캐스팅 디렉터
+          </span>
+        </div>
+      </div>
+
+      {/* 연락처 정보 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">연락처 정보</h3>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="dir-name" className="text-sm">이름</Label>
+          <Input
+            id="dir-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="이름을 입력하세요"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="dir-email" className="text-sm">이메일</Label>
+          <Input id="dir-email" value={email} disabled className="bg-gray-50 text-gray-400" />
+          <p className="text-[11px] text-gray-400">이메일은 로그인 계정으로 변경할 수 없습니다.</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="dir-phone" className="text-sm">연락처</Label>
+          <Input
+            id="dir-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="010-0000-0000"
+          />
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-orange-500 hover:bg-orange-600 text-white gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "저장 중..." : saved ? "저장됨 ✓" : "저장하기"}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

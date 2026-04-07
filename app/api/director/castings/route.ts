@@ -51,9 +51,19 @@ export async function GET(request: Request) {
       apps.map(async (app) => {
         const [{ data: profile }, { data: artistProfile }] = await Promise.all([
           serviceClient.from("profiles").select("name, email, phone").eq("id", app.user_id).single(),
-          serviceClient.from("artist_profiles").select("portfolio_url").eq("user_id", app.user_id).single(),
+          serviceClient.from("artist_profiles").select("id, portfolio_url, main_photo, gender, birth_date, height, weight").eq("user_id", app.user_id).single(),
         ])
-        return { ...app, profile: profile ?? null, portfolio_url: artistProfile?.portfolio_url ?? null }
+        return {
+          ...app,
+          profile: profile ?? null,
+          portfolio_url: artistProfile?.portfolio_url ?? null,
+          artist_profile_id: artistProfile?.id ?? null,
+          main_photo: artistProfile?.main_photo ?? null,
+          gender: artistProfile?.gender ?? null,
+          birth_date: artistProfile?.birth_date ?? null,
+          height: artistProfile?.height ?? null,
+          weight: artistProfile?.weight ?? null,
+        }
       })
     )
     return NextResponse.json(enriched)

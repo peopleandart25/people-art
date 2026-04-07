@@ -77,7 +77,8 @@ export async function POST(request: Request) {
 
     if (!payRes.ok) {
       const err = await payRes.json()
-      return NextResponse.json({ error: "결제 실패", details: err.message }, { status: 400 })
+      console.error("[PortOne 결제 실패]", JSON.stringify(err))
+      return NextResponse.json({ error: err.message ?? "결제 실패", details: err }, { status: 400 })
     }
 
     const payment = await payRes.json()
