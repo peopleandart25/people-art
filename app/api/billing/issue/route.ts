@@ -81,10 +81,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: err.message ?? "결제 실패", details: err }, { status: 400 })
     }
 
-    const payment = await payRes.json()
-    console.error("[PortOne 결제 응답 전체]", JSON.stringify(payment))
-    // DEBUG: 임시로 전체 응답 구조 확인
-    return NextResponse.json({ error: "DEBUG: " + JSON.stringify(payment) }, { status: 400 })
+    const paymentRes = await payRes.json()
+    // PortOne V2 billing-key 결제 응답: { payment: { pgTxId, paidAt } }
+    const paymentInfo = paymentRes.payment ?? paymentRes
+    if (!paymentInfo?.paidAt) {
+      return NextResponse.json({ error: "결제가 완료되지 않았습니다.", details: paymentRes }, { status: 400 })
+    }
 
     portoneCharged = true
   }
