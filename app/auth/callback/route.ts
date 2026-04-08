@@ -17,11 +17,8 @@ export async function GET(request: Request) {
 
         // 소셜 로그인 중복 계정 방지: 같은 이메일의 다른 계정이 있으면 신규 계정 삭제 후 안내
         if (user.email) {
-          const isNewUser = Math.abs(
-            new Date(user.last_sign_in_at ?? user.created_at).getTime() -
-            new Date(user.created_at).getTime()
-          ) < 5000
-
+          // created_at === last_sign_in_at: 처음 로그인한 신규 유저 (시간 diff 비교보다 정확)
+          const isNewUser = user.created_at === user.last_sign_in_at
           if (isNewUser) {
             const { data: existingProfile } = await serviceClient
               .from("profiles")

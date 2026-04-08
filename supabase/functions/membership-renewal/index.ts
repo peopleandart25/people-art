@@ -68,32 +68,25 @@ Deno.serve(async (_req) => {
         }
       )
 
+      const handleFailure = async (reason: string) => {
+        results.push({ userId: user_id, success: false, error: reason })
+        const [r1, r2] = await Promise.all([
+          supabase.from("memberships").update({ status: "cancelled", auto_renew: false }).eq("id", membership.id),
+          supabase.from("profiles").update({ membership_is_active: false }).eq("id", user_id),
+        ])
+        if (r1.error) console.error("[renewal] memberships cancel 실패:", r1.error.message)
+        if (r2.error) console.error("[renewal] profiles deactivate 실패:", r2.error.message)
+      }
+
       if (!payRes.ok) {
         const err = await payRes.json()
-        results.push({ userId: user_id, success: false, error: err.message })
-        // 결제 실패 시 만료 처리
-        await supabase
-          .from("memberships")
-          .update({ status: "cancelled", auto_renew: false })
-          .eq("id", membership.id)
-        await supabase
-          .from("profiles")
-          .update({ membership_is_active: false })
-          .eq("id", user_id)
+        await handleFailure(err.message ?? "결제 API 오류")
         continue
       }
 
       const payment = await payRes.json()
       if (payment.status !== "PAID") {
-        results.push({ userId: user_id, success: false, error: "결제 미완료" })
-        await supabase
-          .from("memberships")
-          .update({ status: "cancelled", auto_renew: false })
-          .eq("id", membership.id)
-        await supabase
-          .from("profiles")
-          .update({ membership_is_active: false })
-          .eq("id", user_id)
+        await handleFailure("결제 미완료")
         continue
       }
 
@@ -103,7 +96,7 @@ Deno.serve(async (_req) => {
       const newExpiry = new Date(baseDate)
       newExpiry.setDate(newExpiry.getDate() + 30)
 
-      await supabase
+      const { error: membershipUpdateError } = await supabase
         .from("memberships")
         .update({
           started_at: now.toISOString(),
@@ -112,16 +105,16 @@ Deno.serve(async (_req) => {
         })
         .eq("id", membership.id)
 
-      // 3. payments 기록
-      const { data: membershipRow } = await supabase
-        .from("memberships")
-        .select("id")
-        .eq("id", membership.id)
-        .single()
+      if (membershipUpdateError) {
+        console.error("[renewal] memberships update 실패 — 결제 성공했으나 DB 실패:", membershipUpdateError.message, { userId: user_id, paymentId })
+        results.push({ userId: user_id, success: false, error: "DB 업데이트 실패 (결제는 처리됨 — 수동 확인 필요)" })
+        continue
+      }
 
-      await supabase.from("payments").insert({
+      // 3. payments 기록 (dead select 제거 — membership.id 재사용)
+      const { error: paymentInsertError } = await supabase.from("payments").insert({
         user_id,
-        membership_id: membershipRow?.id,
+        membership_id: membership.id,
         amount: MEMBERSHIP_PRICE,
         points_used: 0,
         status: "completed",
@@ -130,21 +123,37 @@ Deno.serve(async (_req) => {
         payment_method: "kakao_pay",
       })
 
-      // 4. profiles 포인트 갱신 보너스 지급
-      const { data: profile } = await supabase
+      if (paymentInsertError) {
+        console.error("[renewal] payments insert 실패:", paymentInsertError.message, { userId: user_id, paymentId })
+        // payments 기록 실패는 멤버십 갱신은 됐으므로 경고만
+      }
+
+      // 4. profiles 포인트 갱신 보너스 지급 (트리거가 membership_is_active 처리)
+      const { data: profile, error: profileFetchError } = await supabase
         .from("profiles")
         .select("points")
         .eq("id", user_id)
         .single()
 
+      if (profileFetchError) {
+        console.error("[renewal] profile 조회 실패:", profileFetchError.message)
+        results.push({ userId: user_id, success: true })
+        continue
+      }
+
       const currentPoints = profile?.points ?? 0
-      await supabase
+      const { error: profileUpdateError } = await supabase
         .from("profiles")
-        .update({ points: currentPoints + RENEWAL_BONUS, membership_is_active: true })
+        .update({ points: currentPoints + RENEWAL_BONUS })
         .eq("id", user_id)
+
+      if (profileUpdateError) {
+        console.error("[renewal] profiles points update 실패:", profileUpdateError.message)
+      }
 
       results.push({ userId: user_id, success: true })
     } catch (e) {
+      console.error("[renewal] 예외 발생:", String(e), { userId: user_id })
       results.push({ userId: user_id, success: false, error: String(e) })
     }
   }

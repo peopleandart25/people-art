@@ -23,7 +23,20 @@ export async function POST(request: Request) {
 
   const serviceClient = createServiceClient()
 
-  // 2. DB에서 현재 포인트 조회 및 선검증
+  // 2. 중복 결제 방지 (0원 결제는 paymentId가 서버 생성값이므로 별도 처리)
+  const expectedPgId = expectedAmount === 0 ? null : paymentId
+  if (expectedPgId) {
+    const { data: existing } = await serviceClient
+      .from("payments")
+      .select("id")
+      .eq("pg_transaction_id", expectedPgId)
+      .maybeSingle()
+    if (existing) {
+      return NextResponse.json({ error: "이미 처리된 결제입니다." }, { status: 409 })
+    }
+  }
+
+  // 3. DB에서 현재 포인트 조회 및 선검증
   const { data: currentProfile } = await serviceClient
     .from("profiles")
     .select("points")
@@ -36,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "보유 포인트가 부족합니다." }, { status: 400 })
   }
 
-  // 3. 포트원 결제 검증 (0원 결제는 PG 호출 없이 포인트만으로 처리)
+  // 4. 포트원 결제 검증 (0원 결제는 PG 호출 없이 포인트만으로 처리)
   let pgProvider = "kakaopay"
   if (expectedAmount > 0) {
     const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
@@ -80,27 +93,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "멤버십 저장 실패" }, { status: 500 })
   }
 
-  // 5. payments 테이블에 기록
+  // 5. payments 테이블에 기록 (amount = 실 결제액, 0원 결제는 서버 생성 ID)
+  const pgTransactionId = expectedAmount === 0 ? `free-${user.id}-${Date.now()}` : paymentId
   const { error: paymentError } = await serviceClient.from("payments").insert({
     user_id: user.id,
     membership_id: membership.id,
-    amount: MEMBERSHIP_PRICE,
+    amount: expectedAmount,
     points_used: pointsUsed,
     status: "completed",
     pg_provider: pgProvider,
-    pg_transaction_id: paymentId,
-    payment_method: "kakao_pay",
+    pg_transaction_id: pgTransactionId,
+    payment_method: expectedAmount === 0 ? "points" : "kakao_pay",
   })
   if (paymentError) {
+    if (paymentError.code === "23505") {
+      return NextResponse.json({ error: "이미 처리된 결제입니다." }, { status: 409 })
+    }
     return NextResponse.json({ error: "결제 내역 저장 실패" }, { status: 500 })
   }
 
-  // 6. profiles 테이블 points 업데이트 (포인트 차감 + 가입 보너스 지급, role은 변경하지 않음)
+  // 6. profiles 포인트 업데이트 (트리거가 membership_is_active 동기화 처리)
   const newPoints = Math.max(0, currentPoints - pointsUsed) + SIGNUP_BONUS
 
   const { error: profileError } = await serviceClient
     .from("profiles")
-    .update({ points: newPoints, membership_is_active: true } as never)
+    .update({ points: newPoints } as never)
     .eq("id", user.id)
 
   if (profileError) {

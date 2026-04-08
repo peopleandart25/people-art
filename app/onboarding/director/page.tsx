@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -25,9 +25,12 @@ export default function DirectorOnboardingPage() {
     jobTitle: "",
   })
 
+  const mountedRef = useRef(true)
   useEffect(() => {
+    mountedRef.current = true
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!mountedRef.current) return
       if (!user) { router.push("/login"); return }
       setForm(prev => ({
         ...prev,
@@ -36,6 +39,8 @@ export default function DirectorOnboardingPage() {
         phone: user.user_metadata?.phone || "",
       }))
     })
+    return () => { mountedRef.current = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const update = (field: string, value: string) =>
@@ -67,7 +72,8 @@ export default function DirectorOnboardingPage() {
         throw new Error(data.error ?? "저장 실패")
       }
       toast({ title: "프로필이 등록되었습니다." })
-      window.location.href = "/casting-director"
+      router.push("/casting-director")
+      router.refresh()
     } catch (err) {
       toast({ title: "오류 발생", description: err instanceof Error ? err.message : "다시 시도해주세요.", variant: "destructive" })
     } finally {

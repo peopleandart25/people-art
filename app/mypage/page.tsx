@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useProfile } from "@/hooks/use-profile"
 import { createClient } from "@/lib/supabase/client"
+import { DirectorProfileForm } from "@/components/director-profile-form"
 
 const SCHOOL_LIST = [
   "한국예술종합학교","중앙대학교","동국대학교","성균관대학교","한양대학교",
@@ -1237,30 +1238,6 @@ function CDMyPageView({
   initialCompany: string
   initialJobTitle: string
 }) {
-  const { toast } = useToast()
-  const [name, setName] = useState(initialName)
-  const [phone, setPhone] = useState(initialPhone)
-  const [company, setCompany] = useState(initialCompany)
-  const [jobTitle, setJobTitle] = useState(initialJobTitle)
-  const [saving, setSaving] = useState(false)
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), activity_name: company.trim(), job_title: jobTitle.trim() }),
-      })
-      if (!res.ok) throw new Error()
-      toast({ title: "저장 완료", description: "프로필이 업데이트되었습니다." })
-    } catch {
-      toast({ title: "저장 실패", variant: "destructive" })
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card sticky top-0 z-40">
@@ -1295,43 +1272,18 @@ function CDMyPageView({
             <Briefcase className="w-8 h-8 text-gray-400" />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-base">{name || "이름 없음"}</p>
-            <p className="text-sm text-gray-500 mt-0.5">캐스팅 디렉터{company ? ` | ${company}` : ""}</p>
+            <p className="font-bold text-gray-900 text-base">{initialName || "이름 없음"}</p>
+            <p className="text-sm text-gray-500 mt-0.5">캐스팅 디렉터{initialCompany ? ` | ${initialCompany}` : ""}</p>
           </div>
         </div>
 
-        {/* 연락처 정보 */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">연락처 정보</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="cd-name" className="text-xs text-gray-500">이름</Label>
-              <Input id="cd-name" value={name} onChange={e => setName(e.target.value)} placeholder="홍길동" className="text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500">이메일</Label>
-              <Input value={email} disabled className="bg-gray-50 text-gray-500 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cd-phone" className="text-xs text-gray-500">연락처</Label>
-              <Input id="cd-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="010-0000-0000" className="text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cd-company" className="text-xs text-gray-500">소속 회사</Label>
-              <Input id="cd-company" value={company} onChange={e => setCompany(e.target.value)} placeholder="ABC 엔터테인먼트" className="text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cd-job" className="text-xs text-gray-500">직책</Label>
-              <Input id="cd-job" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder="캐스팅 디렉터" className="text-sm" />
-            </div>
-          </div>
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleSave} disabled={saving} className="bg-orange-500 hover:bg-orange-600 text-white gap-2">
-              <Save className="w-4 h-4" />
-              {saving ? "저장 중..." : "저장하기"}
-            </Button>
-          </div>
-        </div>
+        <DirectorProfileForm
+          initialName={initialName}
+          initialPhone={initialPhone}
+          email={email}
+          initialCompany={initialCompany}
+          initialJobTitle={initialJobTitle}
+        />
       </div>
     </div>
   )

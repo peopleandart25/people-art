@@ -1,6 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// service role client 팩토리 (요청당 최대 1회 생성)
+function makeServiceClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -30,20 +39,13 @@ export async function updateSession(request: NextRequest) {
   // /admin 경로 보호 - 관리자만 접근 가능
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!user) {
-      return NextResponse.redirect(new URL('/login?redirectTo=/admin', 'https://people-art.co.kr'))
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('redirectTo', '/admin')
+      return NextResponse.redirect(url)
     }
 
-    // DB에서 role 확인 (RLS 우회를 위해 service role 사용)
-    const serviceClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() { return [] },
-          setAll() {},
-        },
-      }
-    )
+    const serviceClient = makeServiceClient()
     const { data: profile } = await serviceClient
       .from('profiles')
       .select('role')
@@ -51,7 +53,10 @@ export async function updateSession(request: NextRequest) {
       .single()
 
     if (!profile || !['admin', 'sub_admin'].includes(profile.role)) {
-      return NextResponse.redirect(new URL('/', 'https://people-art.co.kr'))
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      url.search = ''
+      return NextResponse.redirect(url)
     }
   }
 
@@ -66,21 +71,16 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 로그인 유저가 phone 미등록 + artist_profiles 없을 시 온보딩 강제 (신규 유저만)
+  // 온보딩 강제 (신규 유저만) — admin/cd/onboarding 경로는 제외
   const onboardingExempt = ['/onboarding', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
   const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
   if (user && !isExempt) {
-    const phoneClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { cookies: { getAll() { return [] }, setAll() {} } }
-    )
+    const serviceClient = makeServiceClient()
     const [{ data: profile }, { data: artistProfile }] = await Promise.all([
-      phoneClient.from('profiles').select('phone, role').eq('id', user.id).single(),
-      phoneClient.from('artist_profiles').select('user_id').eq('user_id', user.id).maybeSingle(),
+      serviceClient.from('profiles').select('phone, role').eq('id', user.id).single(),
+      serviceClient.from('artist_profiles').select('user_id').eq('user_id', user.id).maybeSingle(),
     ])
 
-    // 관리자/서브관리자는 온보딩 강제 제외
     const skipRoles = ['admin', 'sub_admin']
     if (profile && !skipRoles.includes(profile.role)) {
       if (profile.role === 'casting_director') {

@@ -42,19 +42,48 @@ Deno.serve(async (_req) => {
   const userIds = expiredAll.map((m) => m.user_id)
 
   // 3. memberships 상태 → cancelled
-  await supabase
+  const { error: cancelError } = await supabase
     .from("memberships")
     .update({ status: "cancelled" })
     .in("id", membershipIds)
 
+  if (cancelError) {
+    console.error("[expiry] memberships cancel 실패:", cancelError.message)
+    return new Response(
+      JSON.stringify({ error: "멤버십 취소 실패", details: cancelError.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
+
   // 4. profiles membership_is_active → false
-  await supabase
-    .from("profiles")
-    .update({ membership_is_active: false })
-    .in("id", userIds)
+  // 경합 방지: 이 시점에도 active 멤버십이 남아있는 유저는 제외 (신규 결제 등)
+  // (트리거가 있으면 자동 처리되지만 명시적으로도 처리)
+  const { data: stillActive } = await supabase
+    .from("memberships")
+    .select("user_id")
+    .in("user_id", userIds)
+    .eq("status", "active")
+
+  const stillActiveSet = new Set((stillActive ?? []).map((m: { user_id: string }) => m.user_id))
+  const userIdsToDeactivate = userIds.filter((id: string) => !stillActiveSet.has(id))
+
+  if (userIdsToDeactivate.length > 0) {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ membership_is_active: false })
+      .in("id", userIdsToDeactivate)
+
+    if (profileError) {
+      console.error("[expiry] profiles update 실패:", profileError.message)
+      return new Response(
+        JSON.stringify({ error: "프로필 업데이트 실패", details: profileError.message }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      )
+    }
+  }
 
   return new Response(
-    JSON.stringify({ ok: true, processed: expiredAll.length, userIds }),
+    JSON.stringify({ ok: true, processed: expiredAll.length, deactivated: userIdsToDeactivate.length }),
     { headers: { "Content-Type": "application/json" } }
   )
 })
