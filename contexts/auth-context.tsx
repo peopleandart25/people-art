@@ -10,6 +10,7 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"] & {
   membership_expires_at?: string | null
   membership_auto_renew?: boolean
   membership_is_active?: boolean
+  has_artist_profile?: boolean
 }
 
 interface AuthContextType {

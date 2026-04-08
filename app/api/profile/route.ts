@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   const serviceClient = createServiceClient()
-  const [{ data: profile }, { data: membership }] = await Promise.all([
+  const [{ data: profile }, { data: membership }, { data: artistProfile }] = await Promise.all([
     serviceClient.from("profiles").select("*").eq("id", user.id).single(),
     serviceClient
       .from("memberships")
@@ -18,6 +18,7 @@ export async function GET() {
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle(),
+    serviceClient.from("artist_profiles").select("id").eq("user_id", user.id).maybeSingle(),
   ])
 
   return NextResponse.json(
@@ -27,6 +28,7 @@ export async function GET() {
       membership_expires_at: membership?.expires_at ?? null,
       membership_auto_renew: membership?.auto_renew ?? false,
       membership_is_active: !!membership,
+      has_artist_profile: !!artistProfile,
     },
     { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
   )
