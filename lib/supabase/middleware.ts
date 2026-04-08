@@ -81,12 +81,23 @@ export async function updateSession(request: NextRequest) {
     ])
 
     // 관리자/서브관리자는 온보딩 강제 제외
-    const adminRoles = ['admin', 'sub_admin']
-    // phone 없고 artist_profiles도 없는 경우만 신규 유저로 판단 → 온보딩 강제
-    if (profile && !adminRoles.includes(profile.role) && !profile.phone && !artistProfile) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/onboarding'
-      return NextResponse.redirect(url)
+    const skipRoles = ['admin', 'sub_admin']
+    if (profile && !skipRoles.includes(profile.role)) {
+      if (profile.role === 'casting_director') {
+        // 캐스팅 디렉터: phone 없으면 디렉터 온보딩으로
+        if (!profile.phone) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/onboarding/director'
+          return NextResponse.redirect(url)
+        }
+      } else {
+        // 일반 유저: phone & artist_profiles 없으면 역할 선택 화면으로
+        if (!profile.phone && !artistProfile) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/onboarding/select'
+          return NextResponse.redirect(url)
+        }
+      }
     }
   }
 

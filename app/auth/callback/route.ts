@@ -40,15 +40,26 @@ export async function GET(request: Request) {
           }
         }
 
-        // 온보딩 여부 확인 - artist_profiles row가 없으면 온보딩으로
-        const { data: artistProfile } = await serviceClient
-          .from("artist_profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle()
+        // 온보딩 여부 확인
+        const [{ data: profile }, { data: artistProfile }] = await Promise.all([
+          serviceClient.from("profiles").select("role, phone").eq("id", user.id).maybeSingle(),
+          serviceClient.from("artist_profiles").select("id").eq("user_id", user.id).maybeSingle(),
+        ])
+
+        const skipRoles = ["admin", "sub_admin"]
+        if (skipRoles.includes(profile?.role ?? "")) {
+          return NextResponse.redirect(`${origin}${redirectTo}`)
+        }
+
+        if (profile?.role === "casting_director") {
+          if (!profile.phone) {
+            return NextResponse.redirect(`${origin}/onboarding/director`)
+          }
+          return NextResponse.redirect(`${origin}${redirectTo}`)
+        }
 
         if (!artistProfile) {
-          return NextResponse.redirect(`${origin}/onboarding`)
+          return NextResponse.redirect(`${origin}/onboarding/select`)
         }
       }
 

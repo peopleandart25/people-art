@@ -40,11 +40,12 @@ export async function PATCH(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await request.json()
-  const { name, phone, activity_name, email } = body as {
+  const { name, phone, activity_name, email, job_title } = body as {
     name?: string
     phone?: string
     activity_name?: string
     email?: string
+    job_title?: string
   }
 
   const updatePayload: Record<string, string | null> = {}
@@ -52,6 +53,7 @@ export async function PATCH(request: Request) {
   if (phone !== undefined) updatePayload.phone = phone
   if (activity_name !== undefined) updatePayload.activity_name = activity_name
   if (email !== undefined) updatePayload.email = email
+  if (job_title !== undefined) updatePayload.job_title = job_title
 
   const serviceClient = createServiceClient()
   const { error } = await serviceClient.from("profiles").update(updatePayload).eq("id", user.id)

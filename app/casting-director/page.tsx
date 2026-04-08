@@ -1729,6 +1729,7 @@ export default function CastingDirectorPage() {
             initialPhone={(profile as unknown as { phone?: string }).phone ?? ""}
             email={profile.email ?? ""}
             initialCompany={(profile as unknown as { activity_name?: string }).activity_name ?? ""}
+            initialJobTitle={(profile as unknown as { job_title?: string }).job_title ?? ""}
           />
         )}
 
@@ -1834,15 +1835,18 @@ function ProfileViewPanel({
   initialPhone,
   email,
   initialCompany,
+  initialJobTitle,
 }: {
   initialName: string
   initialPhone: string
   email: string
   initialCompany: string
+  initialJobTitle: string
 }) {
   const [name, setName] = useState(initialName)
   const [phone, setPhone] = useState(initialPhone)
   const [company, setCompany] = useState(initialCompany)
+  const [jobTitle, setJobTitle] = useState(initialJobTitle)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const { toast } = useToast()
@@ -1853,7 +1857,7 @@ function ProfileViewPanel({
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), activity_name: company.trim() }),
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), activity_name: company.trim(), job_title: jobTitle.trim() }),
       })
       if (!res.ok) throw new Error()
       setSaved(true)
@@ -1939,8 +1943,14 @@ function ProfileViewPanel({
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500">직책</Label>
-            <Input value="캐스팅 디렉터" disabled className="bg-gray-50 text-gray-500 text-sm" />
+            <Label htmlFor="dir-job-title" className="text-xs text-gray-500">직책</Label>
+            <Input
+              id="dir-job-title"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              placeholder="캐스팅 디렉터"
+              className="text-sm"
+            />
           </div>
         </div>
 
