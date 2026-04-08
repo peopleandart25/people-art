@@ -222,15 +222,6 @@ export function Header() {
                     <Briefcase className="h-3.5 w-3.5" />
                     디렉터 대시보드
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1 whitespace-nowrap text-xs px-2"
-                    onClick={() => router.push("/mypage")}
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    마이페이지
-                  </Button>
                 </>
               ) : (
                 <Button
@@ -355,14 +346,6 @@ export function Header() {
                         >
                           <Briefcase className="h-4 w-4" />
                           디렉터 대시보드
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-2"
-                          onClick={() => { setIsOpen(false); router.push("/mypage") }}
-                        >
-                          <User className="h-4 w-4" />
-                          마이페이지
                         </Button>
                       </>
                     ) : (
