@@ -48,11 +48,13 @@ export async function GET(request: Request) {
     if (!apps || apps.length === 0) return NextResponse.json([])
 
     // 배치 쿼리로 N+1 방지 (N×3 쿼리 → 3 쿼리)
-    const userIds = apps.map((a) => a.user_id)
-    const [{ data: profiles }, { data: artistProfiles }] = await Promise.all([
+    const userIds = apps.map((a) => a.user_id).filter((id): id is string => id !== null)
+    const [{ data: profiles }, { data: artistProfiles }, { data: mainPhotos }] = await Promise.all([
       serviceClient.from("profiles").select("id, name, email, phone").in("id", userIds),
-      serviceClient.from("artist_profiles").select("id, user_id, portfolio_url, main_photo, gender, birth_date, height, weight").in("user_id", userIds),
+      serviceClient.from("artist_profiles").select("id, user_id, portfolio_url, gender, birth_date, height, weight").in("user_id", userIds),
+      serviceClient.from("artist_photos").select("user_id, url").eq("is_main", true).in("user_id", userIds),
     ])
+    const mainPhotoMap = new Map((mainPhotos ?? []).map((p) => [p.user_id, p.url]))
 
     const artistProfileIds = (artistProfiles ?? []).map((ap) => ap.id)
     const { data: allStatusTags } = artistProfileIds.length > 0
@@ -72,14 +74,15 @@ export async function GET(request: Request) {
     }
 
     const enriched = apps.map((app) => {
-      const prof = profileMap.get(app.user_id)
-      const ap = artistProfileMap.get(app.user_id)
+      const uid = app.user_id ?? ""
+      const prof = profileMap.get(uid)
+      const ap = artistProfileMap.get(uid)
       return {
         ...app,
         profile: prof ?? null,
         portfolio_url: ap?.portfolio_url ?? null,
         artist_profile_id: ap?.id ?? null,
-        main_photo: ap?.main_photo ?? null,
+        main_photo: mainPhotoMap.get(uid) ?? null,
         gender: ap?.gender ?? null,
         birth_date: ap?.birth_date ?? null,
         height: ap?.height ?? null,
@@ -140,7 +143,7 @@ export async function PATCH(request: Request) {
     const { data: appCasting } = await serviceClient
       .from("castings")
       .select("created_by")
-      .eq("id", app.casting_id)
+      .eq("id", app.casting_id ?? "")
       .single()
 
     if (!appCasting || appCasting.created_by !== user.id) {

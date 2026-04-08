@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   if (countOnly) {
     const { count } = await serviceClient
-      .from("casting_proposals" as never)
+      .from("casting_proposals")
       .select("id", { count: "exact", head: true })
       .eq("artist_user_id", user.id)
       .eq("status", "pending")
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   }
 
   const { data, error } = await serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .select("id, status, message, created_at, expires_at, casting_id, director_id")
     .eq("artist_user_id", user.id)
     .order("created_at", { ascending: false })
@@ -133,7 +133,7 @@ export async function PATCH(request: Request) {
 
   // 본인 제안인지 + 현재 status 확인
   const { data: existing } = await serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .select("id, artist_user_id, status")
     .eq("id", proposal_id)
     .single()
@@ -147,7 +147,7 @@ export async function PATCH(request: Request) {
   }
 
   const { data: updated, error } = await serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .update({ status })
     .eq("id", proposal_id)
     .select("director_id")

@@ -39,8 +39,8 @@ export async function GET(request: Request) {
     const enriched = await Promise.all(
       apps.map(async (app) => {
         const [{ data: profile }, { data: artistProfile }] = await Promise.all([
-          serviceClient.from("profiles").select("name, email, phone").eq("id", app.user_id).single(),
-          serviceClient.from("artist_profiles").select("portfolio_url").eq("user_id", app.user_id).single(),
+          serviceClient.from("profiles").select("name, email, phone").eq("id", app.user_id ?? "").single(),
+          serviceClient.from("artist_profiles").select("portfolio_url").eq("user_id", app.user_id ?? "").single(),
         ])
         return { ...app, profile: profile ?? null, portfolio_url: artistProfile?.portfolio_url ?? null }
       })

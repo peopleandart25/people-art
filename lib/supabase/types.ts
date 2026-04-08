@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      actor_bookmarks: {
+        Row: {
+          id: string
+          director_id: string
+          artist_profile_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          director_id: string
+          artist_profile_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          director_id?: string
+          artist_profile_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actor_bookmarks_director_id_fkey"
+            columns: ["director_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actor_bookmarks_artist_profile_id_fkey"
+            columns: ["artist_profile_id"]
+            isOneToOne: false
+            referencedRelation: "artist_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_logs: {
         Row: {
           action: string
@@ -167,6 +203,7 @@ export type Database = {
           portfolio_url: string | null
           school: string | null
           updated_at: string | null
+          show_in_artist_list: boolean | null
           user_id: string
           weight: number | null
         }
@@ -185,6 +222,7 @@ export type Database = {
           portfolio_file_name?: string | null
           portfolio_url?: string | null
           school?: string | null
+          show_in_artist_list?: boolean | null
           updated_at?: string | null
           user_id: string
           weight?: number | null
@@ -204,6 +242,7 @@ export type Database = {
           portfolio_file_name?: string | null
           portfolio_url?: string | null
           school?: string | null
+          show_in_artist_list?: boolean | null
           updated_at?: string | null
           user_id?: string
           weight?: number | null
@@ -316,6 +355,167 @@ export type Database = {
           {
             foreignKeyName: "career_items_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      casting_applications: {
+        Row: {
+          id: string
+          casting_id: string | null
+          user_id: string | null
+          admin_status: string | null
+          admin_note: string | null
+          applied_at: string | null
+        }
+        Insert: {
+          id?: string
+          casting_id?: string | null
+          user_id?: string | null
+          admin_status?: string | null
+          admin_note?: string | null
+          applied_at?: string | null
+        }
+        Update: {
+          id?: string
+          casting_id?: string | null
+          user_id?: string | null
+          admin_status?: string | null
+          admin_note?: string | null
+          applied_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "casting_applications_casting_id_fkey"
+            columns: ["casting_id"]
+            isOneToOne: false
+            referencedRelation: "castings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "casting_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      castings: {
+        Row: {
+          id: string
+          title: string
+          category: string
+          role_type: string | null
+          gender: string | null
+          birth_year_start: number | null
+          birth_year_end: number | null
+          deadline: string | null
+          work_period: string | null
+          location: string | null
+          fee: string | null
+          description: string | null
+          requirements: string[] | null
+          is_closed: boolean | null
+          is_urgent: boolean | null
+          created_by: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          category: string
+          role_type?: string | null
+          gender?: string | null
+          birth_year_start?: number | null
+          birth_year_end?: number | null
+          deadline?: string | null
+          work_period?: string | null
+          location?: string | null
+          fee?: string | null
+          description?: string | null
+          requirements?: string[] | null
+          is_closed?: boolean | null
+          is_urgent?: boolean | null
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          category?: string
+          role_type?: string | null
+          gender?: string | null
+          birth_year_start?: number | null
+          birth_year_end?: number | null
+          deadline?: string | null
+          work_period?: string | null
+          location?: string | null
+          fee?: string | null
+          description?: string | null
+          requirements?: string[] | null
+          is_closed?: boolean | null
+          is_urgent?: boolean | null
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "castings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      casting_proposals: {
+        Row: {
+          id: string
+          director_id: string
+          artist_user_id: string
+          casting_id: string | null
+          message: string | null
+          status: string
+          created_at: string
+          expires_at: string | null
+        }
+        Insert: {
+          id?: string
+          director_id: string
+          artist_user_id: string
+          casting_id?: string | null
+          message?: string | null
+          status?: string
+          created_at?: string
+          expires_at?: string | null
+        }
+        Update: {
+          id?: string
+          director_id?: string
+          artist_user_id?: string
+          casting_id?: string | null
+          message?: string | null
+          status?: string
+          created_at?: string
+          expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "casting_proposals_director_id_fkey"
+            columns: ["director_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "casting_proposals_artist_user_id_fkey"
+            columns: ["artist_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -596,6 +796,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      phone_verifications: {
+        Row: {
+          phone: string
+          otp: string
+          expires_at: string
+          created_at: string | null
+          attempts: number
+          last_sent_at: string | null
+        }
+        Insert: {
+          phone: string
+          otp: string
+          expires_at: string
+          created_at?: string | null
+          attempts?: number
+          last_sent_at?: string | null
+        }
+        Update: {
+          phone?: string
+          otp?: string
+          expires_at?: string
+          created_at?: string | null
+          attempts?: number
+          last_sent_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

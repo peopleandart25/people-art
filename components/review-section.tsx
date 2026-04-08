@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
-export function ReviewSection({ rawReviews = [] }: { rawReviews?: Record<string, unknown>[] }) {
+export function ReviewSection({ rawReviews = [] }: { rawReviews?: { id: string; title: string; content: string | null; user_id: string; category: string; created_at: string | null; is_hidden?: boolean | null; image_url: string | null }[] }) {
   const reviews = rawReviews.map(toReview)
   const [selectedReview, setSelectedReview] = useState<Review | null>(null)
 

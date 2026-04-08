@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const serviceClient = createServiceClient()
 
   let query = serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .select("id, status, message, created_at, expires_at, casting_id, artist_user_id")
     .eq("director_id", user.id)
     .order("created_at", { ascending: false })
@@ -127,13 +127,15 @@ export async function POST(request: Request) {
   }
 
   // 기존 pending 제안 조회하여 중복 제외
-  const { data: existingProposals } = await serviceClient
-    .from("casting_proposals" as never)
+  const baseExistingQuery = serviceClient
+    .from("casting_proposals")
     .select("artist_user_id")
     .eq("director_id", user.id)
     .in("artist_user_id", artist_user_ids)
     .eq("status", "pending")
-    .is("casting_id", casting_id ?? null) as { data: { artist_user_id: string }[] | null }
+  const { data: existingProposals } = (casting_id
+    ? await baseExistingQuery.eq("casting_id", casting_id)
+    : await baseExistingQuery.is("casting_id", null)) as { data: { artist_user_id: string }[] | null }
 
   const existingArtistIds = new Set((existingProposals ?? []).map((p) => p.artist_user_id))
   const newArtistIds = artist_user_ids.filter((id) => !existingArtistIds.has(id))
@@ -151,7 +153,7 @@ export async function POST(request: Request) {
   }))
 
   const { data: proposals, error } = await serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .insert(rows as never)
     .select("id, artist_user_id")
 
@@ -188,7 +190,7 @@ export async function DELETE(request: Request) {
 
   // pending 상태 확인
   const { data: existing } = await serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .select("id, status, director_id")
     .eq("id", proposal_id)
     .single()
@@ -199,7 +201,7 @@ export async function DELETE(request: Request) {
   if (p.status !== "pending") return NextResponse.json({ error: "pending 상태의 제안만 취소할 수 있습니다." }, { status: 409 })
 
   const { error } = await serviceClient
-    .from("casting_proposals" as never)
+    .from("casting_proposals")
     .delete()
     .eq("id", proposal_id)
 
