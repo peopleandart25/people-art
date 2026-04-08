@@ -187,7 +187,7 @@ export function Header() {
                 </PopoverContent>
               </Popover>
               {/* 아티스트 뱃지 */}
-              {!isAdmin && profile?.has_artist_profile && (
+              {!isAdmin && profile?.role !== "casting_director" && profile?.has_artist_profile && (
                 <Badge variant="outline" className="border-blue-500 text-blue-600 bg-blue-50 mr-1">
                   아티스트
                 </Badge>
