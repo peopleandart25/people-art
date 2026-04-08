@@ -143,14 +143,15 @@ function CastingCard({ casting, onClick }: { casting: Casting; onClick: () => vo
   )
 }
 
-export function CastingSection() {
+export function CastingSection({ initialCastings }: { initialCastings?: Casting[] }) {
   const router = useRouter()
   const { status } = useUser()
-  const [castings, setCastings] = useState<Casting[]>([])
-  const [loading, setLoading] = useState(true)
+  const [castings, setCastings] = useState<Casting[]>(initialCastings ?? [])
+  const [loading, setLoading] = useState(!initialCastings)
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   useEffect(() => {
+    if (initialCastings) return
     fetch("/api/castings?limit=6")
       .then((res) => res.json())
       .then((data) => {
@@ -158,7 +159,7 @@ export function CastingSection() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [initialCastings])
 
   const handleCardClick = (casting: Casting) => {
     if (status === "guest") {

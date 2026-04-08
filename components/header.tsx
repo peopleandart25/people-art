@@ -55,8 +55,24 @@ export function Header() {
   useEffect(() => {
     if (!isLoggedIn) return
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications()
+      }
+    }, 60000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn])
 

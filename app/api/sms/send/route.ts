@@ -16,13 +16,16 @@ function formatToNational(phone: string): string {
   return "0" + cleaned
 }
 
+const SMS_COOLDOWN_SECONDS = 60
+const SMS_DAILY_LIMIT = 10
+
 export async function POST(request: Request) {
   const { phone, checkDuplicate } = await request.json()
   if (!phone) return NextResponse.json({ error: "전화번호가 필요합니다." }, { status: 400 })
 
   const serviceClient = createServiceClient()
 
-  // 이미 가입된 번호인지 확인 (온보딩 시에만)
+  // 이미 가입된 번호인지 확인 (온보딩 시에만) — 동일 응답으로 enumeration 방지
   if (checkDuplicate !== false) {
     const { data: existing } = await serviceClient
       .from("profiles")
@@ -31,15 +34,55 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json({ error: "이미 가입된 휴대폰 번호입니다.", code: "phone_already_exists" }, { status: 409 })
+      // enumeration 방지: 성공과 동일한 응답 반환
+      return NextResponse.json({ success: true })
+    }
+  }
+
+  // Rate limiting: 재발송 쿨다운 + 일일 한도 체크
+  const { data: prevVerification } = await serviceClient
+    .from("phone_verifications")
+    .select("last_sent_at, attempts")
+    .eq("phone", phone)
+    .maybeSingle()
+
+  if (prevVerification) {
+    // 60초 쿨다운 체크
+    if (prevVerification.last_sent_at) {
+      const secondsSinceLast = (Date.now() - new Date(prevVerification.last_sent_at).getTime()) / 1000
+      if (secondsSinceLast < SMS_COOLDOWN_SECONDS) {
+        const waitSeconds = Math.ceil(SMS_COOLDOWN_SECONDS - secondsSinceLast)
+        return NextResponse.json(
+          { error: `${waitSeconds}초 후 다시 시도해주세요.` },
+          { status: 429 }
+        )
+      }
+    }
+    // 일일 발송 한도 체크
+    if (prevVerification.attempts >= SMS_DAILY_LIMIT) {
+      return NextResponse.json(
+        { error: "오늘 인증번호 발송 한도를 초과했습니다. 내일 다시 시도해주세요." },
+        { status: 429 }
+      )
     }
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+  const now = new Date().toISOString()
+
   const { error: dbError } = await serviceClient
     .from("phone_verifications")
-    .upsert({ phone, otp, expires_at: expiresAt }, { onConflict: "phone" })
+    .upsert(
+      {
+        phone,
+        otp,
+        expires_at: expiresAt,
+        last_sent_at: now,
+        attempts: (prevVerification?.attempts ?? 0) + 1,
+      },
+      { onConflict: "phone" }
+    )
 
   if (dbError) {
     return NextResponse.json({ error: "OTP 저장 실패" }, { status: 500 })

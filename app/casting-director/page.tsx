@@ -349,10 +349,11 @@ export default function CastingDirectorPage() {
   }, [selectedCastingId, castingDetailTab, shortlistMap, fetchShortlist])
 
   useEffect(() => {
-    if (selectedCastingId && castingDetailTab === "myproposals") {
+    // activeView !== "proposals"일 때만 호출 (proposals 탭에서는 위 effect가 이미 처리)
+    if (selectedCastingId && castingDetailTab === "myproposals" && activeView !== "proposals") {
       fetchProposals()
     }
-  }, [selectedCastingId, castingDetailTab, fetchProposals])
+  }, [selectedCastingId, castingDetailTab, activeView, fetchProposals])
 
   // — 핸들러 —
   const handleStatusChange = useCallback(

@@ -460,14 +460,14 @@ const staticSlides = heroBanners.map((banner) => ({
     : { background: banner.backgroundColor },
 }))
 
-type DBBanner = {
+export type DBBanner = {
   id: string
   title: string
   image_url: string | null
   link_url: string | null
 }
 
-export function HeroBanner() {
+export function HeroBanner({ initialBanners }: { initialBanners?: DBBanner[] }) {
   const router = useRouter()
   const { status } = useUserSafe()
   const { toast } = useToast()
@@ -478,8 +478,6 @@ export function HeroBanner() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
   const [direction, setDirection] = useState<"left" | "right">("right")
   const [isAnimating, setIsAnimating] = useState(false)
-  // null = 로딩 중 (정적 데이터 표시), [] = DB 배너 없음 (폴백), array = DB 배너 사용
-  const [dbBanners, setDbBanners] = useState<DBBanner[] | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -492,19 +490,9 @@ export function HeroBanner() {
       .then((d) => { if (typeof d?.pending === "number") setPendingProposalCount(d.pending) })
   }, [isPremium, profile?.role])
 
-  useEffect(() => {
-    fetch("/api/banners")
-      .then((res) => res.json())
-      .then((data) => {
-        setDbBanners(Array.isArray(data) ? data : [])
-        setCurrentSlide(0)
-      })
-      .catch(() => setDbBanners([]))
-  }, [])
-
   // DB 배너가 있으면 DB 데이터로, 없으면 정적 데이터로 폴백
-  const slides = dbBanners && dbBanners.length > 0
-    ? dbBanners.map((banner) => ({
+  const slides = initialBanners && initialBanners.length > 0
+    ? initialBanners.map((banner) => ({
         id: banner.id,
         badge: "",
         title: banner.title,
