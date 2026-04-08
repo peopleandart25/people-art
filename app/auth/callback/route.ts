@@ -4,7 +4,9 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  const redirectTo = searchParams.get("redirectTo") ?? "/"
+  const rawRedirectTo = searchParams.get("redirectTo") ?? "/"
+  // 온보딩 경로로의 리다이렉트는 로그인 후 역할별 처리에서 결정되므로 홈으로 대체
+  const redirectTo = rawRedirectTo.startsWith("/onboarding") ? "/" : rawRedirectTo
 
   if (code) {
     const supabase = await createClient()
