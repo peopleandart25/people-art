@@ -16,7 +16,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // /api/* 는 라우트 핸들러가 자체적으로 auth를 처리하므로 미들웨어에서 제외
+  // (매 API 호출마다 불필요한 supabase.auth.getUser() 중복 호출 제거)
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

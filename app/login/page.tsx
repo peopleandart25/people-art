@@ -49,11 +49,12 @@ function LoginContent() {
     }
   }, [error])
 
-  // 이미 로그인된 경우 리다이렉트
+  // 이미 로그인된 경우 리다이렉트 (로컬 세션 확인만, 네트워크 호출 없음)
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.push(redirectTo)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) router.push(redirectTo)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleKakaoLogin = async () => {
