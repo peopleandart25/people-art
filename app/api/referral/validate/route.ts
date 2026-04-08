@@ -28,10 +28,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ valid: false, error: "이미 추천인 보너스를 받으셨습니다." })
   }
 
-  // 추천인 코드 조회 (premium 회원만 유효)
+  // 추천인 코드 조회 (멤버십 활성 회원만 유효)
   const { data: referrer } = await serviceClient
     .from("profiles")
-    .select("id, name, role")
+    .select("id, name")
     .eq("referral_code", code.toUpperCase())
     .single()
 
@@ -43,7 +43,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ valid: false, error: "본인의 추천인 코드는 사용할 수 없습니다." })
   }
 
-  if (referrer.role !== "premium") {
+  const { data: referrerMembership } = await serviceClient
+    .from("memberships")
+    .select("id")
+    .eq("user_id", referrer.id)
+    .eq("status", "active")
+    .maybeSingle()
+
+  if (!referrerMembership) {
     return NextResponse.json({ valid: false, error: "멤버십 회원의 추천인 코드만 사용할 수 있습니다." })
   }
 

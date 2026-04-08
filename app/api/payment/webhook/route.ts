@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "결제 내역 저장 실패" }, { status: 500 })
   }
 
-  // profiles role → premium, points 업데이트 (포인트 차감 + 15,000P 지급)
+  // profiles points 업데이트 (포인트 차감 + 15,000P 지급, role은 변경하지 않음)
   const { data: currentProfile } = await serviceClient
     .from("profiles")
     .select("points")
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
   const { error: profileError } = await serviceClient
     .from("profiles")
-    .update({ role: "premium", points: newPoints })
+    .update({ points: newPoints })
     .eq("id", userId)
 
   if (profileError) {
