@@ -1755,7 +1755,7 @@ export default function CastingDirectorPage() {
             initialName={profile.name ?? ""}
             initialPhone={(profile as unknown as { phone?: string }).phone ?? ""}
             email={profile.email ?? ""}
-            initialCompany={(profile as unknown as { activity_name?: string }).activity_name ?? ""}
+            initialCompany={(profile as unknown as { company?: string }).company ?? ""}
             initialJobTitle={(profile as unknown as { job_title?: string }).job_title ?? ""}
           />
         )}

@@ -39,7 +39,7 @@ export function DirectorProfileForm({
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),
-          activity_name: company.trim(),
+          company: company.trim(),
           job_title: jobTitle.trim(),
         }),
       })

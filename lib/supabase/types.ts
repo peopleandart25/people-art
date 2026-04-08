@@ -827,6 +827,7 @@ export type Database = {
       profiles: {
         Row: {
           activity_name: string | null
+          company: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -843,6 +844,7 @@ export type Database = {
         }
         Insert: {
           activity_name?: string | null
+          company?: string | null
           created_at?: string | null
           email?: string | null
           id: string
@@ -859,6 +861,7 @@ export type Database = {
         }
         Update: {
           activity_name?: string | null
+          company?: string | null
           created_at?: string | null
           email?: string | null
           id?: string

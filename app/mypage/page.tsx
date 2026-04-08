@@ -443,7 +443,7 @@ export default function MyPage() {
         initialName={authProfile.name ?? ""}
         initialPhone={(authProfile as unknown as { phone?: string }).phone ?? ""}
         email={(authProfile as unknown as { email?: string }).email ?? user?.email ?? ""}
-        initialCompany={(authProfile as unknown as { activity_name?: string }).activity_name ?? ""}
+        initialCompany={(authProfile as unknown as { company?: string }).company ?? ""}
         initialJobTitle={authProfile.job_title ?? ""}
       />
     )

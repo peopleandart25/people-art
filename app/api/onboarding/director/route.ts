@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     .update({
       name: name.trim(),
       phone: phone.trim(),
-      activity_name: company.trim() || null,
+      company: company.trim() || null,
       job_title: jobTitle.trim() || null,
       role: "casting_director",
       status: "활성",
