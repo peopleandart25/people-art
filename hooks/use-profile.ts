@@ -251,10 +251,12 @@ export function useProfile() {
         }
       }
 
-      for (const v of data.newVideoLinks) {
-        await supabase.from("video_assets").insert({
-          user_id: user.id, type: "link", name: v.name, url: v.url, platform: v.platform as "youtube" | "vimeo" | "other",
-        })
+      if (data.newVideoLinks.length > 0) {
+        await supabase.from("video_assets").insert(
+          data.newVideoLinks.map((v) => ({
+            user_id: user.id, type: "link", name: v.name, url: v.url, platform: v.platform as "youtube" | "vimeo" | "other",
+          }))
+        )
       }
 
       for (const v of data.newVideoFiles) {

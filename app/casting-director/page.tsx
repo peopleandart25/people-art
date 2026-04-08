@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
@@ -228,14 +229,19 @@ export default function CastingDirectorPage() {
   const [selectedApplicants, setSelectedApplicants] = useState<Set<string>>(new Set())
   const [applicantSearch, setApplicantSearch] = useState("")
   const [filterGender, setFilterGender] = useState<string>("전체")
-  const [filterAgeRange, setFilterAgeRange] = useState<[number, number]>([0, 99])
-  const [filterHeightRange, setFilterHeightRange] = useState<[number, number]>([140, 200])
-  const [filterWeightRange, setFilterWeightRange] = useState<[number, number]>([40, 120])
+  const [filterAgeRange, setFilterAgeRange] = useState<[number, number]>([5, 90])
+  const [filterHeightRange, setFilterHeightRange] = useState<[number, number]>([120, 200])
+  const [filterWeightRange, setFilterWeightRange] = useState<[number, number]>([30, 120])
   const [proposalModal, setProposalModal] = useState<{ open: boolean; artistUserIds: string[] }>({ open: false, artistUserIds: [] })
   const [proposalMessage, setProposalMessage] = useState("")
   const [proposalCastingId, setProposalCastingId] = useState("none")
   const [sendingProposal, setSendingProposal] = useState(false)
   const [proposalStatusFilter, setProposalStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all")
+  const [statusChanging, setStatusChanging] = useState<Set<string>>(new Set())
+  const [shortlistAdding, setShortlistAdding] = useState<Set<string>>(new Set())
+  const [bookmarkBulkAdding, setBookmarkBulkAdding] = useState(false)
+  const [cancellingProposal, setCancellingProposal] = useState<Set<string>>(new Set())
+  const [deletingBookmark, setDeletingBookmark] = useState<Set<string>>(new Set())
 
   // — fetch 함수 —
   const fetchCastings = useCallback(async () => {
@@ -359,13 +365,15 @@ export default function CastingDirectorPage() {
   // — 핸들러 —
   const handleStatusChange = useCallback(
     async (castingId: string, applicationId: string, admin_status: string) => {
+      setStatusChanging((prev) => new Set(prev).add(applicationId))
       const res = await fetch("/api/director/castings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ application_id: applicationId, admin_status }),
       })
+      setStatusChanging((prev) => { const next = new Set(prev); next.delete(applicationId); return next })
       if (!res.ok) {
-        setError("상태 변경에 실패했습니다.")
+        toast({ title: "상태 변경 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" })
         return
       }
       setApplicationsMap((prev) => ({
@@ -375,7 +383,7 @@ export default function CastingDirectorPage() {
         ),
       }))
     },
-    []
+    [toast]
   )
 
   const openAdd = useCallback(() => {
@@ -530,21 +538,24 @@ export default function CastingDirectorPage() {
   }, [proposalModal, proposalCastingId, proposalMessage, toast])
 
   const handleShortlistAdd = useCallback(async (castingId: string, artistUserIds: string[]) => {
+    artistUserIds.forEach((id) => setShortlistAdding((prev) => new Set(prev).add(id)))
     const res = await fetch("/api/director/shortlists", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ casting_id: castingId, artist_user_ids: artistUserIds }),
     })
+    artistUserIds.forEach((id) => setShortlistAdding((prev) => { const next = new Set(prev); next.delete(id); return next }))
     if (!res.ok) {
-      setError("리스트업에 실패했습니다.")
+      toast({ title: "리스트업 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" })
       return
     }
+    toast({ title: "리스트업 완료", description: `${artistUserIds.length}명이 1차 리스트에 추가됐습니다.` })
     setShortlistMap((prev) => {
       const copy = { ...prev }
       delete copy[castingId]
       return copy
     })
-  }, [])
+  }, [toast])
 
   const handleShortlistRemove = useCallback(async (castingId: string, artistUserId: string) => {
     const res = await fetch("/api/director/shortlists", {
@@ -561,6 +572,7 @@ export default function CastingDirectorPage() {
   }, [])
 
   const handleBookmarkBulkAdd = useCallback(async (userIds: string[]) => {
+    setBookmarkBulkAdding(true)
     const appsInCasting = selectedCastingId ? (applicationsMap[selectedCastingId] ?? []) : []
     const profileIds = userIds.map((uid) => appsInCasting.find((a) => a.user_id === uid)?.artist_profile_id).filter(Boolean) as string[]
     await Promise.all(
@@ -572,19 +584,25 @@ export default function CastingDirectorPage() {
         })
       )
     )
+    setBookmarkBulkAdding(false)
     toast({ title: "보관함에 추가됐습니다", description: `${profileIds.length}명이 나의 배우 보관함에 추가되었습니다.` })
   }, [selectedCastingId, applicationsMap, toast])
 
   const handleCancelProposal = useCallback(async (proposalId: string) => {
+    setCancellingProposal((prev) => new Set(prev).add(proposalId))
     const res = await fetch("/api/director/proposals", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ proposal_id: proposalId }),
     })
+    setCancellingProposal((prev) => { const next = new Set(prev); next.delete(proposalId); return next })
     if (res.ok) {
       setProposals((prev) => prev.filter((p) => p.id !== proposalId))
+      toast({ title: "제안이 취소됐습니다." })
+    } else {
+      toast({ title: "제안 취소 실패", variant: "destructive" })
     }
-  }, [])
+  }, [toast])
 
   const toggleApplicant = useCallback((userId: string) => {
     setSelectedApplicants((prev) => {
@@ -617,7 +635,7 @@ export default function CastingDirectorPage() {
         const q = applicantSearch.toLowerCase()
         if (!a.profile?.name?.toLowerCase().includes(q)) return false
       }
-      if (filterGender !== "전체" && a.gender !== filterGender) return false
+      if (filterGender !== "전체" && a.gender !== filterGender && !a.gender?.startsWith(filterGender === "남성" ? "남" : "여")) return false
       if (a.birth_date) {
         const age = currentYear - new Date(a.birth_date).getFullYear()
         if (age < filterAgeRange[0] || age > filterAgeRange[1]) return false
@@ -1026,269 +1044,268 @@ export default function CastingDirectorPage() {
 
             {/* ── 지원자 리스트 탭 ── */}
             {castingDetailTab === "applicants" && (
-              <div>
-                {/* 검색 + 필터 */}
-                <div className="mb-4 space-y-3">
-                  <Input
-                    value={applicantSearch}
-                    onChange={(e) => setApplicantSearch(e.target.value)}
-                    placeholder="이름으로 검색"
-                    className="max-w-xs"
-                  />
-                  <div className="flex flex-wrap gap-3 items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    {/* 성별 필터 */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-500 w-10 shrink-0">성별</span>
-                      <div className="flex gap-1">
-                        {["전체", "남", "여"].map((g) => (
-                          <button
-                            key={g}
-                            onClick={() => setFilterGender(g)}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                              filterGender === g
-                                ? "bg-orange-500 text-white"
-                                : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {g}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* 나이 필터 */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-500 w-10 shrink-0">나이</span>
-                      <div className="flex gap-1 flex-wrap">
-                        {[["전체", [0, 99]], ["10대", [10, 19]], ["20대", [20, 29]], ["30대", [30, 39]], ["40대+", [40, 99]]].map(([label, range]) => (
-                          <button
-                            key={label as string}
-                            onClick={() => setFilterAgeRange(range as [number, number])}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                              filterAgeRange[0] === (range as number[])[0] && filterAgeRange[1] === (range as number[])[1]
-                                ? "bg-orange-500 text-white"
-                                : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {label as string}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* 키 필터 */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-500 w-10 shrink-0">키</span>
-                      <div className="flex gap-1 flex-wrap">
-                        {[["전체", [140, 200]], ["~165", [140, 165]], ["166~175", [166, 175]], ["176~", [176, 200]]].map(([label, range]) => (
-                          <button
-                            key={label as string}
-                            onClick={() => setFilterHeightRange(range as [number, number])}
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                              filterHeightRange[0] === (range as number[])[0] && filterHeightRange[1] === (range as number[])[1]
-                                ? "bg-orange-500 text-white"
-                                : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {label as string}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* 필터 초기화 */}
+              <div className="flex gap-4">
+                {/* 왼쪽 필터 사이드바 */}
+                <div className="w-52 shrink-0 space-y-4 bg-gray-50 rounded-xl p-4 border border-gray-100 self-start sticky top-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-700">필터</span>
                     <button
-                      onClick={() => { setFilterGender("전체"); setFilterAgeRange([0, 99]); setFilterHeightRange([140, 200]); setFilterWeightRange([40, 120]) }}
-                      className="ml-auto text-xs text-gray-400 hover:text-gray-600 underline"
+                      onClick={() => { setFilterGender("전체"); setFilterAgeRange([5, 90]); setFilterHeightRange([120, 200]); setFilterWeightRange([30, 120]); setApplicantSearch("") }}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline"
                     >
                       초기화
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400">총 {filteredApplications.length}명</p>
-                </div>
 
-                {loadingApps ? (
-                  <div className="flex items-center justify-center py-20">
-                    <div className="w-6 h-6 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : filteredApplications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
-                    <Users className="w-10 h-10 opacity-30" />
-                    <p className="text-sm">지원자가 없습니다</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {filteredApplications.map((app) => {
-                      const isChecked = selectedApplicants.has(app.user_id)
-                      const birthYear = app.birth_date ? new Date(app.birth_date).getFullYear() : null
-                      const age = birthYear ? new Date().getFullYear() - birthYear : null
-                      const infoLine = [
-                        app.gender,
-                        age ? `${age}세` : null,
-                        app.height ? `${app.height}cm` : null,
-                        app.weight ? `${app.weight}kg` : null,
-                      ].filter(Boolean).join(" · ")
-                      return (
-                        <div
-                          key={app.id}
-                          className={`bg-white rounded-xl border overflow-hidden shadow-sm transition-all ${
-                            isChecked ? "border-orange-300 ring-2 ring-orange-200" : "border-gray-100 hover:shadow-md"
+                  {/* 이름 검색 */}
+                  <Input
+                    value={applicantSearch}
+                    onChange={(e) => setApplicantSearch(e.target.value)}
+                    placeholder="이름, 특기 검색"
+                    className="h-8 text-xs"
+                  />
+
+                  {/* 성별 */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-2">성별</p>
+                    <div className="flex gap-1">
+                      {[["전체", "전체"], ["남", "남성"], ["여", "여성"]].map(([label, value]) => (
+                        <button
+                          key={value}
+                          onClick={() => setFilterGender(value)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                            filterGender === value ? "bg-orange-500 text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                           }`}
                         >
-                          {/* 사진 + 체크박스 */}
-                          <div className="aspect-[3/4] relative bg-gray-100">
-                            {app.main_photo ? (
-                              <Image src={app.main_photo} alt={app.profile?.name ?? ""} fill className="object-cover" />
-                            ) : (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <Users className="w-10 h-10 text-gray-300" />
-                              </div>
-                            )}
-                            {/* 체크박스 */}
-                            <label className="absolute top-2 left-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleApplicant(app.user_id)}
-                                className="w-4 h-4 accent-orange-500"
-                              />
-                            </label>
-                            {/* 상태 badge */}
-                            <span className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColors[app.admin_status] ?? statusColors["대기"]}`}>
-                              {app.admin_status}
-                            </span>
-                          </div>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                          {/* 정보 */}
-                          <div className="p-3 space-y-2">
-                            <div>
-                              <p className="font-semibold text-gray-900 text-sm truncate">
-                                {app.profile?.name ?? "이름 없음"}
-                              </p>
-                              {infoLine && (
-                                <p className="text-[11px] text-gray-400 mt-0.5 truncate">{infoLine}</p>
-                              )}
-                              {app.status_tags && app.status_tags.length > 0 && (
-                                <div className="flex flex-wrap gap-0.5 mt-1">
-                                  {app.status_tags.slice(0, 3).map((tag) => (
-                                    <span key={tag} className="text-[10px] text-orange-500">#{tag}</span>
-                                  ))}
+                  {/* 나이 슬라이더 */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-2">
+                      나이 <span className="text-orange-500 font-normal">{filterAgeRange[0]}세 ~ {filterAgeRange[1]}세</span>
+                    </p>
+                    <Slider
+                      min={5} max={90} step={1}
+                      value={filterAgeRange}
+                      onValueChange={(v) => setFilterAgeRange(v as [number, number])}
+                    />
+                  </div>
+
+                  {/* 키 슬라이더 */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-2">
+                      키 <span className="text-orange-500 font-normal">{filterHeightRange[0]}cm ~ {filterHeightRange[1]}cm</span>
+                    </p>
+                    <Slider
+                      min={120} max={200} step={1}
+                      value={filterHeightRange}
+                      onValueChange={(v) => setFilterHeightRange(v as [number, number])}
+                    />
+                  </div>
+
+                  {/* 몸무게 슬라이더 */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-2">
+                      몸무게 <span className="text-orange-500 font-normal">{filterWeightRange[0]}kg ~ {filterWeightRange[1]}kg</span>
+                    </p>
+                    <Slider
+                      min={30} max={120} step={1}
+                      value={filterWeightRange}
+                      onValueChange={(v) => setFilterWeightRange(v as [number, number])}
+                    />
+                  </div>
+                </div>
+
+                {/* 오른쪽 카드 영역 */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-400 mb-3">총 {filteredApplications.length}명의 지원자</p>
+
+                  {loadingApps ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="w-6 h-6 border-4 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : filteredApplications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+                      <Users className="w-10 h-10 opacity-30" />
+                      <p className="text-sm">지원자가 없습니다</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                      {filteredApplications.map((app) => {
+                        const isChecked = selectedApplicants.has(app.user_id)
+                        const birthYear = app.birth_date ? new Date(app.birth_date).getFullYear() : null
+                        const age = birthYear ? new Date().getFullYear() - birthYear : null
+                        const infoLine = [
+                          app.gender,
+                          age ? `${age}세` : null,
+                          app.height ? `${app.height}cm` : null,
+                          app.weight ? `${app.weight}kg` : null,
+                        ].filter(Boolean).join(" · ")
+                        return (
+                          <div
+                            key={app.id}
+                            className={`bg-white rounded-xl border overflow-hidden shadow-sm transition-all ${
+                              isChecked ? "border-orange-300 ring-2 ring-orange-200" : "border-gray-100 hover:shadow-md"
+                            }`}
+                          >
+                            {/* 사진 + 체크박스 */}
+                            <div className="aspect-square relative bg-gray-100">
+                              {app.main_photo ? (
+                                <Image src={app.main_photo} alt={app.profile?.name ?? ""} fill className="object-cover" />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Users className="w-8 h-8 text-gray-300" />
                                 </div>
                               )}
+                              <label className="absolute top-2 left-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleApplicant(app.user_id)}
+                                  className="w-4 h-4 accent-orange-500"
+                                />
+                              </label>
+                              <span className={`absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColors[app.admin_status] ?? statusColors["대기"]}`}>
+                                {app.admin_status}
+                              </span>
                             </div>
 
-                            {/* 상태 변경 */}
-                            <Select
-                              value={app.admin_status}
-                              onValueChange={(v) => handleStatusChange(selectedCasting.id, app.id, v)}
-                            >
-                              <SelectTrigger className="h-7 text-xs w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {STATUS_OPTIONS.map((s) => (
-                                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            {/* 정보 */}
+                            <div className="p-2.5 space-y-2">
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm truncate">
+                                  {app.profile?.name ?? "이름 없음"}
+                                </p>
+                                {infoLine && (
+                                  <p className="text-[11px] text-gray-400 mt-0.5 truncate">{infoLine}</p>
+                                )}
+                                {app.status_tags && app.status_tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-0.5 mt-1">
+                                    {app.status_tags.slice(0, 3).map((tag) => (
+                                      <span key={tag} className="text-[10px] text-orange-500">#{tag}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
 
-                            {/* 버튼 */}
-                            <div className="flex gap-1.5">
-                              {app.artist_profile_id && (
-                                <Link
-                                  href={`/artists/${app.artist_profile_id}`}
-                                  target="_blank"
-                                  className="flex-1 h-7 text-[11px] flex items-center justify-center gap-0.5 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  상세
-                                </Link>
-                              )}
-                              {app.portfolio_url && (() => {
-                                const birthYear = app.birth_date ? String(new Date(app.birth_date).getFullYear()).slice(2) : null
-                                const genderLabel = app.gender === "남" ? "남" : app.gender === "여" ? "여" : null
-                                const nameLabel = app.profile?.name ?? "배우"
-                                const castingTitle = selectedCasting?.title ?? "공고"
-                                const parts = [castingTitle, birthYear ? `${birthYear}년` : null, genderLabel, nameLabel, "프로필"].filter(Boolean)
-                                const filename = parts.join("_") + ".pdf"
-                                return (
-                                  <a
-                                    href={`/api/pdf-proxy?url=${encodeURIComponent(app.portfolio_url!)}&filename=${encodeURIComponent(filename)}`}
+                              {/* 상태 변경 */}
+                              <Select
+                                value={app.admin_status}
+                                onValueChange={(v) => handleStatusChange(selectedCasting.id, app.id, v)}
+                                disabled={statusChanging.has(app.id)}
+                              >
+                                <SelectTrigger className="h-7 text-xs w-full">
+                                  {statusChanging.has(app.id) ? <span className="text-muted-foreground">저장 중...</span> : <SelectValue />}
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {STATUS_OPTIONS.map((s) => (
+                                    <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* 버튼 */}
+                              <div className="flex gap-1.5">
+                                {app.artist_profile_id && (
+                                  <Link
+                                    href={`/artists/${app.artist_profile_id}`}
                                     target="_blank"
-                                    rel="noopener noreferrer"
                                     className="flex-1 h-7 text-[11px] flex items-center justify-center gap-0.5 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 transition-colors"
-                                    title={filename}
                                   >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    PDF
-                                  </a>
-                                )
-                              })()}
+                                    <ExternalLink className="w-3 h-3" />
+                                    상세
+                                  </Link>
+                                )}
+                                {app.portfolio_url && (() => {
+                                  const yr = app.birth_date ? String(new Date(app.birth_date).getFullYear()).slice(2) : null
+                                  const nameLabel = app.profile?.name ?? "배우"
+                                  const castingTitle = selectedCasting?.title ?? "공고"
+                                  const filename = [castingTitle, yr ? `${yr}년` : null, app.gender, nameLabel, "프로필"].filter(Boolean).join("_") + ".pdf"
+                                  return (
+                                    <a
+                                      href={`/api/pdf-proxy?url=${encodeURIComponent(app.portfolio_url!)}&filename=${encodeURIComponent(filename)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex-1 h-7 text-[11px] flex items-center justify-center gap-0.5 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 transition-colors"
+                                      title={filename}
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                      PDF
+                                    </a>
+                                  )
+                                })()}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 h-7 text-[11px] px-1"
+                                  disabled={shortlistAdding.has(app.user_id)}
+                                  onClick={() => handleShortlistAdd(selectedCastingId, [app.user_id])}
+                                >
+                                  {shortlistAdding.has(app.user_id) ? "추가 중..." : "리스트업"}
+                                </Button>
+                              </div>
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="flex-1 h-7 text-[11px] px-1"
-                                onClick={() => handleShortlistAdd(selectedCastingId, [app.user_id])}
+                                className="w-full h-7 text-[11px] bg-orange-500 hover:bg-orange-600 text-white"
+                                onClick={() => handleStatusChange(selectedCasting!.id, app.id, "최종합격")}
+                                disabled={statusChanging.has(app.id)}
                               >
-                                리스트업
+                                {statusChanging.has(app.id) ? "저장 중..." : "📎 캐스팅 픽스 (최종합격)"}
                               </Button>
                             </div>
-                            <Button
-                              size="sm"
-                              className="w-full h-7 text-[11px] bg-orange-500 hover:bg-orange-600 text-white"
-                              onClick={() => handleStatusChange(selectedCasting!.id, app.id, "최종합격")}
-                            >
-                              📎 캐스팅 픽스 (최종 합격)
-                            </Button>
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        )
+                      })}
+                    </div>
+                  )}
 
-                {/* 하단 액션바 */}
-                {selectedApplicants.size > 0 && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-2 z-30 flex-wrap justify-center">
-                    <span className="text-sm font-medium">{selectedApplicants.size}명 선택</span>
-                    <button
-                      onClick={() => setSelectedApplicants(new Set())}
-                      className="text-xs text-gray-300 hover:text-white underline transition-colors"
-                    >
-                      선택 해제
-                    </button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
-                      onClick={() => handleBookmarkBulkAdd(Array.from(selectedApplicants))}
-                    >
-                      보관함에 담기
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
-                      onClick={() =>
-                        handleShortlistAdd(selectedCastingId, Array.from(selectedApplicants))
-                      }
-                    >
-                      공고 리스트업
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-8 text-xs bg-orange-500 hover:bg-orange-600 text-white border-0"
-                      onClick={() =>
-                        openProposalModal(Array.from(selectedApplicants), selectedCastingId)
-                      }
-                    >
-                      일괄 캐스팅 제안
-                    </Button>
-                    <button
-                      onClick={() => setSelectedApplicants(new Set())}
-                      className="text-gray-400 hover:text-white transition-colors ml-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                  {/* 하단 액션바 */}
+                  {selectedApplicants.size > 0 && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-2 z-30 flex-wrap justify-center">
+                      <span className="text-sm font-medium">{selectedApplicants.size}명 선택</span>
+                      <button
+                        onClick={() => setSelectedApplicants(new Set())}
+                        className="text-xs text-gray-300 hover:text-white underline transition-colors"
+                      >
+                        선택 해제
+                      </button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        disabled={bookmarkBulkAdding}
+                        onClick={() => handleBookmarkBulkAdd(Array.from(selectedApplicants))}
+                      >
+                        {bookmarkBulkAdding ? "추가 중..." : "보관함에 담기"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        onClick={() => handleShortlistAdd(selectedCastingId, Array.from(selectedApplicants))}
+                      >
+                        공고 리스트업
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs bg-orange-500 hover:bg-orange-600 text-white border-0"
+                        onClick={() => openProposalModal(Array.from(selectedApplicants), selectedCastingId)}
+                      >
+                        일괄 캐스팅 제안
+                      </Button>
+                      <button
+                        onClick={() => setSelectedApplicants(new Set())}
+                        className="text-gray-400 hover:text-white transition-colors ml-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1707,18 +1724,21 @@ export default function CastingDirectorPage() {
                           </a>
                         )}
                         <button
+                          disabled={deletingBookmark.has(bm.id)}
                           onClick={async () => {
+                            setDeletingBookmark((prev) => new Set(prev).add(bm.id))
                             const res = await fetch("/api/director/bookmarks", {
                               method: "DELETE",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ artist_profile_id: bm.artist_profile_id }),
                             })
+                            setDeletingBookmark((prev) => { const next = new Set(prev); next.delete(bm.id); return next })
                             if (res.ok) setBookmarks((prev) => prev.filter((b) => b.id !== bm.id))
                           }}
-                          className="flex-1 text-xs text-gray-400 hover:text-red-500 transition-colors py-1.5 flex items-center justify-center gap-1 border border-gray-200 rounded-lg"
+                          className="flex-1 text-xs text-gray-400 hover:text-red-500 transition-colors py-1.5 flex items-center justify-center gap-1 border border-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <X className="w-3 h-3" />
-                          삭제
+                          {deletingBookmark.has(bm.id) ? <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" /> : <X className="w-3 h-3" />}
+                          {deletingBookmark.has(bm.id) ? "삭제 중..." : "삭제"}
                         </button>
                       </div>
                     </div>
@@ -1819,9 +1839,10 @@ export default function CastingDirectorPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs px-2 text-red-500 hover:text-red-600 hover:border-red-300"
+                          disabled={cancellingProposal.has(p.id)}
                           onClick={() => handleCancelProposal(p.id)}
                         >
-                          취소
+                          {cancellingProposal.has(p.id) ? "취소 중..." : "취소"}
                         </Button>
                       )}
                     </div>

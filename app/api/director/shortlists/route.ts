@@ -38,36 +38,31 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 })
 
   const items = (data as { id: string; created_at: string; artist_user_id: string }[]) ?? []
+  if (items.length === 0) return NextResponse.json([])
 
-  // artist 정보 조인
-  const enriched = await Promise.all(
-    items.map(async (item) => {
-      const [{ data: profile }, { data: artistProfile }, { data: photo }] = await Promise.all([
-        serviceClient.from("profiles").select("name, activity_name").eq("id", item.artist_user_id).single(),
-        serviceClient
-          .from("artist_profiles")
-          .select("id, gender, birth_date, height, weight, portfolio_url")
-          .eq("user_id", item.artist_user_id)
-          .single(),
-        serviceClient
-          .from("artist_photos")
-          .select("url")
-          .eq("user_id", item.artist_user_id)
-          .eq("is_main", true)
-          .maybeSingle(),
-      ])
+  // 배치 쿼리 (3N → 3)
+  const userIds = items.map((i) => i.artist_user_id)
+  const [{ data: profiles }, { data: artistProfiles }, { data: mainPhotos }] = await Promise.all([
+    serviceClient.from("profiles").select("id, name, activity_name").in("id", userIds),
+    serviceClient.from("artist_profiles").select("id, user_id, gender, birth_date, height, weight, portfolio_url").in("user_id", userIds),
+    serviceClient.from("artist_photos").select("user_id, url").eq("is_main", true).in("user_id", userIds),
+  ])
 
-      const np = profile as { name: string | null; activity_name: string | null } | null
-      const ap = artistProfile as { id: string; gender: string | null; birth_date: string | null; height: number | null; weight: number | null; portfolio_url: string | null } | null
-      return {
-        ...item,
-        name: np?.activity_name ?? np?.name ?? "이름 없음",
-        artist_profile: ap ?? null,
-        main_photo: (photo as { url: string } | null)?.url ?? null,
-        portfolio_url: ap?.portfolio_url ?? null,
-      }
-    })
-  )
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
+  const artistProfileMap = new Map((artistProfiles ?? []).map((ap) => [ap.user_id, ap]))
+  const photoMap = new Map((mainPhotos ?? []).map((p) => [p.user_id, p.url]))
+
+  const enriched = items.map((item) => {
+    const np = profileMap.get(item.artist_user_id) as { name: string | null; activity_name: string | null } | undefined
+    const ap = artistProfileMap.get(item.artist_user_id) as { id: string; gender: string | null; birth_date: string | null; height: number | null; weight: number | null; portfolio_url: string | null } | undefined
+    return {
+      ...item,
+      name: np?.activity_name ?? np?.name ?? "이름 없음",
+      artist_profile: ap ?? null,
+      main_photo: photoMap.get(item.artist_user_id) ?? null,
+      portfolio_url: ap?.portfolio_url ?? null,
+    }
+  })
 
   return NextResponse.json(enriched)
 }

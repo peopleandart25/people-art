@@ -34,17 +34,23 @@ export async function GET(request: Request) {
       .eq("casting_id", castingId)
       .order("applied_at", { ascending: false })
 
-    if (!apps) return NextResponse.json([])
+    if (!apps || apps.length === 0) return NextResponse.json([])
 
-    const enriched = await Promise.all(
-      apps.map(async (app) => {
-        const [{ data: profile }, { data: artistProfile }] = await Promise.all([
-          serviceClient.from("profiles").select("name, email, phone").eq("id", app.user_id ?? "").single(),
-          serviceClient.from("artist_profiles").select("portfolio_url").eq("user_id", app.user_id ?? "").single(),
-        ])
-        return { ...app, profile: profile ?? null, portfolio_url: artistProfile?.portfolio_url ?? null }
-      })
-    )
+    // 배치 쿼리 (2N → 2)
+    const userIds = apps.map((a) => a.user_id).filter(Boolean) as string[]
+    const [{ data: profiles }, { data: artistProfiles }] = await Promise.all([
+      serviceClient.from("profiles").select("id, name, email, phone").in("id", userIds),
+      serviceClient.from("artist_profiles").select("user_id, portfolio_url").in("user_id", userIds),
+    ])
+
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
+    const artistProfileMap = new Map((artistProfiles ?? []).map((ap) => [ap.user_id, ap]))
+
+    const enriched = apps.map((app) => ({
+      ...app,
+      profile: (profileMap.get(app.user_id ?? "") as { name: string; email: string; phone: string } | undefined) ?? null,
+      portfolio_url: (artistProfileMap.get(app.user_id ?? "") as { portfolio_url: string | null } | undefined)?.portfolio_url ?? null,
+    }))
     return NextResponse.json(enriched)
   }
 

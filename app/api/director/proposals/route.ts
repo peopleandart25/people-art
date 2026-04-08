@@ -51,37 +51,32 @@ export async function GET(request: Request) {
     artist_user_id: string
   }[]) ?? []
 
-  const enriched = await Promise.all(
-    proposals.map(async (p) => {
-      const [{ data: artistProfile }, { data: artistArtistProfile }, castingResult] = await Promise.all([
-        serviceClient
-          .from("profiles")
-          .select("name, activity_name")
-          .eq("id", p.artist_user_id)
-          .single(),
-        serviceClient
-          .from("artist_profiles")
-          .select("portfolio_url")
-          .eq("user_id", p.artist_user_id)
-          .maybeSingle(),
-        p.casting_id
-          ? serviceClient
-              .from("castings")
-              .select("title")
-              .eq("id", p.casting_id)
-              .single()
-          : Promise.resolve({ data: null }),
-      ])
-      const ap = artistProfile as { name: string | null; activity_name: string | null } | null
-      const aap = artistArtistProfile as { portfolio_url: string | null } | null
-      return {
-        ...p,
-        artist_name: ap?.activity_name ?? ap?.name ?? "이름 없음",
-        casting_title: (castingResult.data as { title: string } | null)?.title ?? null,
-        portfolio_url: aap?.portfolio_url ?? null,
-      }
-    })
-  )
+  // 배치 쿼리 (3M → 3)
+  const artistUserIds = [...new Set(proposals.map((p) => p.artist_user_id))]
+  const castingIds = proposals.map((p) => p.casting_id).filter((id): id is string => id !== null)
+
+  const [{ data: artistProfilesList }, { data: artistArtistProfiles }, { data: castingsData }] = await Promise.all([
+    serviceClient.from("profiles").select("id, name, activity_name").in("id", artistUserIds),
+    serviceClient.from("artist_profiles").select("user_id, portfolio_url").in("user_id", artistUserIds),
+    castingIds.length > 0
+      ? serviceClient.from("castings").select("id, title").in("id", castingIds)
+      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+  ])
+
+  const artistProfileMap = new Map((artistProfilesList ?? []).map((p) => [p.id, p]))
+  const artistArtistProfileMap = new Map((artistArtistProfiles ?? []).map((ap) => [ap.user_id, ap]))
+  const castingMap = new Map((castingsData ?? []).map((c) => [c.id, c]))
+
+  const enriched = proposals.map((p) => {
+    const ap = artistProfileMap.get(p.artist_user_id) as { name: string | null; activity_name: string | null } | undefined
+    const aap = artistArtistProfileMap.get(p.artist_user_id) as { portfolio_url: string | null } | undefined
+    return {
+      ...p,
+      artist_name: ap?.activity_name ?? ap?.name ?? "이름 없음",
+      casting_title: p.casting_id ? (castingMap.get(p.casting_id) as { title: string } | undefined)?.title ?? null : null,
+      portfolio_url: aap?.portfolio_url ?? null,
+    }
+  })
 
   return NextResponse.json(enriched)
 }
@@ -105,26 +100,17 @@ export async function POST(request: Request) {
 
   const serviceClient = createServiceClient()
 
-  // 디렉터 이름 조회
-  const { data: directorProfile } = await serviceClient
-    .from("profiles")
-    .select("name, activity_name")
-    .eq("id", user.id)
-    .single()
+  // 디렉터 이름 + 캐스팅 공고명 병렬 조회
+  const [{ data: directorProfile }, castingResult] = await Promise.all([
+    serviceClient.from("profiles").select("name, activity_name").eq("id", user.id).single(),
+    casting_id
+      ? serviceClient.from("castings").select("title").eq("id", casting_id).single()
+      : Promise.resolve({ data: null }),
+  ])
 
   const dp = directorProfile as { name: string | null; activity_name: string | null } | null
   const directorName = dp?.activity_name ?? dp?.name ?? "캐스팅 디렉터"
-
-  // 캐스팅 공고명 조회
-  let castingTitle: string | null = null
-  if (casting_id) {
-    const { data: casting } = await serviceClient
-      .from("castings")
-      .select("title")
-      .eq("id", casting_id)
-      .single()
-    castingTitle = (casting as { title: string } | null)?.title ?? null
-  }
+  const castingTitle = (castingResult.data as { title: string } | null)?.title ?? null
 
   // 기존 pending 제안 조회하여 중복 제외
   const baseExistingQuery = serviceClient

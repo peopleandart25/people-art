@@ -59,38 +59,36 @@ export async function GET(request: Request) {
     director_id: string
   }[]) ?? []
 
-  const enriched = await Promise.all(
-    proposals.map(async (p) => {
-      const [{ data: directorProfile }, castingResult] = await Promise.all([
-        serviceClient
-          .from("profiles")
-          .select("name, activity_name, company")
-          .eq("id", p.director_id)
-          .single(),
-        p.casting_id
-          ? serviceClient
-              .from("castings")
-              .select("title, category, role_type, location, work_period, fee, deadline")
-              .eq("id", p.casting_id)
-              .single()
-          : Promise.resolve({ data: null }),
-      ])
-      const dp = directorProfile as { name: string | null; activity_name: string | null; company: string | null } | null
-      const casting = castingResult.data as { title: string; category: string | null; role_type: string | null; location: string | null; work_period: string | null; fee: string | null; deadline: string | null } | null
-      return {
-        ...p,
-        director_name: dp?.activity_name ?? dp?.name ?? "디렉터",
-        director_company: dp?.company ?? null,
-        casting_title: casting?.title ?? null,
-        casting_category: casting?.category ?? null,
-        casting_role_type: casting?.role_type ?? null,
-        casting_location: casting?.location ?? null,
-        casting_work_period: casting?.work_period ?? null,
-        casting_fee: casting?.fee ?? null,
-        casting_deadline: casting?.deadline ?? null,
-      }
-    })
-  )
+  // 배치 쿼리 (2N → 2)
+  const directorIds = [...new Set(proposals.map((p) => p.director_id))]
+  const castingIds = proposals.map((p) => p.casting_id).filter((id): id is string => id !== null)
+
+  const [{ data: directorProfiles }, { data: castingsData }] = await Promise.all([
+    serviceClient.from("profiles").select("id, name, activity_name, company").in("id", directorIds),
+    castingIds.length > 0
+      ? serviceClient.from("castings").select("id, title, category, role_type, location, work_period, fee, deadline").in("id", castingIds)
+      : Promise.resolve({ data: [] as { id: string; title: string; category: string | null; role_type: string | null; location: string | null; work_period: string | null; fee: string | null; deadline: string | null }[] }),
+  ])
+
+  const directorMap = new Map((directorProfiles ?? []).map((d) => [d.id, d]))
+  const castingMap = new Map((castingsData ?? []).map((c) => [c.id, c]))
+
+  const enriched = proposals.map((p) => {
+    const dp = directorMap.get(p.director_id) as { name: string | null; activity_name: string | null; company: string | null } | undefined
+    const casting = p.casting_id ? castingMap.get(p.casting_id) as { title: string; category: string | null; role_type: string | null; location: string | null; work_period: string | null; fee: string | null; deadline: string | null } | undefined : null
+    return {
+      ...p,
+      director_name: dp?.activity_name ?? dp?.name ?? "디렉터",
+      director_company: dp?.company ?? null,
+      casting_title: casting?.title ?? null,
+      casting_category: casting?.category ?? null,
+      casting_role_type: casting?.role_type ?? null,
+      casting_location: casting?.location ?? null,
+      casting_work_period: casting?.work_period ?? null,
+      casting_fee: casting?.fee ?? null,
+      casting_deadline: casting?.deadline ?? null,
+    }
+  })
 
   return NextResponse.json(enriched)
 }
