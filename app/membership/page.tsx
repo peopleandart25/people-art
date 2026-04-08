@@ -1450,6 +1450,10 @@ export default function MembershipPage() {
                   size="lg"
                   className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-10"
                   onClick={() => {
+                    if (!user) {
+                      router.push("/login?redirectTo=/membership")
+                      return
+                    }
                     document.getElementById("payment-form")?.scrollIntoView({ behavior: "smooth" })
                   }}
                 >
