@@ -8,7 +8,7 @@ export async function GET() {
     supabase.from("tours").select("id, title, category, status, created_at").order("created_at", { ascending: false }).limit(6),
     supabase.from("news").select("id, title, image_url, published_at").eq("is_published", true).order("published_at", { ascending: false }).limit(12),
     supabase.from("partners").select("id, name, description, image_url, link").eq("is_active", true).order("sort_order", { ascending: true }),
-    supabase.from("reviews").select("id, title, content, author_id, category, created_at, is_hidden").eq("is_hidden", false).order("created_at", { ascending: false }).limit(5),
+    supabase.from("reviews").select("id, title, content, user_id, category, created_at, is_hidden").eq("is_hidden", false).order("created_at", { ascending: false }).limit(5),
     supabase.from("artist_profiles").select("id, user_id, show_in_artist_list" as never).limit(30),
     supabase.from("artist_photos").select("user_id, url").eq("is_main", true),
     supabase.from("profiles").select("id, name"),
