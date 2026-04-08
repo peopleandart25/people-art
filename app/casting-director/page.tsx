@@ -141,7 +141,7 @@ type CastingForm = {
 }
 
 const defaultForm: CastingForm = {
-  title: "", category: "영화", role_type: "", gender: "무관",
+  title: "", category: "영화", role_type: "기타", gender: "무관",
   birth_year_start: "", birth_year_end: "", deadline: "",
   work_period: "", location: "", fee: "", description: "",
   is_closed: false, is_urgent: false,
@@ -180,6 +180,7 @@ const PROPOSAL_STATUS_COLOR: Record<string, string> = {
 
 const CATEGORIES = ["영화", "드라마", "웹드라마", "광고", "뮤직비디오", "기타"] as const
 const GENDERS = ["남자", "여자", "무관"] as const
+const ROLE_TYPES = ["주연", "조연", "단역", "엑스트라", "기타"] as const
 const STATUS_OPTIONS = ["대기", "리스트업", "합격", "최종합격", "보류", "탈락"] as const
 
 const SIDEBAR_MENUS = [
@@ -1499,13 +1500,17 @@ export default function CastingDirectorPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role_type">배역명</Label>
-                  <Input
-                    id="role_type"
-                    value={form.role_type}
-                    onChange={(e) => updateForm("role_type", e.target.value)}
-                    placeholder="예: 박준혁 (30대 초반 경비원)"
-                  />
+                  <Label htmlFor="role_type">역할 유형</Label>
+                  <Select value={form.role_type} onValueChange={(v) => updateForm("role_type", v)}>
+                    <SelectTrigger id="role_type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLE_TYPES.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

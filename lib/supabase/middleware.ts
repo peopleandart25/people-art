@@ -71,8 +71,8 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 온보딩 강제 (신규 유저만) — admin/cd/onboarding 경로는 제외
-  const onboardingExempt = ['/onboarding', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
+  // 온보딩 강제 (신규 유저만) — /onboarding/director·select, api/auth/login/admin 경로는 제외
+  const onboardingExempt = ['/onboarding/director', '/onboarding/select', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
   const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
   if (user && !isExempt) {
     const serviceClient = makeServiceClient()
@@ -84,10 +84,15 @@ export async function updateSession(request: NextRequest) {
     const skipRoles = ['admin', 'sub_admin']
     if (profile && !skipRoles.includes(profile.role)) {
       if (profile.role === 'casting_director') {
-        // 캐스팅 디렉터: phone 없으면 디렉터 온보딩으로
+        const url = request.nextUrl.clone()
         if (!profile.phone) {
-          const url = request.nextUrl.clone()
+          // 캐스팅 디렉터: phone 없으면 디렉터 온보딩으로
           url.pathname = '/onboarding/director'
+          return NextResponse.redirect(url)
+        } else if (request.nextUrl.pathname.startsWith('/onboarding')) {
+          // 이미 온보딩 완료된 캐스팅 디렉터가 /onboarding 접근 시 홈으로
+          url.pathname = '/'
+          url.search = ''
           return NextResponse.redirect(url)
         }
       } else {
