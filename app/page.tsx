@@ -1,5 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { HeroBanner } from "@/components/hero-banner"
+
+// ISR: 공개 데이터이므로 60초 단위 재생성 - 매 요청마다 9개 쿼리 실행 방지
+export const revalidate = 60
 import { ArtistSlider } from "@/components/artist-slider"
 import { EventsSection } from "@/components/events-section"
 import { CastingSection } from "@/components/casting-section"

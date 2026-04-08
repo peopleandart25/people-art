@@ -1,17 +1,18 @@
 import type { Metadata } from 'next'
-import { Noto_Sans_KR, Geist_Mono } from 'next/font/google'
+import { Noto_Sans_KR } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { UserProvider } from '@/contexts/user-context'
 import { AuthProvider } from '@/contexts/auth-context'
 import { RootLayoutShell } from '@/components/root-layout-shell'
 import './globals.css'
 
-const notoSansKR = Noto_Sans_KR({ 
+const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  variable: "--font-noto-sans-kr"
+  weight: ["400", "500", "700"],
+  variable: "--font-noto-sans-kr",
+  display: "swap",
+  preload: true,
 });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: '피플앤아트 | PEOPLE & ART',

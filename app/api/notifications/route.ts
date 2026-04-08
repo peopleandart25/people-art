@@ -2,13 +2,25 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 // GET /api/notifications
+// ?unread_only=1 인 경우 카운트만 반환 (가벼운 폴링용)
 // 응답: { items: [...], unread_count: number }
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 })
 
   const serviceClient = createServiceClient()
+  const url = new URL(request.url)
+  const unreadOnly = url.searchParams.get("unread_only") === "1"
+
+  if (unreadOnly) {
+    const { count } = await serviceClient
+      .from("notifications" as never)
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_read", false)
+    return NextResponse.json({ unread_count: count ?? 0 })
+  }
 
   const [{ data: items, error }, { count }] = await Promise.all([
     serviceClient

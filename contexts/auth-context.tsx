@@ -82,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
+    // 미들웨어 우회 쿠키 정리 (사용자별 마킹)
+    document.cookie = "pa_onboarded=; path=/; max-age=0"
     window.location.href = "/"
   }, [supabase])
 

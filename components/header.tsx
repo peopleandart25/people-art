@@ -52,29 +52,36 @@ export function Header() {
     }
   }
 
+  const fetchUnreadCount = async () => {
+    const res = await fetch("/api/notifications?unread_only=1")
+    if (res.ok) {
+      const data = await res.json()
+      setUnreadCount(data.unread_count ?? 0)
+    }
+  }
+
+  // 초기 1회 + 5분 간격으로 unread_count만 가져옴 (전체 리스트는 벨 클릭 시 로드)
   useEffect(() => {
     if (!isLoggedIn) return
-    fetchNotifications()
+    fetchUnreadCount()
 
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
-        fetchNotifications()
+        fetchUnreadCount()
       }
-    }, 60000)
+    }, 5 * 60 * 1000)
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchNotifications()
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-    }
+    return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn])
+
+  // 벨 팝오버가 열릴 때만 전체 리스트 fetch
+  useEffect(() => {
+    if (bellOpen && isLoggedIn) {
+      fetchNotifications()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bellOpen, isLoggedIn])
 
   const markAllRead = async () => {
     await fetch("/api/notifications", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) })
