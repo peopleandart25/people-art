@@ -47,10 +47,10 @@ Deno.serve(async (_req) => {
     .update({ status: "cancelled" })
     .in("id", membershipIds)
 
-  // 4. profiles role → basic
+  // 4. profiles membership_is_active → false
   await supabase
     .from("profiles")
-    .update({ role: "basic" })
+    .update({ membership_is_active: false })
     .in("id", userIds)
 
   return new Response(

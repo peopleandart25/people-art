@@ -28,11 +28,6 @@ type ArtistProfile = {
   gender: string | null
 }
 
-type Membership = {
-  status: string | null
-  expires_at: string | null
-}
-
 type Profile = {
   id: string
   name: string | null
@@ -44,8 +39,8 @@ type Profile = {
   activity_name: string | null
   created_at: string | null
   updated_at: string | null
+  membership_is_active: boolean
   artist_profiles: ArtistProfile[] | null
-  memberships: Membership[] | null
 }
 
 type Payment = {
@@ -92,11 +87,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 // ─── 헬퍼 ───────────────────────────────────────────────────────────────────
 
-function getMembershipStatus(memberships: Membership[] | null): string {
-  const m = memberships?.[0]
-  if (!m) return "비활성"
-  if (m.status === "active") return "활성"
-  return "비활성"
+function getMembershipStatus(isActive: boolean): string {
+  return isActive ? "활성" : "비활성"
 }
 
 function formatDate(dateStr: string | null): string {
@@ -118,7 +110,7 @@ function downloadCSV(rows: Profile[]) {
     p.email ?? "",
     p.phone ?? "",
     p.status,
-    getMembershipStatus(p.memberships),
+    getMembershipStatus(p.membership_is_active),
     formatDate(p.created_at),
   ])
 
@@ -178,17 +170,16 @@ export default function AdminUsersPage() {
       .from("profiles")
       .select(`
         id, name, email, phone, role, status, status_reason, activity_name,
-        created_at, updated_at,
-        artist_profiles(birth_date, gender),
-        memberships(status, expires_at)
-      `)
+        created_at, updated_at, membership_is_active,
+        artist_profiles(birth_date, gender)
+      ` as never)
       .order("created_at", { ascending: false })
 
     if (error) {
       setError(error.message)
     } else {
-      setProfiles((data ?? []) as Profile[])
-      setFiltered((data ?? []) as Profile[])
+      setProfiles((data ?? []) as unknown as Profile[])
+      setFiltered((data ?? []) as unknown as Profile[])
     }
     setLoading(false)
   }
@@ -217,7 +208,7 @@ export default function AdminUsersPage() {
       result = result.filter((p) => p.status === filterStatus)
     }
     if (filterMembership !== "전체") {
-      result = result.filter((p) => getMembershipStatus(p.memberships) === filterMembership)
+      result = result.filter((p) => getMembershipStatus(p.membership_is_active) === filterMembership)
     }
 
     setFiltered(result)
@@ -484,7 +475,7 @@ export default function AdminUsersPage() {
               <tbody className="divide-y divide-gray-50">
                 {filtered.map((user, idx) => {
                   const ap = user.artist_profiles?.[0]
-                  const membershipStatus = getMembershipStatus(user.memberships)
+                  const membershipStatus = getMembershipStatus(user.membership_is_active)
                   const hasArtistProfile = (user.artist_profiles?.length ?? 0) > 0
 
                   return (
@@ -614,9 +605,9 @@ export default function AdminUsersPage() {
                   <div>
                     <p className="text-xs text-gray-500 mb-0.5">멤버십</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                      MEMBERSHIP_BADGE[getMembershipStatus(selectedUser.memberships)] ?? "bg-gray-50 text-gray-400 border-gray-200"
+                      MEMBERSHIP_BADGE[getMembershipStatus(selectedUser.membership_is_active)] ?? "bg-gray-50 text-gray-400 border-gray-200"
                     }`}>
-                      {getMembershipStatus(selectedUser.memberships)}
+                      {getMembershipStatus(selectedUser.membership_is_active)}
                     </span>
                   </div>
                 </div>

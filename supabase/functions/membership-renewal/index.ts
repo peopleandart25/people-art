@@ -78,7 +78,7 @@ Deno.serve(async (_req) => {
           .eq("id", membership.id)
         await supabase
           .from("profiles")
-          .update({ role: "basic" })
+          .update({ membership_is_active: false })
           .eq("id", user_id)
         continue
       }
@@ -92,7 +92,7 @@ Deno.serve(async (_req) => {
           .eq("id", membership.id)
         await supabase
           .from("profiles")
-          .update({ role: "basic" })
+          .update({ membership_is_active: false })
           .eq("id", user_id)
         continue
       }
@@ -140,7 +140,7 @@ Deno.serve(async (_req) => {
       const currentPoints = profile?.points ?? 0
       await supabase
         .from("profiles")
-        .update({ points: currentPoints + RENEWAL_BONUS })
+        .update({ points: currentPoints + RENEWAL_BONUS, membership_is_active: true })
         .eq("id", user_id)
 
       results.push({ userId: user_id, success: true })

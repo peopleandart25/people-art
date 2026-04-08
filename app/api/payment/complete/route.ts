@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
   const { error: profileError } = await serviceClient
     .from("profiles")
-    .update({ points: newPoints })
+    .update({ points: newPoints, membership_is_active: true } as never)
     .eq("id", user.id)
 
   if (profileError) {
