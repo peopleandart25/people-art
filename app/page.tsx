@@ -22,7 +22,6 @@ export default async function Home() {
     { data: castings },
     { data: artistProfiles },
     { data: artistPhotos },
-    { data: profiles },
   ] = await Promise.all([
     supabase.from("events").select("id, title, type, status, deadline, is_member_only").order("created_at", { ascending: false }).limit(6),
     supabase.from("tours").select("id, title, category, status, created_at").order("created_at", { ascending: false }).limit(6),
@@ -31,19 +30,17 @@ export default async function Home() {
     supabase.from("reviews").select("id, title, content, user_id, category, created_at, is_hidden").eq("is_hidden", false).order("created_at", { ascending: false }).limit(5),
     supabase.from("banners").select("id, title, image_url, link_url, sort_order").eq("is_active", true).order("sort_order", { ascending: true }),
     supabase.from("castings" as never).select("id, title, category, role_type, gender, birth_year_start, birth_year_end, deadline, location, fee, is_closed, is_urgent, created_at").eq("is_closed", false).order("created_at", { ascending: false }).limit(6),
-    supabase.from("artist_profiles").select("id, user_id, show_in_artist_list" as never).limit(30),
+    supabase.from("artist_profiles").select("id, user_id, show_in_artist_list, profiles(name)" as never).limit(30),
     supabase.from("artist_photos").select("user_id, url").eq("is_main", true),
-    supabase.from("profiles").select("id, name"),
   ])
 
-  type ArtistProfileRow = { id: string; user_id: string; show_in_artist_list: boolean }
+  type ArtistProfileRow = { id: string; user_id: string; show_in_artist_list: boolean; profiles: { name: string } | null }
   const photoMap = new Map((artistPhotos ?? []).map((p) => [p.user_id, p.url]))
-  const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.name]))
   const artists = ((artistProfiles ?? []) as unknown as ArtistProfileRow[]).map((ap) => {
     const showPhoto = ap.show_in_artist_list !== false
     return {
       id: ap.id,
-      name: nameMap.get(ap.user_id) ?? "",
+      name: ap.profiles?.name ?? "",
       profileImage: showPhoto ? (photoMap.get(ap.user_id) ?? null) : null,
     }
   })
