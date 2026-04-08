@@ -10,7 +10,11 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, activityName, phone, email, birthDate, gender, height, weight, bio, etcInfo, careerList, portfolioUrl, portfolioFileName } = body
+  const { name, activityName, phone, email, birthDate, gender, height, weight, bio, etcInfo, careerList, portfolioUrl, portfolioFileName, privacyAgreed, marketingAgreed } = body
+
+  if (!privacyAgreed) {
+    return NextResponse.json({ error: "개인정보 수집 및 이용에 동의해주세요." }, { status: 400 })
+  }
 
   const serviceClient = createServiceClient()
 
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
   }
 
   // 1. profiles 기본 정보 업데이트 + 온보딩 완료 시 status '활성'으로 변경
+  const nowIso = new Date().toISOString()
   const { error: profileError } = await serviceClient
     .from("profiles")
     .update({
@@ -37,7 +42,9 @@ export async function POST(request: Request) {
       phone: phone || null,
       email: email || null,
       status: "활성",
-      updated_at: new Date().toISOString(),
+      privacy_agreed_at: nowIso,
+      marketing_agreed_at: marketingAgreed ? nowIso : null,
+      updated_at: nowIso,
     })
     .eq("id", user.id)
 

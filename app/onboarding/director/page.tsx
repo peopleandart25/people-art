@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { ArrowLeft, Save, Briefcase } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { ConsentCheckboxes } from "@/components/consent-checkboxes"
 
 export default function DirectorOnboardingPage() {
   const router = useRouter()
@@ -24,6 +25,8 @@ export default function DirectorOnboardingPage() {
     company: "",
     jobTitle: "",
   })
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [marketingAgreed, setMarketingAgreed] = useState(false)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -54,6 +57,9 @@ export default function DirectorOnboardingPage() {
     if (!form.phone.trim()) {
       toast({ title: "연락처를 입력해주세요.", variant: "destructive" }); return
     }
+    if (!privacyAgreed) {
+      toast({ title: "개인정보 수집 및 이용에 동의해주세요.", variant: "destructive" }); return
+    }
 
     setIsLoading(true)
     try {
@@ -65,6 +71,8 @@ export default function DirectorOnboardingPage() {
           phone: form.phone,
           company: form.company,
           jobTitle: form.jobTitle,
+          privacyAgreed,
+          marketingAgreed,
         }),
       })
       if (!res.ok) {
@@ -155,9 +163,16 @@ export default function DirectorOnboardingPage() {
                 </div>
               </div>
 
+              <ConsentCheckboxes
+                privacyAgreed={privacyAgreed}
+                marketingAgreed={marketingAgreed}
+                onPrivacyChange={setPrivacyAgreed}
+                onMarketingChange={setMarketingAgreed}
+              />
+
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !privacyAgreed}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white gap-2 mt-2"
               >
                 <Save className="w-4 h-4" />

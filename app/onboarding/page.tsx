@@ -27,6 +27,7 @@ import {
   FileText,
 } from "lucide-react"
 import { AlertCircle } from "lucide-react"
+import { ConsentCheckboxes } from "@/components/consent-checkboxes"
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -69,6 +70,8 @@ export default function OnboardingPage() {
   const [phoneOtp, setPhoneOtp] = useState("")
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [phoneVerifying, setPhoneVerifying] = useState(false)
+  const [privacyAgreed, setPrivacyAgreed] = useState(false)
+  const [marketingAgreed, setMarketingAgreed] = useState(false)
 
   const handleAddCareer = () => {
     setFormData((prev) => ({
@@ -158,6 +161,8 @@ export default function OnboardingPage() {
           careerList,
           portfolioUrl,
           portfolioFileName,
+          privacyAgreed,
+          marketingAgreed,
         }),
       })
       if (!res.ok) {
@@ -234,7 +239,7 @@ export default function OnboardingPage() {
   }
 
   const canProceedToStep2 = !!(formData.name && formData.email && formData.phone && phoneVerified)
-  const canComplete = canProceedToStep2
+  const canComplete = canProceedToStep2 && privacyAgreed
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -592,6 +597,13 @@ export default function OnboardingPage() {
                     </ul>
                   </div>
                 )}
+
+                <ConsentCheckboxes
+                  privacyAgreed={privacyAgreed}
+                  marketingAgreed={marketingAgreed}
+                  onPrivacyChange={setPrivacyAgreed}
+                  onMarketingChange={setMarketingAgreed}
+                />
 
                 <div className="flex justify-between pt-4 border-t border-border">
                   <Button variant="outline" onClick={() => setCurrentStep(1)}>

@@ -831,9 +831,11 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          marketing_agreed_at: string | null
           name: string | null
           phone: string | null
           points: number
+          privacy_agreed_at: string | null
           referral_bonus_claimed: boolean
           referral_code: string | null
           referred_by: string | null
@@ -848,9 +850,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id: string
+          marketing_agreed_at?: string | null
           name?: string | null
           phone?: string | null
           points?: number
+          privacy_agreed_at?: string | null
           referral_bonus_claimed?: boolean
           referral_code?: string | null
           referred_by?: string | null
@@ -865,9 +869,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          marketing_agreed_at?: string | null
           name?: string | null
           phone?: string | null
           points?: number
+          privacy_agreed_at?: string | null
           referral_bonus_claimed?: boolean
           referral_code?: string | null
           referred_by?: string | null
