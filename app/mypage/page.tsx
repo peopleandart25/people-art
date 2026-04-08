@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -645,7 +646,7 @@ export default function MyPage() {
                 >
                   {mainPhoto ? (
                     <>
-                      <img src={mainPhoto.url} alt="메인 프로필" className="w-full h-full object-cover" />
+                      <Image src={mainPhoto.url} alt="메인 프로필" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" unoptimized />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Camera className="h-8 w-8 text-white" />
                       </div>
@@ -674,7 +675,7 @@ export default function MyPage() {
                 <div className="grid grid-cols-3 gap-2">
                   {subPhotos.map(photo => (
                     <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden group">
-                      <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
+                      <Image src={photo.url} alt={photo.name} fill sizes="(max-width: 768px) 33vw, 200px" className="object-cover" unoptimized />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                         <button onClick={() => setAsMainPhoto(photo.id)} className="p-1.5 bg-white/90 rounded-full hover:bg-white" title="메인으로 설정">
                           <Star className="h-3 w-3 text-primary" />

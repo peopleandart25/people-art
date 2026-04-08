@@ -1356,10 +1356,12 @@ export default function MembershipPage() {
                 >
                   {/* 이미지 영역 - 고정 높이 */}
                   <div className="relative h-48 shrink-0 overflow-hidden">
-                    <img 
-                      src={service.image} 
+                    <Image
+                      src={service.image}
                       alt={service.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     {/* 넘버 뱃지 */}
                     <div className="absolute top-4 left-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm shadow-lg">
