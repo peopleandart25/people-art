@@ -154,16 +154,22 @@ export default function AdminPortfoliosPage() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex flex-col gap-1 min-w-[240px] flex-1">
-            <Input
-              placeholder="이름 / 활동명 / 이메일 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 text-sm"
-            />
-          </div>
-          <div className="flex flex-col items-end gap-1 ml-auto">
+        <div className="flex flex-wrap gap-2 items-center">
+          <Input
+            placeholder="이름 / 활동명 / 이메일 검색"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && setDebouncedSearch(search)}
+            className="h-9 text-sm flex-1 min-w-[200px]"
+          />
+          <Button
+            size="sm"
+            onClick={() => setDebouncedSearch(search)}
+            className="h-9 bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            검색
+          </Button>
+          <div className="flex flex-col items-end gap-0.5 ml-auto">
             <Button
               size="sm"
               onClick={handleBulkDownload}
@@ -173,9 +179,9 @@ export default function AdminPortfoliosPage() {
               <Package className="w-4 h-4" />
               {bulkLoading ? "다운로드 중..." : `일괄 다운로드 (신규 ${newCount}건)`}
             </Button>
-            <div className="text-[11px] text-gray-500">
+            <div className="text-[11px] text-gray-400 text-right">
               마지막 일괄 다운로드:{" "}
-              <span className="font-medium text-gray-700">
+              <span className="font-medium text-gray-600">
                 {lastBulkDownloadAt ? formatDate(lastBulkDownloadAt) : "기록 없음"}
               </span>
             </div>
