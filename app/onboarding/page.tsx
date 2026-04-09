@@ -58,12 +58,22 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email) {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      if (user.email) {
         setFormData((prev) => ({ ...prev, email: prev.email || user.email! }))
       }
+      // 캐스팅 디렉터는 아티스트 온보딩 진입 금지
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      if ((profile as { role?: string } | null)?.role === "casting_director") {
+        router.replace("/casting-director")
+      }
     })
-  }, [])
+  }, [router])
 
   const [phoneOtpSent, setPhoneOtpSent] = useState(false)
   const [phoneError, setPhoneError] = useState<string | null>(null)

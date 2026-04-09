@@ -71,6 +71,34 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // 캐스팅 디렉터가 아티스트 온보딩(/onboarding)에 접근하면 디렉터 대시보드로 강제 리다이렉트
+  // 쿠키 우회와 무관하게 항상 체크 (쿠키 prefix가 'd:'이거나, DB 조회 필요)
+  const isArtistOnboardingPath =
+    request.nextUrl.pathname === '/onboarding' || request.nextUrl.pathname.startsWith('/onboarding/')
+  const isDirectorOnboardingPath =
+    request.nextUrl.pathname.startsWith('/onboarding/director') ||
+    request.nextUrl.pathname.startsWith('/onboarding/select')
+  if (user && isArtistOnboardingPath && !isDirectorOnboardingPath) {
+    const cookieVal = request.cookies.get('pa_onboarded')?.value
+    if (cookieVal?.startsWith('d:') && cookieVal.endsWith(`:${user.id}`)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/casting-director'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+    // 쿠키가 없거나 prefix가 'd:'가 아니면 DB에서 role 확인
+    if (!cookieVal?.endsWith(`:${user.id}`)) {
+      const sc = makeServiceClient()
+      const { data: p } = await sc.from('profiles').select('role').eq('id', user.id).single()
+      if (p && (p as { role: string }).role === 'casting_director') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/casting-director'
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   // 온보딩 강제 (신규 유저만) — /onboarding/director·select, api/auth/login/admin 경로는 제외
   const onboardingExempt = ['/onboarding/director', '/onboarding/select', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
   const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
