@@ -85,7 +85,9 @@ export async function POST(request: Request) {
   const customMessage = template?.message?.trim()
 
   function buildEmailHtml(): string {
-    const greeting = customMessage ? customMessage.replace(/\n/g, "<br>") : null
+    const greeting = customMessage
+      ? customMessage.replace(/\n/g, "<br>")
+      : `안녕하세요, 배우 ${name} 입니다.<br>귀사에 지원드리기 위해 프로필 파일과 연기 영상 링크를 첨부드립니다.<br>긍정적으로 검토해주시면 감사하겠습니다.`
 
     const includeProfile = (template?.include_profile_link ?? true) && profileUrl
     const includePdf = (template?.include_pdf ?? true) && portfolioUrl
