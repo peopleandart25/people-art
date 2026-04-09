@@ -110,8 +110,11 @@ export async function POST(request: Request) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    console.error("coolsms error:", err)
-    return NextResponse.json({ error: "SMS send failed" }, { status: 500 })
+    console.error("coolsms error:", res.status, err)
+    return NextResponse.json(
+      { error: "SMS send failed", code: (err as { errorCode?: string }).errorCode, detail: (err as { errorMessage?: string }).errorMessage },
+      { status: 500 }
+    )
   }
 
   return NextResponse.json({ success: true })

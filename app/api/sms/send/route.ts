@@ -110,7 +110,16 @@ export async function POST(request: Request) {
   })
 
   if (!res.ok) {
-    return NextResponse.json({ error: "SMS 발송 실패" }, { status: 500 })
+    const errBody = await res.json().catch(() => ({}))
+    console.error("coolsms send failed:", res.status, errBody)
+    const errorCode = (errBody as { errorCode?: string }).errorCode
+    const userMessage =
+      errorCode === "NotEnoughBalance"
+        ? "일시적인 SMS 발송 오류입니다. 잠시 후 다시 시도해주세요."
+        : errorCode === "RateLimited" || errorCode === "DailyLimitExceeded"
+        ? "일일 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요."
+        : "SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요."
+    return NextResponse.json({ error: userMessage }, { status: 500 })
   }
 
   return NextResponse.json({ success: true })

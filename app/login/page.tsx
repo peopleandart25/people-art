@@ -31,6 +31,7 @@ function LoginContent() {
   const [phoneVerifying, setPhoneVerifying] = useState(false)
   const [signupPhone, setSignupPhone] = useState("")
   const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null)
+  const [welcomeBonus, setWelcomeBonus] = useState<number | null>(null)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/"
   const error = searchParams.get("error")
@@ -56,6 +57,21 @@ function LoginContent() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) router.push(redirectTo)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 웰컴포인트 설정 로드 (활성화된 경우에만 배너 노출)
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("key, value")
+      .in("key", ["welcome_points_enabled", "welcome_points_amount"])
+      .then(({ data }) => {
+        const settings = data ?? []
+        const enabled = settings.find((s) => s.key === "welcome_points_enabled")?.value === "true"
+        const amount = parseInt(settings.find((s) => s.key === "welcome_points_amount")?.value ?? "0", 10)
+        if (enabled && amount > 0) setWelcomeBonus(amount)
+      })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -163,6 +179,14 @@ function LoginContent() {
       toast({ title: "이미 가입된 이메일", description: "해당 이메일로 이미 가입된 계정이 있습니다. 로그인을 시도해주세요.", variant: "destructive" })
     } else {
       toast({ title: "가입 완료!", description: "이메일을 확인하여 인증을 완료해주세요." })
+      if (welcomeBonus && welcomeBonus > 0) {
+        setTimeout(() => {
+          toast({
+            title: "🎉 웰컴 포인트 지급!",
+            description: `${welcomeBonus.toLocaleString()}P가 지급되었습니다. 지금 바로 사용해보세요!`,
+          })
+        }, 400)
+      }
       router.push("/onboarding")
     }
     setIsLoading(false)
@@ -303,6 +327,14 @@ function LoginContent() {
             {/* 회원가입 폼 */}
             {mode === "signup" && (
               <form onSubmit={handleEmailSignup}>
+                {welcomeBonus && welcomeBonus > 0 && (
+                  <div className="mx-6 mt-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-3 text-white shadow-sm">
+                    <p className="text-sm font-medium leading-tight">지금 가입하고,</p>
+                    <p className="text-lg font-bold leading-tight">
+                      {welcomeBonus.toLocaleString()}P 받아가세요!
+                    </p>
+                  </div>
+                )}
                 <CardHeader className="pt-4">
                   <CardTitle className="text-xl">이메일 회원가입</CardTitle>
                   <CardDescription>피플앤아트의 캐스팅 기회를 만나보세요</CardDescription>
