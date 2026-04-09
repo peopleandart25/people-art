@@ -473,7 +473,7 @@ export default function MembershipPage() {
           storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
           channelKey: "channel-key-cf3ab2fe-e949-45df-80f4-3b7b57808ca6",
           billingKeyMethod: "CARD",
-          issueId: `billing-${user.id}-${Date.now()}`,
+          issueId: `b-${user.id.slice(0, 8)}-${Date.now()}`,
           issueName: "피플앤아트 멤버십",
           offerPeriod: { interval: "1m" },
           customer: {
