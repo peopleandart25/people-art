@@ -475,6 +475,7 @@ export default function MembershipPage() {
           billingKeyMethod: "CARD",
           issueId: `billing-${user.id}-${Date.now()}`,
           issueName: "피플앤아트 멤버십",
+          offerPeriod: { interval: "1m" },
           customer: {
             customerId: user.id,
             email: user.email ?? undefined,
