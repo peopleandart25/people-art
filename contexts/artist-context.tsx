@@ -150,7 +150,7 @@ export function ArtistProvider({ children }: { children: ReactNode }) {
         { data: statusTagJoins },
         { data: allStatusTags },
       ] = await Promise.all([
-        supabase.from("artist_profiles").select("id, user_id, gender, birth_date, height, weight, bio, school, portfolio_url"),
+        supabase.from("artist_profiles").select("id, user_id, gender, birth_date, height, weight, bio, school, portfolio_url, show_in_artist_list"),
         supabase.from("profiles").select("id, name"),
         supabase.from("artist_photos").select("user_id, url").eq("is_main", true),
         supabase.from("artist_status_tags").select("artist_id, tag_id"),
@@ -173,7 +173,9 @@ export function ArtistProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const mapped: ArtistProfile[] = artistProfiles.map(ap => ({
+      const mapped: ArtistProfile[] = artistProfiles
+        .filter(ap => ap.show_in_artist_list !== false && profileMap.get(ap.user_id)?.trim())
+        .map(ap => ({
         id: ap.id,
         name: profileMap.get(ap.user_id) ?? "",
         profileImage: photoMap.get(ap.user_id) ?? null,

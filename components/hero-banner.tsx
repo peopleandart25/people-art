@@ -386,7 +386,7 @@ const premiumExtraLinks = [
     id: "premium-2",
     iconType: "list",
     Icon: Icon3DList,
-    lines: ["지원의뢰"],
+    lines: ["지원이력"],
     sublabel: undefined,
     href: "/mypage?tab=applications",
     isExternal: false,
@@ -495,9 +495,10 @@ export function HeroBanner({ initialBanners }: { initialBanners?: DBBanner[] }) 
     ? initialBanners.map((banner) => ({
         id: banner.id,
         badge: "",
-        title: banner.title,
+        title: "",
         highlight: "",
         description: "",
+        ariaLabel: banner.title || "배너",
         primaryBtn: banner.link_url ? { text: "자세히 보기", link: banner.link_url } : null,
         secondaryBtn: null,
         bgStyle: banner.image_url && banner.image_url.startsWith("http")
@@ -606,8 +607,9 @@ export function HeroBanner({ initialBanners }: { initialBanners?: DBBanner[] }) 
   const slide = slides[currentSlide]
 
   return (
-    <section 
+    <section
       className="relative overflow-hidden transition-all duration-700"
+      aria-label={"ariaLabel" in slide ? (slide as { ariaLabel: string }).ariaLabel : undefined}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}

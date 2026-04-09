@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, ROLE_CASTING_DIRECTOR } from "@/hooks/use-auth"
 import { ExternalLink, Mail, Check, Building2, Lock, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/lib/supabase/types"
@@ -230,10 +230,18 @@ export default function SupportPage() {
   const agencyCount = agencies.filter((a) => a.category === "광고에이전시").length
   const entertainmentCount = agencies.filter((a) => a.category === "엔터테인먼트").length
 
+  const isDirector = authProfile?.role === ROLE_CASTING_DIRECTOR
+
   return (
     <>
       <section className="py-16 lg:py-24 bg-muted/30">
         <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          {isDirector && (
+            <div className="mb-8 max-w-2xl mx-auto flex items-center gap-3 rounded-xl border border-border bg-muted p-4">
+              <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
+              <p className="text-sm text-foreground">캐스팅디렉터는 프로필 지원 기능을 이용할 수 없습니다.</p>
+            </div>
+          )}
           <div className="text-center mb-12">
             <h1 className="text-3xl font-bold text-foreground lg:text-4xl mb-4">프로필 지원하기</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -272,7 +280,7 @@ export default function SupportPage() {
                 <TabsTrigger value="entertainment">엔터테인먼트 ({entertainmentCount})</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button onClick={handleSendEmail} disabled={selectedAgencies.length === 0}
+            <Button onClick={handleSendEmail} disabled={selectedAgencies.length === 0 || isDirector}
               className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground">
               <Mail className="h-4 w-4 mr-2" />
               메일 전송하기 ({selectedAgencies.length})

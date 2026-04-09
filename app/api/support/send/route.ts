@@ -42,6 +42,15 @@ export async function POST(request: Request) {
   ])
 
   const profile = profileRes.data
+
+  // 캐스팅디렉터는 프로필 지원 기능 이용 불가
+  if (profile?.role === "casting_director") {
+    return NextResponse.json(
+      { error: "캐스팅디렉터는 프로필 지원 기능을 이용할 수 없습니다." },
+      { status: 403 }
+    )
+  }
+
   const artistProfile = artistRes.data
   const template = templateRes.data as ApplicationTemplate | null
   const agencies = (agenciesRes.data ?? []).filter((a) => !!a.email)

@@ -8,6 +8,8 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { ChevronRight, Calendar, Crown, LogIn, UserPlus } from "lucide-react"
 import { useUser } from "@/contexts/user-context"
+import { useAuth, ROLE_CASTING_DIRECTOR } from "@/hooks/use-auth"
+import { MembershipRequiredDialog } from "@/components/membership-required-dialog"
 
 type Event = {
   id: string
@@ -21,8 +23,10 @@ type Event = {
 export function EventsSection({ events = [] }: { events?: Event[] }) {
   const router = useRouter()
   const { status } = useUser()
+  const { profile } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
+  const [showDirectorModal, setShowDirectorModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
   const handleApply = (event: Event) => {
@@ -30,6 +34,11 @@ export function EventsSection({ events = [] }: { events?: Event[] }) {
 
     if (status === "guest") {
       setShowLoginModal(true)
+      return
+    }
+
+    if (profile?.role === ROLE_CASTING_DIRECTOR) {
+      setShowDirectorModal(true)
       return
     }
 
@@ -172,44 +181,22 @@ export function EventsSection({ events = [] }: { events?: Event[] }) {
           </DialogContent>
         </Dialog>
 
-        {/* Membership Required Modal */}
-        <Dialog open={showMembershipModal} onOpenChange={setShowMembershipModal}>
+        {/* Director Block Modal */}
+        <Dialog open={showDirectorModal} onOpenChange={setShowDirectorModal}>
           <DialogContent className="sm:max-w-md bg-card">
             <DialogHeader>
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                <Crown className="h-8 w-8 text-primary" />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                <Crown className="h-8 w-8 text-muted-foreground" />
               </div>
-              <DialogTitle className="text-center text-xl">멤버십 회원 전용 혜택</DialogTitle>
+              <DialogTitle className="text-center text-xl">아티스트 전용 서비스</DialogTitle>
               <DialogDescription className="text-center pt-2">
-                본 이벤트 신청은 <span className="font-semibold text-primary">멤버십 회원</span>만 가능합니다.
-                <br />
-                멤버십에 가입하고 무제한 오디션 신청 혜택을 받아보세요!
+                본 이벤트는 <span className="font-semibold text-foreground">아티스트 회원</span>만 신청 가능합니다.
               </DialogDescription>
             </DialogHeader>
-            <div className="bg-muted rounded-lg p-4 my-4">
-              <h4 className="font-semibold text-foreground mb-2">멤버십 혜택</h4>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <span className="text-primary">•</span> 모든 오디션/특강 무제한 신청
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-primary">•</span> 프로필 우선 검토
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-primary">•</span> 가입 시 15,000P 지급
-                </li>
-              </ul>
-            </div>
-            <DialogFooter className="flex flex-col gap-2 sm:flex-col">
-              <Button
-                onClick={handleMembershipRedirect}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                멤버십 가입 안내 보기
-              </Button>
+            <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-4">
               <Button
                 variant="outline"
-                onClick={() => setShowMembershipModal(false)}
+                onClick={() => setShowDirectorModal(false)}
                 className="w-full"
               >
                 닫기
@@ -217,6 +204,12 @@ export function EventsSection({ events = [] }: { events?: Event[] }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <MembershipRequiredDialog
+          open={showMembershipModal}
+          onOpenChange={setShowMembershipModal}
+          onConfirm={handleMembershipRedirect}
+        />
       </div>
     </section>
   )

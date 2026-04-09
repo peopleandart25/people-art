@@ -39,14 +39,13 @@ export default async function Home() {
 
   type ArtistProfileRow = { id: string; user_id: string; show_in_artist_list: boolean; profiles: { name: string } | null }
   const photoMap = new Map((artistPhotos ?? []).map((p) => [p.user_id, p.url]))
-  const artists = ((artistProfiles ?? []) as unknown as ArtistProfileRow[]).map((ap) => {
-    const showPhoto = ap.show_in_artist_list !== false
-    return {
+  const artists = ((artistProfiles ?? []) as unknown as ArtistProfileRow[])
+    .filter((ap) => ap.show_in_artist_list !== false)
+    .map((ap) => ({
       id: ap.id,
       name: ap.profiles?.name ?? "",
-      profileImage: showPhoto ? (photoMap.get(ap.user_id) ?? null) : null,
-    }
-  })
+      profileImage: photoMap.get(ap.user_id) ?? null,
+    }))
 
   return (
     <>

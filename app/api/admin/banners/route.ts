@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await serviceClient.from("banners").insert(body).select("id").single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidatePath("/")
   return NextResponse.json(data)
 }
 
@@ -40,6 +42,7 @@ export async function PATCH(request: Request) {
 
   const { data, error } = await serviceClient.from("banners").update(payload).eq("id", id).select("id").single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidatePath("/")
   return NextResponse.json(data)
 }
 
@@ -54,5 +57,6 @@ export async function DELETE(request: Request) {
 
   const { error } = await serviceClient.from("banners").delete().eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  revalidatePath("/")
   return NextResponse.json({ success: true })
 }

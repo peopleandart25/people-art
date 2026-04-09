@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Calendar, Film, Tv, Video, Camera, Music, Folder, ArrowLeft, CheckCircle, LogIn } from "lucide-react"
 import { useUser } from "@/contexts/user-context"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, ROLE_CASTING_DIRECTOR } from "@/hooks/use-auth"
+import { MembershipRequiredDialog } from "@/components/membership-required-dialog"
 
 type Casting = {
   id: string
@@ -72,13 +73,14 @@ export default function CastingDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter()
   const { status } = useUser()
   const { profile } = useAuth()
-  const isCastingDirector = profile?.role === "casting_director"
+  const isCastingDirector = profile?.role === ROLE_CASTING_DIRECTOR
 
   const [casting, setCasting] = useState<Casting | null>(null)
   const [loading, setLoading] = useState(true)
   const [applied, setApplied] = useState(false)
   const [applying, setApplying] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -103,6 +105,11 @@ export default function CastingDetailPage({ params }: { params: Promise<{ id: st
   const handleApply = async () => {
     if (status === "guest") {
       setShowLoginModal(true)
+      return
+    }
+
+    if (status !== "premium" && status !== "admin" && !isCastingDirector) {
+      setShowMembershipModal(true)
       return
     }
 
@@ -242,13 +249,13 @@ export default function CastingDetailPage({ params }: { params: Promise<{ id: st
               <dl className="space-y-2 text-sm">
                 {casting.work_period && (
                   <div className="flex gap-2">
-                    <dt className="text-muted-foreground w-20 shrink-0">활동 기간</dt>
+                    <dt className="text-muted-foreground w-20 shrink-0">촬영 일자</dt>
                     <dd className="text-foreground">{casting.work_period}</dd>
                   </div>
                 )}
                 {casting.location && (
                   <div className="flex gap-2">
-                    <dt className="text-muted-foreground w-20 shrink-0">활동 장소</dt>
+                    <dt className="text-muted-foreground w-20 shrink-0">촬영 장소</dt>
                     <dd className="text-foreground">{casting.location}</dd>
                   </div>
                 )}
@@ -342,6 +349,12 @@ export default function CastingDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      <MembershipRequiredDialog
+        open={showMembershipModal}
+        onOpenChange={setShowMembershipModal}
+        onConfirm={() => { setShowMembershipModal(false); router.push("/membership") }}
+      />
 
       {/* Login Required Modal */}
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>

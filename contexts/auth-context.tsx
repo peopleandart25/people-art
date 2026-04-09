@@ -127,3 +127,5 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider")
   return ctx
 }
+
+export const ROLE_CASTING_DIRECTOR = "casting_director" as const

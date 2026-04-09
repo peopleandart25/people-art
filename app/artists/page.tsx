@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import * as SliderPrimitive from "@radix-ui/react-slider"
-import { Search, X, Filter, User, ChevronDown, ChevronUp, RotateCcw } from "lucide-react"
+import { Search, X, Filter, User, ChevronDown, ChevronUp, RotateCcw, Bookmark } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +38,7 @@ import {
   WEIGHT_MAX,
   StatusTag,
 } from "@/contexts/artist-context"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, ROLE_CASTING_DIRECTOR } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 
 // 올해 년도 (나이 ↔ 출생년도 변환용)
@@ -395,10 +395,10 @@ const FilterSidebar = memo(function FilterSidebar({ isMobile = false }: FilterSi
         {isFilterExpanded && (
           <div className="space-y-1 max-h-[280px] overflow-y-auto pr-1">
             {statusTagOptions.map((tag) => (
-              <div 
-                key={tag} 
+              <label
+                key={tag}
+                htmlFor={`tag-${tag}`}
                 className="flex items-center gap-3 py-2 px-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
-                onClick={() => toggleTag(tag)}
               >
                 <Checkbox
                   id={`tag-${tag}`}
@@ -406,13 +406,8 @@ const FilterSidebar = memo(function FilterSidebar({ isMobile = false }: FilterSi
                   onCheckedChange={() => toggleTag(tag)}
                   className="h-5 w-5"
                 />
-                <Label
-                  htmlFor={`tag-${tag}`}
-                  className="text-sm cursor-pointer flex-1"
-                >
-                  {tag}
-                </Label>
-              </div>
+                <span className="text-sm flex-1">{tag}</span>
+              </label>
             ))}
           </div>
         )}
@@ -446,8 +441,9 @@ export default function ArtistsPage() {
     deselectAllSchools,
     statusTagOptions,
   } = useArtistsSafe()
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, profile } = useAuth()
   const { toast } = useToast()
+  const isDirector = profile?.role === ROLE_CASTING_DIRECTOR
 
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
   const [inputValue, setInputValue] = useState(searchQuery)
@@ -638,6 +634,20 @@ export default function ArtistsPage() {
                       <div className="group cursor-pointer">
                         {/* 카드 컨테이너 - 3D 효과 */}
                         <div className="relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-card border border-border">
+                          {isDirector && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                toast({ title: "준비 중", description: "보관함 기능은 아티스트 상세 페이지에서 이용하세요." })
+                              }}
+                              className="absolute top-2 right-2 z-10 bg-black/40 hover:bg-black/60 text-white rounded-full p-1.5 transition-colors"
+                              aria-label="보관함에 저장"
+                            >
+                              <Bookmark className="h-4 w-4" />
+                            </button>
+                          )}
                           {/* 이미지 영역 */}
                           <div className="aspect-[3/4] relative bg-muted">
                             {artist.profileImage ? (

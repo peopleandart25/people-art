@@ -425,7 +425,10 @@ export default function AdminCastingPage() {
 
       {/* 공고 추가/수정 다이얼로그 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-lg max-h-[90vh] overflow-y-auto"
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{editingId ? "캐스팅 공고 수정" : "캐스팅 공고 추가"}</DialogTitle>
           </DialogHeader>

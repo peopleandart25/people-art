@@ -40,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { CareerItem, VideoItem } from "@/contexts/artist-context"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth, ROLE_CASTING_DIRECTOR } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 
@@ -98,8 +98,8 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
   const { isPremium, isAdmin, profile } = useAuth()
   const { toast } = useToast()
 
-  const canViewRestricted = isPremium || isAdmin
-  const isCastingDirector = profile?.role === "casting_director"
+  const isCastingDirector = profile?.role === ROLE_CASTING_DIRECTOR
+  const canViewRestricted = isPremium || isAdmin || isCastingDirector
 
   const [artist, setArtist] = useState<ArtistData | null>(null)
   const [loadingArtist, setLoadingArtist] = useState(true)

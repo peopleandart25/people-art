@@ -103,6 +103,8 @@ export default function MyPage() {
   const [careerList, setCareerList] = useState<{ id: string; category: string; year: string; title: string; role: string }[]>([])
   const [statusTagIds, setStatusTagIds] = useState<number[]>([])
   const [showInArtistList, setShowInArtistList] = useState(true)
+  const [etcTags, setEtcTags] = useState<string[]>([])
+  const [etcTagInput, setEtcTagInput] = useState("")
   const [mainPhoto, setMainPhoto] = useState<LocalPhoto | null>(null)
   const [mainPhotoFile, setMainPhotoFile] = useState<File | null>(null)
   const [subPhotos, setSubPhotos] = useState<LocalPhoto[]>([])
@@ -152,6 +154,9 @@ export default function MyPage() {
       youtube: socialLinks?.youtube ?? "",
       tiktok: socialLinks?.tiktok ?? "",
     })
+
+    const rawEtc = artistProfile?.etc_info ?? ""
+    setEtcTags(rawEtc ? rawEtc.split(",").map((t: string) => t.trim()).filter(Boolean) : [])
 
     setCareerList(careerItems.map(c => ({
       id: c.id, category: c.category, year: c.year ?? "", title: c.title, role: c.role ?? "",
@@ -353,7 +358,7 @@ export default function MyPage() {
         height: formData.height,
         weight: formData.weight,
         bio: formData.bio,
-        etcInfo: formData.etcInfo,
+        etcInfo: etcTags.join(", "),
         school: formData.school,
         isCustomSchool: formData.isCustomSchool,
         department: formData.department,
@@ -915,11 +920,44 @@ export default function MyPage() {
                     placeholder="자기소개를 입력하세요" rows={4} />
                 </div>
 
-                {/* 기타 정보 */}
+                {/* 기타 정보 — 태그 입력 UI */}
                 <div className="space-y-2">
-                  <Label htmlFor="etcInfo">기타 정보 (특기, 외국어 등)</Label>
-                  <Input id="etcInfo" value={formData.etcInfo} onChange={e => setFormData(p => ({ ...p, etcInfo: e.target.value }))}
-                    placeholder="특기: 수영, 검도 / 외국어: 영어(일상회화)" />
+                  <Label>기타 정보 (특기, 외국어 등)</Label>
+                  <div className="flex flex-wrap gap-2 min-h-[42px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+                    {etcTags.map((tag, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium">
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => setEtcTags(prev => prev.filter((_, idx) => idx !== i))}
+                          className="ml-0.5 hover:text-primary/70"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      className="flex-1 min-w-[120px] bg-transparent outline-none placeholder:text-muted-foreground text-sm"
+                      value={etcTagInput}
+                      onChange={e => setEtcTagInput(e.target.value)}
+                      onKeyDown={e => {
+                        if ((e.key === "Enter" || e.key === ",") && etcTagInput.trim()) {
+                          e.preventDefault()
+                          const newTag = etcTagInput.replace(/,/g, "").trim()
+                          if (newTag && !etcTags.some(t => t.toLowerCase() === newTag.toLowerCase())) setEtcTags(prev => [...prev, newTag])
+                          setEtcTagInput("")
+                        } else if (e.key === "Backspace" && !etcTagInput && etcTags.length > 0) {
+                          setEtcTags(prev => prev.slice(0, -1))
+                        }
+                      }}
+                      onBlur={() => {
+                        const newTag = etcTagInput.replace(/,/g, "").trim()
+                        if (newTag && !etcTags.some(t => t.toLowerCase() === newTag.toLowerCase())) setEtcTags(prev => [...prev, newTag])
+                        setEtcTagInput("")
+                      }}
+                      placeholder={etcTags.length === 0 ? "수영, 검도, 영어(일상회화) — Enter 또는 , 로 추가" : ""}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
