@@ -152,6 +152,7 @@ export default function AdminUsersPage() {
   const [newStatusReason, setNewStatusReason] = useState("")
   const [updating, setUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [membershipToggling, setMembershipToggling] = useState(false)
 
   // 활동내역
   const [payments, setPayments] = useState<Payment[]>([])
@@ -346,6 +347,33 @@ export default function AdminUsersPage() {
       setDialogOpen(false)
     }
     setUpdating(false)
+  }
+
+  async function handleToggleMembership() {
+    if (!selectedUser) return
+    setMembershipToggling(true)
+    const supabase = createClient()
+    const isActive = selectedUser.membership_is_active
+
+    if (isActive) {
+      await supabase.from("memberships")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("user_id", selectedUser.id)
+    } else {
+      const expiresAt = new Date()
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1)
+      await supabase.from("memberships").upsert({
+        user_id: selectedUser.id,
+        status: "active",
+        expires_at: expiresAt.toISOString(),
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" })
+    }
+
+    await fetchProfiles()
+    setSelectedUser((prev) => prev ? { ...prev, membership_is_active: !isActive } : prev)
+    setMembershipToggling(false)
   }
 
   return (
@@ -623,11 +651,25 @@ export default function AdminUsersPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-0.5">멤버십</p>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                      MEMBERSHIP_BADGE[getMembershipStatus(selectedUser.membership_is_active)] ?? "bg-gray-50 text-gray-400 border-gray-200"
-                    }`}>
-                      {getMembershipStatus(selectedUser.membership_is_active)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                        MEMBERSHIP_BADGE[getMembershipStatus(selectedUser.membership_is_active)] ?? "bg-gray-50 text-gray-400 border-gray-200"
+                      }`}>
+                        {getMembershipStatus(selectedUser.membership_is_active)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleToggleMembership}
+                        disabled={membershipToggling}
+                        className={`text-xs px-2 py-0.5 rounded border font-medium transition-colors disabled:opacity-50 ${
+                          selectedUser.membership_is_active
+                            ? "border-red-200 text-red-600 hover:bg-red-50"
+                            : "border-green-200 text-green-600 hover:bg-green-50"
+                        }`}
+                      >
+                        {membershipToggling ? "처리 중..." : selectedUser.membership_is_active ? "비활성화" : "활성화"}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
