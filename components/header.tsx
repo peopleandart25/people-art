@@ -250,7 +250,7 @@ export function Header() {
                     )}
                   </Button>
                 </>
-              ) : (
+              ) : profile ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -260,6 +260,8 @@ export function Header() {
                   <User className="h-3.5 w-3.5" />
                   마이페이지
                 </Button>
+              ) : (
+                <div className="h-8 w-[110px] rounded-md bg-gray-100 animate-pulse" />
               )}
               <Button
                 variant="outline"
@@ -378,7 +380,7 @@ export function Header() {
                           )}
                         </Button>
                       </>
-                    ) : (
+                    ) : profile ? (
                       <Button
                         variant="outline"
                         className="w-full justify-start gap-2"
@@ -387,6 +389,8 @@ export function Header() {
                         <User className="h-4 w-4" />
                         마이페이지
                       </Button>
+                    ) : (
+                      <div className="h-10 w-full rounded-md bg-gray-100 animate-pulse" />
                     )}
                     <Button 
                       variant="ghost" 

@@ -56,5 +56,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  const response = NextResponse.json({ ok: true })
+  response.cookies.set("pa_onboarded", "", { path: "/", maxAge: 0 })
+  return response
 }

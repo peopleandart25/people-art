@@ -16,12 +16,55 @@ export async function POST(
   // 캐스팅 존재 및 마감 여부 확인
   const { data: casting } = await serviceClient
     .from("castings")
-    .select("id, is_closed")
+    .select("id, is_closed, birth_year_start, birth_year_end, gender")
     .eq("id", castingId)
     .single()
 
   if (!casting) return NextResponse.json({ error: "존재하지 않는 공고입니다." }, { status: 404 })
   if (casting.is_closed) return NextResponse.json({ error: "마감된 공고입니다." }, { status: 400 })
+
+  // 아티스트 프로필 조회 (출생연도/성별 검증)
+  const { data: artistProfile } = await serviceClient
+    .from("artist_profiles")
+    .select("birth_date, gender")
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (!artistProfile) {
+    return NextResponse.json({ error: "아티스트 프로필을 먼저 등록해주세요." }, { status: 400 })
+  }
+
+  const { birth_year_start, birth_year_end, gender: castingGender } = casting as {
+    birth_year_start: number | null
+    birth_year_end: number | null
+    gender: string | null
+  }
+  const { birth_date, gender: userGender } = artistProfile as {
+    birth_date: string | null
+    gender: string | null
+  }
+
+  if ((birth_year_start || birth_year_end) && birth_date) {
+    const userBirthYear = new Date(birth_date).getFullYear()
+    if (
+      (birth_year_start && userBirthYear < birth_year_start) ||
+      (birth_year_end && userBirthYear > birth_year_end)
+    ) {
+      return NextResponse.json(
+        {
+          error: `이 공고는 ${birth_year_start ?? "?"}년생 ~ ${birth_year_end ?? "?"}년생까지만 지원 가능합니다.`,
+        },
+        { status: 400 }
+      )
+    }
+  }
+
+  if (castingGender && castingGender !== "무관" && userGender && castingGender !== userGender) {
+    return NextResponse.json(
+      { error: `이 공고는 ${castingGender} 지원자만 지원 가능합니다.` },
+      { status: 400 }
+    )
+  }
 
   const { data, error } = await serviceClient
     .from("casting_applications")

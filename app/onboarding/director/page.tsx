@@ -80,8 +80,7 @@ export default function DirectorOnboardingPage() {
         throw new Error(data.error ?? "저장 실패")
       }
       toast({ title: "프로필이 등록되었습니다." })
-      router.push("/casting-director")
-      router.refresh()
+      window.location.href = "/casting-director"
     } catch (err) {
       toast({ title: "오류 발생", description: err instanceof Error ? err.message : "다시 시도해주세요.", variant: "destructive" })
     } finally {

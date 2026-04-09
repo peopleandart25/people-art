@@ -1581,15 +1581,27 @@ export default function CastingDirectorPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="birth_year_start">출생연도 시작</Label>
-                  <Input
-                    id="birth_year_start"
-                    type="number"
-                    value={form.birth_year_start}
-                    onChange={(e) => updateForm("birth_year_start", e.target.value)}
-                    placeholder="예: 1990"
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_year_start">출생연도 시작</Label>
+                    <Input
+                      id="birth_year_start"
+                      type="number"
+                      value={form.birth_year_start}
+                      onChange={(e) => updateForm("birth_year_start", e.target.value)}
+                      placeholder="예: 1990"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_year_end">출생연도 종료</Label>
+                    <Input
+                      id="birth_year_end"
+                      type="number"
+                      value={form.birth_year_end}
+                      onChange={(e) => updateForm("birth_year_end", e.target.value)}
+                      placeholder="예: 2005"
+                    />
+                  </div>
                 </div>
               </div>
 
