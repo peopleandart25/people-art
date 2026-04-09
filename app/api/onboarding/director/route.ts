@@ -24,6 +24,20 @@ export async function POST(request: Request) {
   }
 
   const serviceClient = createServiceClient()
+
+  // 거절된 CD는 재제출 불가 (관리자 문의 유도)
+  const { data: existing } = await serviceClient
+    .from("profiles")
+    .select("cd_approval_status")
+    .eq("id", user.id)
+    .single()
+  if ((existing as { cd_approval_status: string | null } | null)?.cd_approval_status === "rejected") {
+    return NextResponse.json(
+      { error: "가입이 거절되었습니다. 관리자에게 문의하세요." },
+      { status: 409 }
+    )
+  }
+
   const nowIso = new Date().toISOString()
   const { error } = await serviceClient
     .from("profiles")
@@ -34,6 +48,7 @@ export async function POST(request: Request) {
       job_title: jobTitle.trim() || null,
       role: "casting_director",
       status: "활성",
+      cd_approval_status: "pending",
       privacy_agreed_at: nowIso,
       marketing_agreed_at: marketingAgreed ? nowIso : null,
       updated_at: nowIso,

@@ -124,7 +124,8 @@ export function useProfile() {
     const { error } = await supabase.storage.from("portfolios").upload(path, file, { upsert: true })
     if (error) throw new Error(error.message)
     const { data } = supabase.storage.from("portfolios").getPublicUrl(path)
-    return data.publicUrl
+    // 캐시버스터 쿼리로 portfolio_url 문자열을 변경 → DB 트리거가 portfolio_updated_at 자동 갱신
+    return `${data.publicUrl}?t=${Date.now()}`
   }
 
   // 전체 프로필 저장

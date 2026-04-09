@@ -1,26 +1,18 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { requireApprovedDirector } from "@/lib/auth/require-approved-cd"
 
 async function requireDirector() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
   const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || profile.role !== "casting_director") return null
-  return user
+  return requireApprovedDirector(supabase, serviceClient)
 }
 
 // GET /api/director/proposals?status=pending
 export async function GET(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get("status")
@@ -84,8 +76,9 @@ export async function GET(request: Request) {
 // POST /api/director/proposals
 // body: { artist_user_ids: string[], casting_id?: string, message?: string }
 export async function POST(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const body = await request.json()
   const { artist_user_ids, casting_id, message } = body as {
@@ -166,8 +159,9 @@ export async function POST(request: Request) {
 // DELETE /api/director/proposals
 // body: { proposal_id: string }
 export async function DELETE(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { proposal_id } = await request.json() as { proposal_id: string }
   if (!proposal_id) return NextResponse.json({ error: "proposal_id가 필요합니다." }, { status: 400 })

@@ -1,25 +1,17 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { requireApprovedDirector } from "@/lib/auth/require-approved-cd"
 
 async function requireDirector() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
   const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || profile.role !== "casting_director") return null
-  return user
+  return requireApprovedDirector(supabase, serviceClient)
 }
 
 export async function GET(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { searchParams } = new URL(request.url)
   const castingId = searchParams.get("casting_id")
@@ -105,8 +97,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const body = await request.json()
   const serviceClient = createServiceClient()
@@ -122,8 +115,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { id, admin_status, admin_note, application_id, ...payload } = await request.json()
 
@@ -185,8 +179,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { id } = await request.json()
   if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 })

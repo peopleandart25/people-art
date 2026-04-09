@@ -327,12 +327,14 @@ export default function MyPage() {
         if (uploaded) mainPhotoUrl = uploaded
       }
 
-      // 포트폴리오 업로드
+      // 포트폴리오 업로드 (DB 트리거가 portfolio_updated_at 자동 갱신)
       let portfolioUrl = portfolioFile?.url ?? null
-      let portfolioFileName = portfolioFile?.name ?? null
+      const portfolioFileName = portfolioFile?.name ?? null
       if (portfolioFile?.file) {
         const uploaded = await uploadPortfolio(portfolioFile.file)
-        if (uploaded) portfolioUrl = uploaded
+        if (uploaded) {
+          portfolioUrl = uploaded
+        }
       }
 
       await saveProfile({

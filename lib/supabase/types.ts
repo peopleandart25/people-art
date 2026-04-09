@@ -201,6 +201,7 @@ export type Database = {
           is_public: boolean | null
           portfolio_file_name: string | null
           portfolio_url: string | null
+          portfolio_updated_at: string | null
           school: string | null
           updated_at: string | null
           show_in_artist_list: boolean | null
@@ -221,6 +222,7 @@ export type Database = {
           is_public?: boolean | null
           portfolio_file_name?: string | null
           portfolio_url?: string | null
+          portfolio_updated_at?: string | null
           school?: string | null
           show_in_artist_list?: boolean | null
           updated_at?: string | null
@@ -241,6 +243,7 @@ export type Database = {
           is_public?: boolean | null
           portfolio_file_name?: string | null
           portfolio_url?: string | null
+          portfolio_updated_at?: string | null
           school?: string | null
           show_in_artist_list?: boolean | null
           updated_at?: string | null
@@ -842,6 +845,7 @@ export type Database = {
           role: string
           status: string
           status_reason: string | null
+          cd_approval_status: string | null
           updated_at: string | null
         }
         Insert: {
@@ -861,6 +865,7 @@ export type Database = {
           role?: string
           status?: string
           status_reason?: string | null
+          cd_approval_status?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -880,6 +885,7 @@ export type Database = {
           role?: string
           status?: string
           status_reason?: string | null
+          cd_approval_status?: string | null
           updated_at?: string | null
         }
         Relationships: []

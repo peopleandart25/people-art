@@ -320,27 +320,32 @@ export default function CastingDirectorPage() {
   // — effects —
   useEffect(() => {
     if (!loading) {
-      if (profile?.role !== "casting_director") {
+      if (profile && profile.role !== "casting_director") {
         router.replace("/")
         return
       }
-      fetchCastings()
+      // 승인되지 않은 CD에게는 데이터 fetch 자체를 막아 403 호출 낭비 방지
+      if (profile?.role === "casting_director" && profile?.cd_approval_status === "approved") {
+        fetchCastings()
+      }
     }
   }, [loading, profile, router, fetchCastings])
 
   // profile view는 대시보드 내 인라인 폼으로 처리 (마이페이지 이동 X)
 
-  useEffect(() => {
-    if (activeView === "bookmarks") {
-      fetchBookmarks()
-    }
-  }, [activeView, fetchBookmarks])
+  const isCdApproved = profile?.role === "casting_director" && profile?.cd_approval_status === "approved"
 
   useEffect(() => {
-    if (activeView === "proposals") {
+    if (isCdApproved && activeView === "bookmarks") {
+      fetchBookmarks()
+    }
+  }, [isCdApproved, activeView, fetchBookmarks])
+
+  useEffect(() => {
+    if (isCdApproved && activeView === "proposals") {
       fetchProposals()
     }
-  }, [activeView, fetchProposals])
+  }, [isCdApproved, activeView, fetchProposals])
 
   useEffect(() => {
     if (selectedCastingId && !applicationsMap[selectedCastingId]) {
@@ -671,7 +676,36 @@ export default function CastingDirectorPage() {
     )
   }
 
-  if (profile?.role !== "casting_director") return null
+  if (profile && profile.role !== "casting_director") {
+    router.replace("/")
+    return null
+  }
+  if (!profile) return null
+
+  if (profile?.cd_approval_status !== "approved") {
+    const status = profile?.cd_approval_status ?? "pending"
+    const statusLabel = status === "rejected" ? "승인 거절됨" : "승인 대기 중"
+    const statusColor = status === "rejected" ? "bg-red-100 text-red-700 border-red-200" : "bg-yellow-100 text-yellow-700 border-yellow-200"
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F8F7F4] p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md w-full text-center">
+          <div className="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Briefcase className="w-7 h-7 text-orange-500" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">캐스팅 디렉터 승인 대기</h1>
+          <p className="text-sm text-gray-500 mb-4">관리자 승인 후 캐스팅 디렉터 기능을 이용하실 수 있습니다.</p>
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
+            {statusLabel}
+          </span>
+          <div className="mt-6">
+            <Button variant="outline" onClick={() => router.push("/")} className="w-full">
+              홈으로
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F8F7F4]">

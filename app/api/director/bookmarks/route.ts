@@ -1,28 +1,20 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { requireApprovedDirector } from "@/lib/auth/require-approved-cd"
 
 async function requireDirector() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
   const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || (profile.role !== "casting_director" && profile.role !== "admin")) return null
-  return user
+  return requireApprovedDirector(supabase, serviceClient)
 }
 
 // GET /api/director/bookmarks
 // ?artist_profile_id=xxx → { bookmarked: bool }
 // (no param) → bookmark list
 export async function GET(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { searchParams } = new URL(request.url)
   const artistProfileId = searchParams.get("artist_profile_id")
@@ -80,8 +72,9 @@ export async function GET(request: Request) {
 
 // POST /api/director/bookmarks — add
 export async function POST(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { artist_profile_id } = await request.json()
   if (!artist_profile_id) return NextResponse.json({ error: "artist_profile_id required" }, { status: 400 })
@@ -97,8 +90,9 @@ export async function POST(request: Request) {
 
 // DELETE /api/director/bookmarks — remove
 export async function DELETE(request: Request) {
-  const user = await requireDirector()
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const auth = await requireDirector()
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const user = { id: auth.userId }
 
   const { artist_profile_id } = await request.json()
   if (!artist_profile_id) return NextResponse.json({ error: "artist_profile_id required" }, { status: 400 })

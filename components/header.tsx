@@ -36,7 +36,7 @@ type Notification = {
 
 export function Header() {
   const router = useRouter()
-  const { isLoggedIn, isPremium, isAdmin, profile, signOut } = useAuth()
+  const { isLoggedIn, isPremium, isAdmin, isCdApproved, profile, signOut } = useAuth()
   const { toast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -241,9 +241,13 @@ export function Header() {
                     size="sm"
                     className="gap-1 whitespace-nowrap text-xs px-2"
                     onClick={() => router.push("/casting-director")}
+                    title={isCdApproved ? undefined : "관리자 승인 대기 중"}
                   >
                     <Briefcase className="h-3.5 w-3.5" />
                     디렉터 대시보드
+                    {!isCdApproved && (
+                      <span className="ml-1 text-[10px] text-yellow-600">(승인 대기)</span>
+                    )}
                   </Button>
                 </>
               ) : (
@@ -369,6 +373,9 @@ export function Header() {
                         >
                           <Briefcase className="h-4 w-4" />
                           디렉터 대시보드
+                          {!isCdApproved && (
+                            <span className="ml-auto text-[10px] text-yellow-600">승인 대기</span>
+                          )}
                         </Button>
                       </>
                     ) : (

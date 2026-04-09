@@ -37,6 +37,7 @@ const menuItems = [
   { label: "후기 관리", href: "/admin/reviews", icon: MessageSquare, adminOnly: false },
   { label: "지원기관 관리", href: "/admin/agencies", icon: Building2, adminOnly: false },
   { label: "양식 관리", href: "/admin/template", icon: FileText, adminOnly: false },
+  { label: "포트폴리오 관리", href: "/admin/portfolios", icon: FileText, adminOnly: false },
   { label: "배너 관리", href: "/admin/banners", icon: Image, adminOnly: true },
   { label: "설정", href: "/admin/settings", icon: Settings, adminOnly: true },
 ]

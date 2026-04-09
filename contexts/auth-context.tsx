@@ -21,6 +21,7 @@ interface AuthContextType {
   isLoggedIn: boolean
   isAdmin: boolean
   isPremium: boolean
+  isCdApproved: boolean
   signInWithKakao: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
@@ -111,8 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isLoggedIn = !!user
     const isAdmin = profile?.role === "admin"
     const isPremium = !!profile?.membership_is_active || profile?.role === "admin"
+    const isCdApproved = profile?.role !== "casting_director" || profile?.cd_approval_status === "approved"
     return {
-      user, profile, loading, isLoggedIn, isAdmin, isPremium,
+      user, profile, loading, isLoggedIn, isAdmin, isPremium, isCdApproved,
       signInWithKakao, signInWithGoogle, signOut, refetchProfile,
     }
   }, [user, profile, loading, signInWithKakao, signInWithGoogle, signOut, refetchProfile])

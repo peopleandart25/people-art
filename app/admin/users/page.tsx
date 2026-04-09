@@ -40,6 +40,7 @@ type Profile = {
   created_at: string | null
   updated_at: string | null
   membership_is_active: boolean
+  cd_approval_status: string | null
   artist_profiles: ArtistProfile[] | null
 }
 
@@ -170,7 +171,7 @@ export default function AdminUsersPage() {
       .from("profiles")
       .select(`
         id, name, email, phone, role, status, status_reason, activity_name,
-        created_at, updated_at, membership_is_active,
+        created_at, updated_at, membership_is_active, cd_approval_status,
         artist_profiles(birth_date, gender)
       ` as never)
       .order("created_at", { ascending: false })
@@ -305,6 +306,24 @@ export default function AdminUsersPage() {
       setUpdating(false)
       setIsDeleting(false)
     }
+  }
+
+  async function handleCdApproval(status: "pending" | "approved" | "rejected") {
+    if (!selectedUser) return
+    setUpdating(true)
+    const res = await fetch(`/api/admin/users/${selectedUser.id}/cd-approval`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      setError(err.error ?? "승인 상태 변경 실패")
+    } else {
+      await fetchProfiles()
+      setSelectedUser(prev => prev ? { ...prev, cd_approval_status: status } : prev)
+    }
+    setUpdating(false)
   }
 
   async function handleSave() {
@@ -654,6 +673,55 @@ export default function AdminUsersPage() {
                     onChange={(e) => setNewStatusReason(e.target.value)}
                   />
                 </div>
+
+                {/* CD 승인 상태 (캐스팅 디렉터만) */}
+                {selectedUser.role === "casting_director" && (
+                  <div className="space-y-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                    <Label className="text-sm font-medium text-purple-700">캐스팅 디렉터 승인</Label>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-gray-500">현재 상태:</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                        selectedUser.cd_approval_status === "approved"
+                          ? "bg-green-100 text-green-700 border-green-200"
+                          : selectedUser.cd_approval_status === "rejected"
+                          ? "bg-red-100 text-red-700 border-red-200"
+                          : "bg-yellow-100 text-yellow-700 border-yellow-200"
+                      }`}>
+                        {selectedUser.cd_approval_status === "approved" ? "승인됨"
+                          : selectedUser.cd_approval_status === "rejected" ? "거절됨"
+                          : "대기 중"}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updating || selectedUser.cd_approval_status === "approved"}
+                        onClick={() => handleCdApproval("approved")}
+                        className="text-green-700 border-green-200 hover:bg-green-50"
+                      >
+                        승인
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updating || selectedUser.cd_approval_status === "rejected"}
+                        onClick={() => handleCdApproval("rejected")}
+                        className="text-red-700 border-red-200 hover:bg-red-50"
+                      >
+                        거절
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updating || selectedUser.cd_approval_status === "pending"}
+                        onClick={() => handleCdApproval("pending")}
+                      >
+                        대기로 되돌리기
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-2 justify-between pt-2 border-t border-gray-100">
                   <Button
