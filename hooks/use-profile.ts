@@ -129,7 +129,7 @@ export function useProfile() {
   // PDF 업로드
   const uploadPortfolio = async (file: File): Promise<string | null> => {
     if (!user) return null
-    if (file.size > 20 * 1024 * 1024) throw new Error(`포트폴리오 PDF는 20MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`)
+    if (file.size > 100 * 1024 * 1024) throw new Error(`포트폴리오 PDF는 100MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`)
     const path = `${user.id}/portfolio.pdf`
     const { error } = await supabase.storage.from("portfolios").upload(path, file, { upsert: true })
     if (error) throw new Error(error.message)

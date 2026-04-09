@@ -302,7 +302,13 @@ export default function MyPage() {
 
   const handlePortfolioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setPortfolioFile({ name: file.name, url: URL.createObjectURL(file), file })
+    if (!file) return
+    if (file.size > 100 * 1024 * 1024) {
+      toast({ title: "파일 크기 초과", description: `PDF는 100MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`, variant: "destructive" })
+      e.target.value = ""
+      return
+    }
+    setPortfolioFile({ name: file.name, url: URL.createObjectURL(file), file })
   }
 
   const getEmbedUrl = (url: string, platform?: string) => {
