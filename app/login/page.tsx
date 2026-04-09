@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Phone, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -29,6 +30,7 @@ function LoginContent() {
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [phoneVerifying, setPhoneVerifying] = useState(false)
   const [signupPhone, setSignupPhone] = useState("")
+  const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/"
   const error = searchParams.get("error")
@@ -381,7 +383,9 @@ function LoginContent() {
                     {isLoading ? "가입 중..." : "회원가입"}
                   </Button>
                   <p className="text-xs text-center text-muted-foreground">
-                    가입 시 <a href="#" className="underline">이용약관</a>과 <a href="#" className="underline">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
+                    가입 시{" "}
+                    <button type="button" onClick={() => setPolicyModal("terms")} className="underline hover:text-foreground">이용약관</button>과{" "}
+                    <button type="button" onClick={() => setPolicyModal("privacy")} className="underline hover:text-foreground">개인정보처리방침</button>에 동의하는 것으로 간주됩니다.
                   </p>
                   <p className="text-sm text-center text-muted-foreground">
                     이미 계정이 있으신가요?{" "}
@@ -395,6 +399,22 @@ function LoginContent() {
           </div>
         </Card>
       </main>
+
+      {/* 이용약관 / 개인정보처리방침 모달 */}
+      <Dialog open={!!policyModal} onOpenChange={(open) => !open && setPolicyModal(null)}>
+        <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b shrink-0">
+            <DialogTitle>
+              {policyModal === "terms" ? "이용약관" : "개인정보처리방침"}
+            </DialogTitle>
+          </DialogHeader>
+          <iframe
+            src={policyModal === "terms" ? "/terms" : "/privacy"}
+            className="flex-1 w-full border-0"
+            title={policyModal === "terms" ? "이용약관" : "개인정보처리방침"}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
