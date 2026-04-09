@@ -87,8 +87,8 @@ export function useProfile() {
   // 메인 사진 업로드
   const uploadMainPhoto = async (file: File): Promise<string | null> => {
     if (!user) return null
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "파일 크기 초과", description: "프로필 사진은 10MB 이하만 업로드 가능합니다.", variant: "destructive" })
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "파일 크기 초과", description: `프로필 사진은 20MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`, variant: "destructive" })
       return null
     }
     const ext = file.name.split(".").pop()
@@ -102,8 +102,8 @@ export function useProfile() {
   // 서브 사진 업로드
   const uploadSubPhoto = async (file: File): Promise<string | null> => {
     if (!user) return null
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "파일 크기 초과", description: "사진은 10MB 이하만 업로드 가능합니다.", variant: "destructive" })
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "파일 크기 초과", description: `사진은 20MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`, variant: "destructive" })
       return null
     }
     const ext = file.name.split(".").pop()
@@ -117,7 +117,7 @@ export function useProfile() {
   // 영상 파일 업로드
   const uploadVideo = async (file: File): Promise<string | null> => {
     if (!user) return null
-    if (file.size > 50 * 1024 * 1024) throw new Error("영상 파일은 50MB 이하만 업로드 가능합니다.")
+    if (file.size > 50 * 1024 * 1024) throw new Error(`영상 파일은 50MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`)
     const ext = file.name.split(".").pop() ?? "mp4"
     const path = `${user.id}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from("videos").upload(path, file, { contentType: file.type || "video/mp4" })
@@ -129,7 +129,7 @@ export function useProfile() {
   // PDF 업로드
   const uploadPortfolio = async (file: File): Promise<string | null> => {
     if (!user) return null
-    if (file.size > 20 * 1024 * 1024) throw new Error("포트폴리오 PDF는 20MB 이하만 업로드 가능합니다.")
+    if (file.size > 20 * 1024 * 1024) throw new Error(`포트폴리오 PDF는 20MB 이하만 업로드 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`)
     const path = `${user.id}/portfolio.pdf`
     const { error } = await supabase.storage.from("portfolios").upload(path, file, { upsert: true })
     if (error) throw new Error(error.message)

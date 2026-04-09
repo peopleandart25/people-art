@@ -373,8 +373,8 @@ export default function MyPage() {
       let attachmentUrl = appTemplate.custom_attachment_url
       let attachmentName = appTemplate.custom_attachment_name
       if (templateAttachmentFile) {
-        if (templateAttachmentFile.size > 10 * 1024 * 1024) {
-          toast({ title: "파일 크기 초과", description: "첨부파일은 10MB 이하만 업로드 가능합니다.", variant: "destructive" })
+        if (templateAttachmentFile.size > 20 * 1024 * 1024) {
+          toast({ title: "파일 크기 초과", description: `첨부파일은 20MB 이하만 업로드 가능합니다. (현재: ${(templateAttachmentFile.size / 1024 / 1024).toFixed(1)}MB)`, variant: "destructive" })
           return
         }
         const ext = templateAttachmentFile.name.split(".").pop() ?? "pdf"
