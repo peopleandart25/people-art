@@ -85,9 +85,7 @@ export async function POST(request: Request) {
   const customMessage = template?.message?.trim()
 
   function buildEmailHtml(): string {
-    const greeting = customMessage
-      ? customMessage.replace(/\n/g, "<br>")
-      : `안녕하세요.<br><br>피플앤아트(people-art.co.kr)를 통해 프로필을 지원드립니다.`
+    const greeting = customMessage ? customMessage.replace(/\n/g, "<br>") : null
 
     const includeProfile = (template?.include_profile_link ?? true) && profileUrl
     const includePdf = (template?.include_pdf ?? true) && portfolioUrl
@@ -125,10 +123,11 @@ export async function POST(request: Request) {
           <p style="margin:4px 0 0;color:#ffffff;font-size:20px;font-weight:700;">${name} 배우 프로필 지원</p>
         </td></tr>
 
+        ${greeting ? `
         <!-- 메시지 -->
         <tr><td style="padding:28px 32px 20px;">
           <p style="margin:0;font-size:15px;color:#111827;line-height:1.7;">${greeting}</p>
-        </td></tr>
+        </td></tr>` : ""}
 
         <!-- 연락처 -->
         <tr><td style="padding:0 32px 24px;">
