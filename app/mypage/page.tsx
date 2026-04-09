@@ -1110,7 +1110,7 @@ export default function MyPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>추가 첨부 파일 (PDF 등)</Label>
+                  <Label>추가 첨부 파일 (PDF, MP4 등)</Label>
                   <div className="flex items-center gap-3">
                     <input
                       ref={templateAttachmentRef}
@@ -1140,7 +1140,7 @@ export default function MyPage() {
                         <button type="button" onClick={() => setAppTemplate(p => ({ ...p, custom_attachment_url: null, custom_attachment_name: null }))} className="text-muted-foreground hover:text-destructive ml-1">✕</button>
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">PDF, DOC 파일 (선택)</span>
+                      <span className="text-xs text-muted-foreground">PDF, MP4 등 (선택)</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">지원 이메일에 링크로 첨부됩니다.</p>
