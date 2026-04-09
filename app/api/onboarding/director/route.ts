@@ -57,6 +57,7 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const response = NextResponse.json({ ok: true })
-  response.cookies.set("pa_onboarded", "", { path: "/", maxAge: 0 })
+  // httpOnly 쿠키 삭제 (middleware.ts에서 signed 쿠키로 재발급)
+  response.cookies.delete("pa_onboarded")
   return response
 }

@@ -30,8 +30,8 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
-      { protocol: "https", hostname: "*.supabase.co" },
-      { protocol: "https", hostname: "*.supabase.in" },
+      // 프로덕션 Supabase 프로젝트로 고정 (이미지 최적화 남용 방지)
+      { protocol: "https", hostname: "ywokkwjetjyagqzvcepz.supabase.co" },
     ],
   },
   async redirects() {
@@ -40,6 +40,27 @@ const nextConfig = {
         source: "/partnership",
         destination: "/partners",
         permanent: true,
+      },
+    ]
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
+        ],
       },
     ]
   },

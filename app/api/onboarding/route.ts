@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   const serviceClient = createServiceClient()
 
-  // 전화번호 중복 체크
+  // 전화번호 pre-check (unique index가 실제 race 방어, 여기선 UX용 빠른 실패)
   if (phone) {
     const { data: existing } = await serviceClient
       .from("profiles")
@@ -49,6 +49,10 @@ export async function POST(request: Request) {
     .eq("id", user.id)
 
   if (profileError) {
+    // unique index 위반 시 409로 변환
+    if (profileError.code === "23505" && profileError.message?.includes("profiles_phone_unique")) {
+      return NextResponse.json({ error: "이미 가입된 휴대폰 번호입니다." }, { status: 409 })
+    }
     return NextResponse.json({ error: "프로필 저장 실패", detail: profileError.message }, { status: 500 })
   }
 
@@ -76,27 +80,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "배우 프로필 저장 실패", detail: artistError.message }, { status: 500 })
   }
 
-  // 3. career_items: 기존 삭제 후 재삽입
-  await serviceClient.from("career_items").delete().eq("user_id", user.id)
+  // 3. career_items 원자 교체 (delete + insert 단일 트랜잭션)
+  const careerItems = Array.isArray(careerList) ? careerList : []
+  const { error: careerError } = await (serviceClient as unknown as {
+    rpc: (name: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>
+  }).rpc("replace_career_items", {
+    p_user_id: user.id,
+    p_items: careerItems,
+  })
 
-  if (careerList && careerList.length > 0) {
-    const careerRows = careerList
-      .filter((c: { title: string }) => c.title?.trim())
-      .map((c: { category: string; year: string; title: string; role: string }, idx: number) => ({
-        user_id: user.id,
-        category: c.category,
-        year: c.year || null,
-        title: c.title,
-        role: c.role || null,
-        sort_order: idx,
-      }))
-
-    if (careerRows.length > 0) {
-      const { error: careerError } = await serviceClient.from("career_items").insert(careerRows)
-      if (careerError) {
-        return NextResponse.json({ error: "경력 저장 실패", detail: careerError.message }, { status: 500 })
-      }
-    }
+  if (careerError) {
+    return NextResponse.json({ error: "경력 저장 실패", detail: careerError.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

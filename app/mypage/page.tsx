@@ -67,11 +67,21 @@ export default function MyPage() {
   const [referralCode, setReferralCode] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/referral/me").then(r => r.json()).then(d => setReferralCode(d.referralCode ?? null))
+    const ac = new AbortController()
+    fetch("/api/referral/me", { signal: ac.signal })
+      .then(r => r.json())
+      .then(d => setReferralCode(d.referralCode ?? null))
+      .catch((err) => {
+        if (err?.name !== "AbortError") {
+          // 추천 코드 조회 실패는 치명적이지 않으므로 조용히 무시
+        }
+      })
+    return () => ac.abort()
   }, [])
   const { fullProfile, allTags, loading: profileLoading, uploadMainPhoto, uploadPortfolio, saveProfile } = useProfile()
 
-  const initialized = useRef(false)
+  // 계정 전환/리패치 시에도 폼을 재동기화하려고 userId 기준으로 guard
+  const initializedFor = useRef<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [schoolOpen, setSchoolOpen] = useState(false)
   const [videoLinkModal, setVideoLinkModal] = useState(false)
@@ -128,11 +138,11 @@ export default function MyPage() {
   const portfolioRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
-  // DB 데이터 → 폼 상태 동기화 (최초 1회만)
+  // DB 데이터 → 폼 상태 동기화 (authProfile.id가 바뀔 때마다 재동기화)
   useEffect(() => {
     if (profileLoading || authLoading || !authProfile) return
-    if (initialized.current) return
-    initialized.current = true
+    if (initializedFor.current === authProfile.id) return
+    initializedFor.current = authProfile.id
     const { artistProfile, careerItems, photos, videoAssets, socialLinks, statusTagIds: tagIds } = fullProfile
 
     setFormData({
@@ -200,10 +210,11 @@ export default function MyPage() {
   // 로그인 체크
   useEffect(() => {
     if (!authLoading && !isLoggedIn) router.push("/login?redirectTo=/mypage")
-  }, [authLoading, isLoggedIn])
+  }, [authLoading, isLoggedIn, router])
 
   useEffect(() => {
     if (!user) return
+    let cancelled = false
     const supabase = createClient()
     supabase
       .from("event_applications")
@@ -211,6 +222,7 @@ export default function MyPage() {
       .eq("user_id", user.id)
       .order("applied_at", { ascending: false })
       .then(({ data }) => {
+        if (cancelled) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setEventApplications((data as any[]) ?? [])
       })
@@ -220,6 +232,7 @@ export default function MyPage() {
       .eq("user_id", user.id)
       .order("sent_at", { ascending: false })
       .then(({ data }) => {
+        if (cancelled) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const items = ((data as any[]) ?? []).map((r: any) => ({
           id: r.id,
@@ -229,6 +242,7 @@ export default function MyPage() {
         }))
         setSupportHistoryItems(items)
       })
+    return () => { cancelled = true }
   }, [user])
 
   const handleMainPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {

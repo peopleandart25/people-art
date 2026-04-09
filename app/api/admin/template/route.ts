@@ -1,18 +1,9 @@
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/require-admin"
 import { NextResponse } from "next/server"
 
 const BUCKET = "templates"
 const FILE_NAME = "profile-form.pptx"
-
-async function requireAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const serviceClient = createServiceClient()
-  const { data: profile } = await serviceClient.from("profiles").select("role").eq("id", user.id).single()
-  if (!profile || !["admin", "sub_admin"].includes(profile.role)) return null
-  return user
-}
 
 // Signed Upload URL 발급 (클라이언트가 직접 Supabase에 업로드)
 export async function GET() {

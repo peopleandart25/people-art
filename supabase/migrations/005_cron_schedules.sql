@@ -1,28 +1,11 @@
--- pg_cron + pg_net을 사용한 Edge Function 스케줄 등록
--- 실행 전 Supabase 대시보드에서 pg_cron, pg_net extension 활성화 필요
-
--- membership-expiry: 매일 자정 (UTC 00:00) 만료된 멤버십 처리
-select cron.schedule(
-  'membership-expiry-daily',
-  '0 0 * * *',
-  $$
-  select net.http_post(
-    url := 'https://ywokkwjetjyagqzvcepz.supabase.co/functions/v1/membership-expiry',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3b2trd2pldGp5YWdxenZjZXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwOTM4MDksImV4cCI6MjA4OTY2OTgwOX0.CJG3mVoP7CUC4tfrDSUgpsrTAgQsihybX02xz1mluVU"}'::jsonb,
-    body := '{}'::jsonb
-  );
-  $$
-);
-
--- membership-renewal: 매일 자정 (UTC 00:00) 24시간 내 만료 예정 + 자동갱신 멤버십 결제
-select cron.schedule(
-  'membership-renewal-daily',
-  '0 0 * * *',
-  $$
-  select net.http_post(
-    url := 'https://ywokkwjetjyagqzvcepz.supabase.co/functions/v1/membership-renewal',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3b2trd2pldGp5YWdxenZjZXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwOTM4MDksImV4cCI6MjA4OTY2OTgwOX0.CJG3mVoP7CUC4tfrDSUgpsrTAgQsihybX02xz1mluVU"}'::jsonb,
-    body := '{}'::jsonb
-  );
-  $$
-);
+-- DEPRECATED: 이 마이그레이션은 하드코드 anon JWT 문제로 인해 비활성화되었습니다.
+-- 대체 마이그레이션: 20260410_cron_schedules_secure.sql
+--
+-- 새 마이그레이션은 Supabase Vault(vault.secrets)에서 'cron_auth_token',
+-- 'functions_base_url' 시크릿을 읽어서 cron 작업을 생성합니다.
+-- fresh 환경에서는 아래 두 시크릿을 먼저 등록해야 합니다:
+--   SELECT vault.create_secret('<anon jwt>', 'cron_auth_token');
+--   SELECT vault.create_secret('https://<project>.supabase.co/functions/v1', 'functions_base_url');
+--
+-- no-op
+SELECT 1;

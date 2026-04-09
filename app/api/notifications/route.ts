@@ -48,7 +48,17 @@ export async function PATCH(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 })
 
-  const body = await request.json() as { id?: string }
+  const body = (await request.json().catch(() => ({}))) as { id?: unknown }
+
+  // id가 제공된 경우 UUID 형식만 허용 (잘못된 타입으로 인한 500 방지)
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  let targetId: string | null = null
+  if (body.id !== undefined) {
+    if (typeof body.id !== "string" || !UUID_RE.test(body.id)) {
+      return NextResponse.json({ error: "유효하지 않은 id" }, { status: 400 })
+    }
+    targetId = body.id
+  }
 
   const serviceClient = createServiceClient()
 
@@ -57,8 +67,9 @@ export async function PATCH(request: Request) {
     .update({ is_read: true } as never)
     .eq("user_id", user.id)
 
-  const { error } = body.id
-    ? await (baseQuery as any).eq("id", body.id)
+  const { error } = targetId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? await (baseQuery as any).eq("id", targetId)
     : await baseQuery
 
   if (error) return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 })

@@ -79,9 +79,15 @@ export async function POST(request: Request) {
   }
 
   // PortOne API로 결제 검증
-  const portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
-    headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
-  })
+  let portoneRes: Response
+  try {
+    portoneRes = await fetch(`https://api.portone.io/payments/${encodeURIComponent(paymentId)}`, {
+      headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    return NextResponse.json({ error: "결제 서버 응답 지연" }, { status: 504 })
+  }
   if (!portoneRes.ok) {
     return NextResponse.json({ error: "결제 정보 조회 실패" }, { status: 400 })
   }

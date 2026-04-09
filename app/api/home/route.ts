@@ -9,7 +9,12 @@ export async function GET() {
     supabase.from("news").select("id, title, image_url, published_at").eq("is_published", true).order("published_at", { ascending: false }).limit(12),
     supabase.from("partners").select("id, name, description, image_url, link").eq("is_active", true).order("sort_order", { ascending: true }),
     supabase.from("reviews").select("id, title, content, user_id, category, created_at, is_hidden").eq("is_hidden", false).order("created_at", { ascending: false }).limit(5),
-    supabase.from("artist_profiles").select("id, user_id, show_in_artist_list, profiles(name)" as never).limit(30),
+    // show_in_artist_list = false 인 아티스트는 서버에서 제외 (이름까지 새어나가지 않도록)
+    supabase
+      .from("artist_profiles")
+      .select("id, user_id, show_in_artist_list, profiles(name)" as never)
+      .or("show_in_artist_list.is.null,show_in_artist_list.eq.true")
+      .limit(30),
   ])
 
   // artist_photos는 실제 아티스트 IDs로만 필터링 (전체 페칭 방지)
@@ -20,14 +25,11 @@ export async function GET() {
     : { data: [] }
 
   const photoMap = new Map((artistPhotos ?? []).map((p) => [p.user_id, p.url]))
-  const artists = artistProfileList.map((ap) => {
-    const showPhoto = ap.show_in_artist_list !== false
-    return {
-      id: ap.id,
-      name: ap.profiles?.name ?? "",
-      profileImage: showPhoto ? (photoMap.get(ap.user_id) ?? null) : null,
-    }
-  })
+  const artists = artistProfileList.map((ap) => ({
+    id: ap.id,
+    name: ap.profiles?.name ?? "",
+    profileImage: photoMap.get(ap.user_id) ?? null,
+  }))
 
   // 에러 로깅 (graceful degradation 유지)
   const errors = [events, tours, news, partners, reviews, artistProfilesRes].filter((r) => r.error).map((r) => r.error?.message)

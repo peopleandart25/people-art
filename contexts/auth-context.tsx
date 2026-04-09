@@ -99,8 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
-    // 미들웨어 우회 쿠키 정리 (사용자별 마킹)
-    document.cookie = "pa_onboarded=; path=/; max-age=0"
+    // pa_onboarded 쿠키는 httpOnly라 JS에서 삭제 불가.
+    // 다음 요청에서 미들웨어가 세션 없음/userId 불일치를 감지해 무효화함.
     window.location.href = "/"
   }, [supabase])
 

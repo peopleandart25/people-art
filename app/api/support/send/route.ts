@@ -5,6 +5,29 @@ import { Resend } from "resend"
 const resend = new Resend(process.env.RESEND_API_KEY)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://people-art.co.kr"
 
+// HTML injection 방어: 사용자 입력값을 이메일 HTML에 삽입하기 전 escape
+function escapeHtml(raw: string | null | undefined): string {
+  if (!raw) return ""
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+// URL은 http(s)만 허용, javascript: 등 스킴 차단
+function safeUrl(raw: string | null | undefined): string {
+  if (!raw) return "#"
+  try {
+    const u = new URL(raw)
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "#"
+    return u.toString().replace(/"/g, "%22")
+  } catch {
+    return "#"
+  }
+}
+
 type ApplicationTemplate = {
   user_id: string
   message: string | null
@@ -94,31 +117,47 @@ export async function POST(request: Request) {
 
   const customMessage = template?.message?.trim()
 
-  function buildEmailHtml(): string {
-    const greeting = customMessage
-      ? customMessage.replace(/\n/g, "<br>")
-      : `안녕하세요. 배우 ${name}입니다.<br><br>귀사에 제 프로필 파일과 연기 영상 링크를 첨부하여 보내드립니다.<br>바쁘시겠지만 긍정적으로 검토해 주시면 감사하겠습니다.<br><br>앞으로 좋은 인연으로 뵐 수 있기를 기대합니다. 감사합니다.`
+  // 이메일 HTML에 주입될 모든 사용자 값은 escape
+  const safeName = escapeHtml(name)
+  const safePhone = escapeHtml(phone)
+  const safeReplyTo = escapeHtml(replyTo)
+  const safeProfileUrl = profileUrl ? safeUrl(profileUrl) : null
+  const safePortfolioUrl = portfolioUrl ? safeUrl(portfolioUrl) : null
+  const safeVideoLinks = videoLinks.map((v) => ({
+    url: safeUrl(v.url),
+    name: escapeHtml(v.name),
+  }))
+  const safeCustomAttachmentUrl = template?.custom_attachment_url
+    ? safeUrl(template.custom_attachment_url)
+    : null
+  const safeCustomAttachmentName = escapeHtml(template?.custom_attachment_name ?? "첨부파일")
 
-    const includeProfile = (template?.include_profile_link ?? true) && profileUrl
-    const includePdf = (template?.include_pdf ?? true) && portfolioUrl
-    const includeVideos = (template?.include_videos ?? false) && videoLinks.length > 0
-    const includeCustom = !!template?.custom_attachment_url
+  function buildEmailHtml(): string {
+    // customMessage는 먼저 escape 후 개행만 <br>로 변환 → HTML 태그 주입 차단
+    const greeting = customMessage
+      ? escapeHtml(customMessage).replace(/\n/g, "<br>")
+      : `안녕하세요. 배우 ${safeName}입니다.<br><br>귀사에 제 프로필 파일과 연기 영상 링크를 첨부하여 보내드립니다.<br>바쁘시겠지만 긍정적으로 검토해 주시면 감사하겠습니다.<br><br>앞으로 좋은 인연으로 뵐 수 있기를 기대합니다. 감사합니다.`
+
+    const includeProfile = (template?.include_profile_link ?? true) && !!safeProfileUrl
+    const includePdf = (template?.include_pdf ?? true) && !!safePortfolioUrl
+    const includeVideos = (template?.include_videos ?? false) && safeVideoLinks.length > 0
+    const includeCustom = !!safeCustomAttachmentUrl
 
     const ctaButtons = [
-      includeProfile && `<a href="${profileUrl}" style="display:inline-block;padding:10px 20px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;margin:4px;">프로필 보기</a>`,
-      includePdf && `<a href="${portfolioUrl}" style="display:inline-block;padding:10px 20px;background:#ffffff;color:#f97316;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;border:1.5px solid #f97316;margin:4px;">PDF 다운로드</a>`,
+      includeProfile && `<a href="${safeProfileUrl}" style="display:inline-block;padding:10px 20px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;margin:4px;">프로필 보기</a>`,
+      includePdf && `<a href="${safePortfolioUrl}" style="display:inline-block;padding:10px 20px;background:#ffffff;color:#f97316;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;border:1.5px solid #f97316;margin:4px;">PDF 다운로드</a>`,
     ].filter(Boolean).join("\n")
 
     const videoSection = includeVideos ? `
       <tr><td style="padding:0 32px 16px;">
         <p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;">영상 링크</p>
-        ${videoLinks.map(v => `<p style="margin:0 0 4px;font-size:14px;"><a href="${v.url}" style="color:#f97316;text-decoration:none;">▶ ${v.name}</a></p>`).join("")}
+        ${safeVideoLinks.map(v => `<p style="margin:0 0 4px;font-size:14px;"><a href="${v.url}" style="color:#f97316;text-decoration:none;">▶ ${v.name}</a></p>`).join("")}
       </td></tr>` : ""
 
     const customSection = includeCustom ? `
       <tr><td style="padding:0 32px 16px;">
         <p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;">첨부파일</p>
-        <a href="${template.custom_attachment_url}" style="color:#f97316;font-size:14px;text-decoration:none;">📎 ${template.custom_attachment_name ?? "첨부파일"}</a>
+        <a href="${safeCustomAttachmentUrl}" style="color:#f97316;font-size:14px;text-decoration:none;">📎 ${safeCustomAttachmentName}</a>
       </td></tr>` : ""
 
     return `<!DOCTYPE html>
@@ -132,7 +171,7 @@ export async function POST(request: Request) {
         <!-- 헤더 -->
         <tr><td style="background:#f97316;padding:20px 32px;">
           <p style="margin:0;color:#ffffff;font-size:13px;font-weight:500;opacity:0.9;">People &amp; Art</p>
-          <p style="margin:4px 0 0;color:#ffffff;font-size:20px;font-weight:700;">${name} 배우 프로필 지원</p>
+          <p style="margin:4px 0 0;color:#ffffff;font-size:20px;font-weight:700;">${safeName} 배우 프로필 지원</p>
         </td></tr>
 
         ${greeting ? `
@@ -144,9 +183,9 @@ export async function POST(request: Request) {
         <!-- 연락처 -->
         <tr><td style="padding:0 32px 24px;">
           <table style="background:#f9fafb;border-radius:8px;width:100%;padding:16px;" cellpadding="0" cellspacing="0">
-            <tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">이름</span>${name}</td></tr>
-            ${phone ? `<tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">연락처</span>${phone}</td></tr>` : ""}
-            ${replyTo ? `<tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">이메일</span>${replyTo}</td></tr>` : ""}
+            <tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">이름</span>${safeName}</td></tr>
+            ${safePhone ? `<tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">연락처</span>${safePhone}</td></tr>` : ""}
+            ${safeReplyTo ? `<tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">이메일</span>${safeReplyTo}</td></tr>` : ""}
           </table>
         </td></tr>
 
@@ -169,11 +208,14 @@ export async function POST(request: Request) {
 </html>`
   }
 
+  // From header display name sanitize (RFC 5322 위험 문자 제거)
+  const safeFromName = (name || "User").replace(/["<>,;:\\\r\n]/g, "").slice(0, 60) || "User"
+
   // 이메일 병렬 발송
   const sendResults = await Promise.allSettled(
     validAgencies.map(async (agency) => {
       await resend.emails.send({
-        from: `${name} via People & Art <no-reply@people-art.co.kr>`,
+        from: `${safeFromName} via People & Art <no-reply@people-art.co.kr>`,
         to: agency.email!,
         ...(replyTo ? { replyTo } : {}),
         subject: `[프로필 지원] ${name} 배우 프로필 제출`,

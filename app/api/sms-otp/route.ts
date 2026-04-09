@@ -92,21 +92,27 @@ export async function POST(request: Request) {
   const apiKey = process.env.COOLSMS_API_KEY!
   const apiSecret = process.env.COOLSMS_API_SECRET!
 
-  const res = await fetch("https://api.coolsms.co.kr/messages/v4/send", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: getCoolSMSAuthHeader(apiKey, apiSecret),
-    },
-    body: JSON.stringify({
-      message: {
-        to,
-        from,
-        text: `[피플앤아트] 인증번호는 ${otp}입니다. (5분 이내 입력)`,
-        type: "SMS",
+  let res: Response
+  try {
+    res = await fetch("https://api.coolsms.co.kr/messages/v4/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: getCoolSMSAuthHeader(apiKey, apiSecret),
       },
-    }),
-  })
+      body: JSON.stringify({
+        message: {
+          to,
+          from,
+          text: `[피플앤아트] 인증번호는 ${otp}입니다. (5분 이내 입력)`,
+          type: "SMS",
+        },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    return NextResponse.json({ error: "SMS 서버 응답 지연" }, { status: 504 })
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

@@ -405,14 +405,17 @@ function CastingDirectorLinksGrid() {
   const [activeCastingCount, setActiveCastingCount] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch("/api/director/castings")
+    const ac = new AbortController()
+    fetch("/api/director/castings", { signal: ac.signal })
       .then((r) => r.json())
       .then((data) => {
+        if (ac.signal.aborted) return
         if (Array.isArray(data)) {
           setActiveCastingCount(data.filter((c: { is_closed: boolean }) => !c.is_closed).length)
         }
       })
       .catch(() => {})
+    return () => ac.abort()
   }, [])
 
   const tileClass = "group flex flex-col items-center justify-center rounded-2xl bg-card p-3 sm:p-4 border border-border transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 h-[130px] sm:h-[150px] lg:h-[180px]"
@@ -485,9 +488,15 @@ export function HeroBanner({ initialBanners }: { initialBanners?: DBBanner[] }) 
 
   useEffect(() => {
     if (!isPremium || profile?.role === "casting_director" || profile?.role === "admin") return
-    fetch("/api/artist/proposals?count=true")
+    const ac = new AbortController()
+    fetch("/api/artist/proposals?count=true", { signal: ac.signal })
       .then((r) => r.json())
-      .then((d) => { if (typeof d?.pending === "number") setPendingProposalCount(d.pending) })
+      .then((d) => {
+        if (ac.signal.aborted) return
+        if (typeof d?.pending === "number") setPendingProposalCount(d.pending)
+      })
+      .catch(() => {})
+    return () => ac.abort()
   }, [isPremium, profile?.role])
 
   // DB 배너가 있으면 DB 데이터로, 없으면 정적 데이터로 폴백
@@ -501,8 +510,8 @@ export function HeroBanner({ initialBanners }: { initialBanners?: DBBanner[] }) 
         ariaLabel: banner.title || "배너",
         primaryBtn: banner.link_url ? { text: "자세히 보기", link: banner.link_url } : null,
         secondaryBtn: null,
-        bgStyle: banner.image_url && banner.image_url.startsWith("http")
-          ? { backgroundImage: `url(${encodeURI(banner.image_url)})`, backgroundSize: "cover", backgroundPosition: "center" }
+        bgStyle: banner.image_url && (banner.image_url.startsWith("https://") || banner.image_url.startsWith("/"))
+          ? { backgroundImage: `url("${banner.image_url.replace(/"/g, "")}")`, backgroundSize: "cover", backgroundPosition: "center" }
           : { background: "linear-gradient(135deg, #1c1917 0%, #292524 100%)" },
       }))
     : staticSlides

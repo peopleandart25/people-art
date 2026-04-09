@@ -63,27 +63,70 @@ export async function POST() {
   const included: IncludedEntry[] = []
   const missed: MissedEntry[] = []
 
-  for (const a of artists) {
+  // 동시성 제한 병렬 다운로드 (순차 다운로드로 인한 수십 초 지연 개선)
+  const CONCURRENCY = 12
+  type ArtistRow = {
+    user_id: string
+    portfolio_url: string | null
+    portfolio_file_name: string | null
+    portfolio_updated_at: string | null
+  }
+  type DownloadResult =
+    | { kind: "ok"; entry: IncludedEntry; buf: Buffer }
+    | { kind: "fail"; entry: MissedEntry }
+
+  async function downloadOne(a: ArtistRow): Promise<DownloadResult> {
     const p = profileMap.get(a.user_id) as { name: string | null; activity_name: string | null } | undefined
     const displayName = (p?.name ?? p?.activity_name ?? "unknown").replace(/[\\/:*?"<>|]/g, "_")
     const shortId = a.user_id.slice(0, 8)
     const fileName = `${displayName}_${shortId}.pdf`
-
     const path = `${a.user_id}/portfolio.pdf`
-    const { data: file, error: dlErr } = await serviceClient.storage.from("portfolios").download(path)
-    if (dlErr || !file) {
-      missed.push({ user_id: a.user_id, name: displayName, reason: dlErr?.message ?? "다운로드 실패" })
-      continue
-    }
 
-    const buf = Buffer.from(await file.arrayBuffer())
-    zip.file(fileName, buf)
-    included.push({
-      user_id: a.user_id,
-      name: displayName,
-      file_name: fileName,
-      portfolio_updated_at: a.portfolio_updated_at,
-    })
+    try {
+      const { data: file, error: dlErr } = await serviceClient.storage
+        .from("portfolios")
+        .download(path)
+      if (dlErr || !file) {
+        return {
+          kind: "fail",
+          entry: { user_id: a.user_id, name: displayName, reason: dlErr?.message ?? "다운로드 실패" },
+        }
+      }
+      const buf = Buffer.from(await file.arrayBuffer())
+      return {
+        kind: "ok",
+        entry: {
+          user_id: a.user_id,
+          name: displayName,
+          file_name: fileName,
+          portfolio_updated_at: a.portfolio_updated_at,
+        },
+        buf,
+      }
+    } catch (err) {
+      return {
+        kind: "fail",
+        entry: {
+          user_id: a.user_id,
+          name: displayName,
+          reason: err instanceof Error ? err.message : "다운로드 실패",
+        },
+      }
+    }
+  }
+
+  // chunk 단위로 병렬 처리 (네트워크 포화 방지)
+  for (let i = 0; i < artists.length; i += CONCURRENCY) {
+    const chunk = artists.slice(i, i + CONCURRENCY)
+    const results = await Promise.all(chunk.map(downloadOne))
+    for (const r of results) {
+      if (r.kind === "ok") {
+        zip.file(r.entry.file_name, r.buf)
+        included.push(r.entry)
+      } else {
+        missed.push(r.entry)
+      }
+    }
   }
 
   if (included.length === 0) {

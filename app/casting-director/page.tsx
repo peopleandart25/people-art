@@ -199,7 +199,8 @@ export default function CastingDirectorPage() {
 
   // — 기존 state —
   const [castings, setCastings] = useState<Casting[]>([])
-  const [loadingData, setLoadingData] = useState(true)
+  // 초기값 false: CD 미승인/미로그인 상태에서 무한 스피너 방지 (승인된 경우만 fetch 시점에 true로 올림)
+  const [loadingData, setLoadingData] = useState(false)
   const [activeView, setActiveView] = useState<ActiveView>("projects")
 
   // URL ?view= 파라미터로 초기 뷰 설정
@@ -319,15 +320,14 @@ export default function CastingDirectorPage() {
 
   // — effects —
   useEffect(() => {
-    if (!loading) {
-      if (profile && profile.role !== "casting_director") {
-        router.replace("/")
-        return
-      }
-      // 승인되지 않은 CD에게는 데이터 fetch 자체를 막아 403 호출 낭비 방지
-      if (profile?.role === "casting_director" && profile?.cd_approval_status === "approved") {
-        fetchCastings()
-      }
+    if (loading) return
+    if (profile && profile.role !== "casting_director") {
+      router.replace("/")
+      return
+    }
+    // 승인되지 않은 CD에게는 데이터 fetch 자체를 막아 403 호출 낭비 방지
+    if (profile?.role === "casting_director" && profile?.cd_approval_status === "approved") {
+      fetchCastings()
     }
   }, [loading, profile, router, fetchCastings])
 
@@ -640,7 +640,12 @@ export default function CastingDirectorPage() {
         const q = applicantSearch.toLowerCase()
         if (!a.profile?.name?.toLowerCase().includes(q)) return false
       }
-      if (filterGender !== "전체" && a.gender !== filterGender && !a.gender?.startsWith(filterGender === "남성" ? "남" : "여")) return false
+      if (filterGender !== "전체" && filterGender !== "무관") {
+        // GENDERS = ["남자","여자","무관"] — "무관"은 필터 건너뜀
+        // 일부 레거시 데이터는 "남성/여성"도 혼재 가능하므로 prefix 매칭 허용
+        const prefix = filterGender === "남자" ? "남" : filterGender === "여자" ? "여" : ""
+        if (prefix && !(a.gender === filterGender || a.gender?.startsWith(prefix))) return false
+      }
       if (a.birth_date) {
         const age = currentYear - new Date(a.birth_date).getFullYear()
         if (age < filterAgeRange[0] || age > filterAgeRange[1]) return false
@@ -676,11 +681,9 @@ export default function CastingDirectorPage() {
     )
   }
 
-  if (profile && profile.role !== "casting_director") {
-    router.replace("/")
-    return null
-  }
+  // 리다이렉트는 위 useEffect에서 처리. 렌더 중 router.replace 호출 금지.
   if (!profile) return null
+  if (profile.role !== "casting_director") return null
 
   if (profile?.cd_approval_status !== "approved") {
     const status = profile?.cd_approval_status ?? "pending"

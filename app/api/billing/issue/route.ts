@@ -4,15 +4,21 @@ import { NextResponse } from "next/server"
 
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!
 
-async function cancelPortOnePayment(paymentId: string): Promise<void> {
-  await fetch(`https://api.portone.io/payments/${paymentId}/cancel`, {
-    method: "POST",
-    headers: {
-      Authorization: `PortOne ${PORTONE_API_SECRET}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ reason: "DB 트랜잭션 실패로 인한 자동 취소" }),
-  })
+async function cancelPortOnePayment(paymentId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://api.portone.io/payments/${paymentId}/cancel`, {
+      method: "POST",
+      headers: {
+        Authorization: `PortOne ${PORTONE_API_SECRET}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason: "DB 트랜잭션 실패로 인한 자동 취소" }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export async function POST(request: Request) {
@@ -49,7 +55,11 @@ export async function POST(request: Request) {
   if (billingKey) {
     const billingKeyRes = await fetch(`https://api.portone.io/billing-keys/${billingKey}`, {
       headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
-    })
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => null)
+    if (!billingKeyRes) {
+      return NextResponse.json({ error: "결제 서버 응답 지연" }, { status: 504 })
+    }
     if (!billingKeyRes.ok) {
       return NextResponse.json({ error: "빌링키 검증 실패" }, { status: 400 })
     }
@@ -60,20 +70,26 @@ export async function POST(request: Request) {
   let portoneCharged = false
 
   if (finalAmount > 0 && billingKey) {
-    const payRes = await fetch(`https://api.portone.io/payments/${paymentId}/billing-key`, {
-      method: "POST",
-      headers: {
-        Authorization: `PortOne ${PORTONE_API_SECRET}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        billingKey,
-        orderName: "피플앤아트 멤버십 1개월",
-        amount: { total: finalAmount },
-        currency: "KRW",
-        customer: { id: user.id, email: user.email },
-      }),
-    })
+    let payRes: Response
+    try {
+      payRes = await fetch(`https://api.portone.io/payments/${paymentId}/billing-key`, {
+        method: "POST",
+        headers: {
+          Authorization: `PortOne ${PORTONE_API_SECRET}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          billingKey,
+          orderName: "피플앤아트 멤버십 1개월",
+          amount: { total: finalAmount },
+          currency: "KRW",
+          customer: { id: user.id, email: user.email },
+        }),
+        signal: AbortSignal.timeout(15_000),
+      })
+    } catch {
+      return NextResponse.json({ error: "결제 서버 응답 지연" }, { status: 504 })
+    }
 
     if (!payRes.ok) {
       const err = await payRes.json()
@@ -108,7 +124,14 @@ export async function POST(request: Request) {
   if (rpcError || !rpcResult?.success) {
     // DB 실패 시 PortOne 결제 취소 (보상 트랜잭션)
     if (portoneCharged) {
-      await cancelPortOnePayment(paymentId)
+      const cancelled = await cancelPortOnePayment(paymentId)
+      if (!cancelled) {
+        console.error("[BILLING RECONCILE REQUIRED]", {
+          paymentId,
+          userId: user.id,
+          error: rpcError?.message,
+        })
+      }
     }
     const message = rpcError?.message ?? "DB 처리 실패"
     if (message === "insufficient_points") {
@@ -117,12 +140,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "멤버십 처리 실패", details: message }, { status: 500 })
   }
 
-  // 추천인 보너스 지급 (아직 추천 보너스를 받지 않은 경우에만 1회 지급)
+  // 추천인 보너스 지급 — RPC에서 guarded claim + atomic increment 수행
   let finalPoints = rpcResult.new_points
   let referralBonusAwarded = false
 
   if (!currentProfile?.referral_bonus_claimed && referralCode) {
-    // app_settings에서 추천인 보너스 금액 조회 (미설정 시 지급 안 함)
     const { data: bonusSetting } = await serviceClient
       .from("app_settings")
       .select("value")
@@ -131,41 +153,16 @@ export async function POST(request: Request) {
     const referralBonus = parseInt(bonusSetting?.value ?? "0", 10)
 
     if (referralBonus > 0) {
-      // 추천인 조회 (premium 회원만 유효)
-      const { data: referrer } = await serviceClient
-        .from("profiles")
-        .select("id, points")
-        .eq("referral_code", referralCode.toUpperCase())
-        .single()
+      const { data: bonusResult, error: bonusError } = (await (serviceClient as unknown as {
+        rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+      }).rpc("award_referral_bonus", {
+        p_user_id: user.id,
+        p_referral_code: referralCode,
+        p_bonus_amount: referralBonus,
+      })) as { data: { awarded: boolean; new_points?: number; reason?: string } | null; error: { message: string } | null }
 
-      // 추천인이 활성 멤버십 보유 여부 확인
-      const { data: referrerMembership } = referrer
-        ? await serviceClient
-            .from("memberships")
-            .select("user_id")
-            .eq("user_id", referrer.id)
-            .eq("status", "active")
-            .maybeSingle()
-        : { data: null }
-
-      if (referrer && referrer.id !== user.id && referrerMembership) {
-        // 신규 가입자 포인트 지급 + referred_by 설정 + referral_bonus_claimed = true
-        finalPoints = rpcResult.new_points + referralBonus
-        await serviceClient
-          .from("profiles")
-          .update({
-            points: finalPoints,
-            referred_by: referralCode.toUpperCase(),
-            referral_bonus_claimed: true,
-          })
-          .eq("id", user.id)
-
-        // 추천인 포인트 지급
-        await serviceClient
-          .from("profiles")
-          .update({ points: (referrer.points ?? 0) + referralBonus })
-          .eq("id", referrer.id)
-
+      if (!bonusError && bonusResult?.awarded) {
+        finalPoints = bonusResult.new_points ?? finalPoints
         referralBonusAwarded = true
       }
     }

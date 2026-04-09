@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { signOnboardedCookie, verifyOnboardedCookie, type OnboardedRole } from '@/lib/auth/onboarded-cookie'
 
 // service role client 팩토리 (요청당 최대 1회 생성)
 function makeServiceClient() {
@@ -8,6 +9,26 @@ function makeServiceClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { cookies: { getAll() { return [] }, setAll() {} } }
   )
+}
+
+const ONBOARDED_COOKIE = 'pa_onboarded'
+const ONBOARDED_MAX_AGE = 60 * 60 * 24 * 1 // 1일 (역할 변경 시 drift 최소화)
+
+function setOnboardedCookie(
+  response: NextResponse,
+  role: OnboardedRole,
+  userId: string,
+) {
+  // async 래퍼: fire-and-forget이 아니라 호출부에서 await
+  return signOnboardedCookie(role, userId).then((value) => {
+    response.cookies.set(ONBOARDED_COOKIE, value, {
+      path: '/',
+      maxAge: ONBOARDED_MAX_AGE,
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+    })
+  })
 }
 
 export async function updateSession(request: NextRequest) {
@@ -71,23 +92,30 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // 이미 온보딩 완료된 사용자는 서명 쿠키로 우회 (DB 쿼리 절약)
+  const rawOnboardedCookie = user
+    ? request.cookies.get(ONBOARDED_COOKIE)?.value
+    : undefined
+  const verifiedRole: OnboardedRole | null = user && rawOnboardedCookie
+    ? await verifyOnboardedCookie(rawOnboardedCookie, user.id)
+    : null
+
   // 캐스팅 디렉터가 아티스트 온보딩(/onboarding)에 접근하면 디렉터 대시보드로 강제 리다이렉트
-  // 쿠키 우회와 무관하게 항상 체크 (쿠키 prefix가 'd:'이거나, DB 조회 필요)
+  // 쿠키 엄격 비교: '/onboarding' 또는 '/onboarding/'로 시작하는 경로만
   const isArtistOnboardingPath =
     request.nextUrl.pathname === '/onboarding' || request.nextUrl.pathname.startsWith('/onboarding/')
   const isDirectorOnboardingPath =
     request.nextUrl.pathname.startsWith('/onboarding/director') ||
     request.nextUrl.pathname.startsWith('/onboarding/select')
   if (user && isArtistOnboardingPath && !isDirectorOnboardingPath) {
-    const cookieVal = request.cookies.get('pa_onboarded')?.value
-    if (cookieVal?.startsWith('d:') && cookieVal.endsWith(`:${user.id}`)) {
+    if (verifiedRole === 'd') {
       const url = request.nextUrl.clone()
       url.pathname = '/casting-director'
       url.search = ''
       return NextResponse.redirect(url)
     }
-    // 쿠키가 없거나 prefix가 'd:'가 아니면 DB에서 role 확인
-    if (!cookieVal?.endsWith(`:${user.id}`)) {
+    // 쿠키 검증 실패 or 다른 역할이면 DB에서 role 재확인
+    if (verifiedRole !== 'a' && verifiedRole !== 's') {
       const sc = makeServiceClient()
       const { data: p } = await sc.from('profiles').select('role').eq('id', user.id).single()
       if (p && (p as { role: string }).role === 'casting_director') {
@@ -99,14 +127,16 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 온보딩 강제 (신규 유저만) — /onboarding/director·select, api/auth/login/admin 경로는 제외
-  const onboardingExempt = ['/onboarding/director', '/onboarding/select', '/onboarding', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
-  const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
-  // 이미 온보딩 완료된 사용자는 쿠키로 우회 (DB 쿼리 2개 절약)
-  // 쿠키 형식: '<role>:<userId>' — 사용자 변경 시 자동으로 무효화됨
-  const onboardedCookie = request.cookies.get('pa_onboarded')?.value
-  const cookieMatchesUser = !!user && !!onboardedCookie && onboardedCookie.endsWith(`:${user.id}`)
-  if (user && !isExempt && !cookieMatchesUser) {
+  // 온보딩 강제 (신규 유저만) — 정확한 경로 매칭
+  const onboardingExemptPrefixes = ['/onboarding/', '/api/', '/auth/', '/_next/']
+  const onboardingExemptExact = new Set(['/onboarding', '/login', '/favicon.ico'])
+  const pathname = request.nextUrl.pathname
+  const isExempt =
+    onboardingExemptExact.has(pathname) ||
+    onboardingExemptPrefixes.some(p => pathname.startsWith(p)) ||
+    pathname.startsWith('/admin') // admin은 위에서 별도 보호
+
+  if (user && !isExempt && !verifiedRole) {
     const serviceClient = makeServiceClient()
     const [{ data: profile }, { data: artistProfile }] = await Promise.all([
       serviceClient.from('profiles').select('phone, role').eq('id', user.id).single(),
@@ -118,18 +148,15 @@ export async function updateSession(request: NextRequest) {
       if (profile.role === 'casting_director') {
         const url = request.nextUrl.clone()
         if (!profile.phone) {
-          // 캐스팅 디렉터: phone 없으면 디렉터 온보딩으로
           url.pathname = '/onboarding/director'
           return NextResponse.redirect(url)
         } else if (request.nextUrl.pathname.startsWith('/onboarding')) {
-          // 이미 온보딩 완료된 캐스팅 디렉터가 /onboarding 접근 시 홈으로
           url.pathname = '/'
           url.search = ''
-          supabaseResponse.cookies.set('pa_onboarded', `d:${user.id}`, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
+          await setOnboardedCookie(supabaseResponse, 'd', user.id)
           return NextResponse.redirect(url)
         }
-        // 온보딩 완료된 디렉터: 쿠키 마킹
-        supabaseResponse.cookies.set('pa_onboarded', `d:${user.id}`, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
+        await setOnboardedCookie(supabaseResponse, 'd', user.id)
       } else {
         // 일반 유저: phone & artist_profiles 없으면 역할 선택 화면으로
         if (!profile.phone && !artistProfile) {
@@ -137,12 +164,10 @@ export async function updateSession(request: NextRequest) {
           url.pathname = '/onboarding/select'
           return NextResponse.redirect(url)
         }
-        // 온보딩 완료된 일반 유저: 쿠키 마킹
-        supabaseResponse.cookies.set('pa_onboarded', `a:${user.id}`, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
+        await setOnboardedCookie(supabaseResponse, 'a', user.id)
       }
     } else if (profile && skipRoles.includes(profile.role)) {
-      // admin/sub_admin: 온보딩 검사 스킵 마킹
-      supabaseResponse.cookies.set('pa_onboarded', `s:${user.id}`, { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
+      await setOnboardedCookie(supabaseResponse, 's', user.id)
     }
   }
 

@@ -4,6 +4,23 @@ import { NextResponse } from "next/server"
 
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET!
 
+async function cancelPortOnePayment(paymentId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://api.portone.io/payments/${paymentId}/cancel`, {
+      method: "POST",
+      headers: {
+        Authorization: `PortOne ${PORTONE_API_SECRET}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason: "DB 트랜잭션 실패로 인한 자동 취소" }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export async function POST(request: Request) {
   const { paymentId, pointsUsed = 0 } = await request.json()
 
@@ -23,43 +40,35 @@ export async function POST(request: Request) {
 
   const serviceClient = createServiceClient()
 
-  // 2. 중복 결제 방지 (0원 결제는 paymentId가 서버 생성값이므로 별도 처리)
-  const expectedPgId = expectedAmount === 0 ? null : paymentId
-  if (expectedPgId) {
+  // 2. 중복 결제 방지
+  const pgTransactionId = expectedAmount === 0 ? `free-${user.id}-${Date.now()}` : paymentId
+  if (expectedAmount !== 0) {
     const { data: existing } = await serviceClient
       .from("payments")
       .select("id")
-      .eq("pg_transaction_id", expectedPgId)
+      .eq("pg_transaction_id", pgTransactionId)
       .maybeSingle()
     if (existing) {
       return NextResponse.json({ error: "이미 처리된 결제입니다." }, { status: 409 })
     }
   }
 
-  // 3. DB에서 현재 포인트 조회 및 선검증
-  const { data: currentProfile } = await serviceClient
-    .from("profiles")
-    .select("points")
-    .eq("id", user.id)
-    .single()
-
-  const currentPoints = currentProfile?.points ?? 0
-
-  if (pointsUsed > currentPoints) {
-    return NextResponse.json({ error: "보유 포인트가 부족합니다." }, { status: 400 })
-  }
-
-  // 4. 포트원 결제 검증 (0원 결제는 PG 호출 없이 포인트만으로 처리)
+  // 3. 포트원 결제 검증
   let pgProvider = "kakaopay"
   if (expectedAmount > 0) {
-    const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
-      headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
-    })
+    let portoneRes: Response
+    try {
+      portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
+        headers: { Authorization: `PortOne ${PORTONE_API_SECRET}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+    } catch {
+      return NextResponse.json({ error: "결제 서버 응답 지연" }, { status: 504 })
+    }
     if (!portoneRes.ok) {
       return NextResponse.json({ error: "결제 정보 조회 실패" }, { status: 400 })
     }
     const payment = await portoneRes.json()
-
     if (payment.status !== "PAID") {
       return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 })
     }
@@ -67,62 +76,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "결제 금액이 일치하지 않습니다." }, { status: 400 })
     }
     pgProvider = payment.channel?.pgProvider ?? "kakaopay"
+  } else {
+    pgProvider = "points"
   }
 
-  // 4. memberships 테이블 upsert (user당 1개)
-  const now = new Date()
-  const expiresAt = new Date(now)
-  expiresAt.setDate(expiresAt.getDate() + 30)
+  // 4. DB 원자 처리 (memberships + payments + profiles)
+  const { data: rpcResult, error: rpcError } = (await (serviceClient as unknown as {
+    rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+  }).rpc("process_kakao_payment_complete", {
+    p_user_id: user.id,
+    p_points_used: pointsUsed,
+    p_expected_amount: expectedAmount,
+    p_pg_transaction_id: pgTransactionId,
+    p_pg_provider: pgProvider,
+    p_membership_price: MEMBERSHIP_PRICE,
+    p_signup_bonus: SIGNUP_BONUS,
+  })) as { data: { success: boolean; new_points: number; expires_at: string } | null; error: { message: string } | null }
 
-  const { data: membership, error: membershipError } = await serviceClient
-    .from("memberships")
-    .upsert(
-      {
-        user_id: user.id,
-        status: "active",
-        started_at: now.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        auto_renew: true,
-      },
-      { onConflict: "user_id" }
-    )
-    .select("id")
-    .single()
-
-  if (membershipError || !membership) {
-    return NextResponse.json({ error: "멤버십 저장 실패" }, { status: 500 })
-  }
-
-  // 5. payments 테이블에 기록 (amount = 실 결제액, 0원 결제는 서버 생성 ID)
-  const pgTransactionId = expectedAmount === 0 ? `free-${user.id}-${Date.now()}` : paymentId
-  const { error: paymentError } = await serviceClient.from("payments").insert({
-    user_id: user.id,
-    membership_id: membership.id,
-    amount: expectedAmount,
-    points_used: pointsUsed,
-    status: "completed",
-    pg_provider: pgProvider,
-    pg_transaction_id: pgTransactionId,
-    payment_method: expectedAmount === 0 ? "points" : "kakao_pay",
-  })
-  if (paymentError) {
-    if (paymentError.code === "23505") {
+  if (rpcError || !rpcResult?.success) {
+    const message = rpcError?.message ?? "DB 처리 실패"
+    if (message.includes("insufficient_points")) {
+      return NextResponse.json({ error: "보유 포인트가 부족합니다." }, { status: 400 })
+    }
+    if (message.includes("duplicate key") || message.includes("23505")) {
       return NextResponse.json({ error: "이미 처리된 결제입니다." }, { status: 409 })
     }
-    return NextResponse.json({ error: "결제 내역 저장 실패" }, { status: 500 })
+    // 결제는 됐는데 DB 실패 → 보상 취소 시도
+    if (expectedAmount > 0) {
+      const cancelled = await cancelPortOnePayment(paymentId)
+      if (!cancelled) {
+        console.error("[PAYMENT RECONCILE REQUIRED]", { paymentId, userId: user.id, error: message })
+      }
+    }
+    return NextResponse.json({ error: "결제 처리 실패", details: message }, { status: 500 })
   }
 
-  // 6. profiles 포인트 업데이트 (트리거가 membership_is_active 동기화 처리)
-  const newPoints = Math.max(0, currentPoints - pointsUsed) + SIGNUP_BONUS
-
-  const { error: profileError } = await serviceClient
-    .from("profiles")
-    .update({ points: newPoints } as never)
-    .eq("id", user.id)
-
-  if (profileError) {
-    return NextResponse.json({ error: "프로필 업데이트 실패", details: profileError.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true, expiresAt: expiresAt.toISOString(), newPoints })
+  return NextResponse.json({
+    success: true,
+    expiresAt: rpcResult.expires_at,
+    newPoints: rpcResult.new_points,
+  })
 }
