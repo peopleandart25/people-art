@@ -25,6 +25,7 @@ export default function AdminSettingsPage() {
   const [membershipPrice, setMembershipPrice] = useState("")
   const [signupBonus, setSignupBonus] = useState("")
   const [renewalBonus, setRenewalBonus] = useState("")
+  const [nonMemberMonthlyLimit, setNonMemberMonthlyLimit] = useState("1")
 
   useEffect(() => {
     fetchSettings()
@@ -40,6 +41,7 @@ export default function AdminSettingsPage() {
         "welcome_points_enabled", "welcome_points_amount",
         "referral_points_amount",
         "membership_price", "membership_signup_bonus", "membership_renewal_bonus",
+        "non_member_monthly_limit",
       ])
 
     if (error) {
@@ -62,6 +64,8 @@ export default function AdminSettingsPage() {
     if (priceSetting) setMembershipPrice(priceSetting.value)
     if (signupSetting) setSignupBonus(signupSetting.value)
     if (renewalSetting) setRenewalBonus(renewalSetting.value)
+    const limitSetting = settings.find((s) => s.key === "non_member_monthly_limit")
+    if (limitSetting) setNonMemberMonthlyLimit(limitSetting.value)
 
     setLoading(false)
   }
@@ -109,6 +113,12 @@ export default function AdminSettingsPage() {
         key: "membership_renewal_bonus",
         value: renewalBonus,
         description: "멤버십 갱신 시 지급 포인트 (현금 결제 시에만)",
+        updated_at: now,
+      },
+      {
+        key: "non_member_monthly_limit",
+        value: nonMemberMonthlyLimit,
+        description: "비멤버십 회원의 월 무료 지원 가능 횟수",
         updated_at: now,
       },
     ]
@@ -301,6 +311,35 @@ export default function AdminSettingsPage() {
                 disabled={saving}
                 className="bg-orange-500 hover:bg-orange-600 text-white"
               >
+                {saving ? "저장 중..." : "저장하기"}
+              </Button>
+            </div>
+          </div>
+          {/* 지원 설정 카드 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-1">지원 설정</h2>
+            <p className="text-sm text-gray-500 mb-5">비멤버십 회원의 월 무료 지원 횟수를 설정합니다.</p>
+
+            <div className="space-y-2">
+              <Label htmlFor="non_member_monthly_limit" className="text-sm font-medium text-gray-700">
+                월 무료 지원 횟수 (비회원)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="non_member_monthly_limit"
+                  type="number"
+                  value={nonMemberMonthlyLimit}
+                  onChange={(e) => setNonMemberMonthlyLimit(e.target.value)}
+                  min={0}
+                  className="w-40"
+                />
+                <span className="text-sm text-gray-500">회 / 월</span>
+              </div>
+              <p className="text-xs text-gray-400">멤버십 미가입 회원이 30일간 무료로 지원할 수 있는 최대 횟수</p>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <Button onClick={handleSave} disabled={saving} className="bg-orange-500 hover:bg-orange-600 text-white">
                 {saving ? "저장 중..." : "저장하기"}
               </Button>
             </div>

@@ -4,7 +4,6 @@ import { Resend } from "resend"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://people-art.co.kr"
-const NON_MEMBER_MONTHLY_LIMIT = 3
 
 type ApplicationTemplate = {
   user_id: string
@@ -32,13 +31,14 @@ export async function POST(request: Request) {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0]
 
-  const [profileRes, artistRes, templateRes, agenciesRes, membershipRes, historyRes] = await Promise.all([
+  const [profileRes, artistRes, templateRes, agenciesRes, membershipRes, historyRes, limitRes] = await Promise.all([
     serviceClient.from("profiles").select("name, phone, email, role").eq("id", user.id).single(),
     serviceClient.from("artist_profiles").select("id, portfolio_url").eq("user_id", user.id).maybeSingle(),
     serviceClient.from("application_templates" as never).select("*").eq("user_id", user.id).maybeSingle(),
     serviceClient.from("support_agencies").select("id, name, email").in("id", agency_ids),
     serviceClient.from("memberships").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle(),
     serviceClient.from("support_history").select("agency_id").eq("user_id", user.id).gte("sent_at", thirtyDaysAgoStr),
+    serviceClient.from("app_settings").select("value").eq("key", "non_member_monthly_limit").maybeSingle(),
   ])
 
   const profile = profileRes.data
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
   const agencies = (agenciesRes.data ?? []).filter((a) => !!a.email)
   const isPremium = !!membershipRes.data || profile?.role === "admin"
   const recentSentIds = new Set((historyRes.data ?? []).map((h) => h.agency_id))
+  const NON_MEMBER_MONTHLY_LIMIT = parseInt((limitRes.data as { value: string } | null)?.value ?? "1", 10)
 
   // 서버사이드 비회원 한도 검증
   if (!isPremium) {

@@ -21,7 +21,6 @@ interface SupportRecord {
 
 const ITEMS_PER_PAGE = 12
 const STORAGE_KEY = "supported_agencies"
-const NON_MEMBER_LIMIT = 3
 
 const isWithin30Days = (dateStr: string): boolean => {
   const diffDays = (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
@@ -45,16 +44,25 @@ export default function SupportPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [partialFailedNames, setPartialFailedNames] = useState<string[]>([])
+  const [nonMemberLimit, setNonMemberLimit] = useState(1)
 
   useEffect(() => {
     const fetchAgencies = async () => {
       const supabase = createClient()
-      const { data } = await supabase
-        .from("support_agencies")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true })
+      const [{ data }, { data: limitData }] = await Promise.all([
+        supabase
+          .from("support_agencies")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "non_member_monthly_limit")
+          .maybeSingle(),
+      ])
       setAgencies(data ?? [])
+      if (limitData) setNonMemberLimit(parseInt((limitData as { value: string }).value, 10))
       setLoading(false)
     }
     fetchAgencies()
@@ -145,8 +153,8 @@ export default function SupportPage() {
     if (selectedAgencies.length === 0) { alert("기관을 최소 1곳 이상 선택해주세요."); return }
     if (!isPremium) {
       const totalAfterSend = nonMemberTotalSupports + selectedAgencies.length
-      if (totalAfterSend > NON_MEMBER_LIMIT) {
-        alert(`비회원은 월 최대 ${NON_MEMBER_LIMIT}곳까지만 지원 가능합니다.`)
+      if (totalAfterSend > nonMemberLimit) {
+        alert(`비회원은 월 최대 ${nonMemberLimit}곳까지만 지원 가능합니다.`)
         router.push("/membership")
         return
       }
@@ -243,11 +251,11 @@ export default function SupportPage() {
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
                 <span>
-                  <strong className="text-foreground">기본 회원은 월 {NON_MEMBER_LIMIT}곳까지</strong> 지원 가능하며,{" "}
+                  <strong className="text-foreground">기본 회원은 월 {nonMemberLimit}곳까지</strong> 지원 가능하며,{" "}
                   <strong className="text-primary">멤버십 회원은 무제한</strong> 지원이 가능합니다.
                   {isMounted && !isPremium && (
                     <>
-                      <span className="text-muted-foreground ml-1">(남은 지원: {Math.max(0, NON_MEMBER_LIMIT - nonMemberTotalSupports)}곳)</span>
+                      <span className="text-muted-foreground ml-1">(남은 지원: {Math.max(0, nonMemberLimit - nonMemberTotalSupports)}곳)</span>
                       <Button variant="link" size="sm" className="text-primary p-0 h-auto ml-2 underline" onClick={() => router.push("/membership")}>멤버십 가입하기</Button>
                     </>
                   )}
@@ -363,7 +371,7 @@ export default function SupportPage() {
             <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
               <AlertTriangle className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
               <div className="text-xs text-yellow-700">
-                <p>기본 회원은 월 {NON_MEMBER_LIMIT}곳까지만 지원 가능합니다.<br />전송 후 남은 지원: {Math.max(0, NON_MEMBER_LIMIT - nonMemberTotalSupports - selectedAgencies.length)}곳</p>
+                <p>기본 회원은 월 {nonMemberLimit}곳까지만 지원 가능합니다.<br />전송 후 남은 지원: {Math.max(0, nonMemberLimit - nonMemberTotalSupports - selectedAgencies.length)}곳</p>
                 <Button variant="link" size="sm" className="text-yellow-800 p-0 h-auto mt-1 underline font-semibold" onClick={() => { setShowConfirmModal(false); router.push("/membership") }}>무제한 지원을 위해 멤버십 가입하기</Button>
               </div>
             </div>
