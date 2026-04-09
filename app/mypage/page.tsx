@@ -1081,11 +1081,13 @@ export default function MyPage() {
                     id="appTemplateMessage"
                     value={appTemplate.message}
                     onChange={e => setAppTemplate(p => ({ ...p, message: e.target.value }))}
-                    placeholder={`안녕하세요.\n\n피플앤아트를 통해 프로필을 지원드립니다.\n\n이름: 홍길동\n연락처: 010-0000-0000\n\n검토 부탁드립니다. 감사합니다.`}
+                    placeholder="비워두면 기본 메시지가 자동으로 사용됩니다."
                     rows={6}
                     autoComplete="off"
                   />
-                  <p className="text-xs text-muted-foreground">비워두면 기본 메시지가 자동으로 사용됩니다 ({appTemplate.message.length}자)</p>
+                  {appTemplate.message.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{appTemplate.message.length}자</p>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <Label>포함할 자료</Label>
