@@ -454,7 +454,7 @@ export default function MembershipPage() {
     }
   }
 
-  // 결제 처리 (포트원 V2 카카오페이)
+  // 결제 처리 (포트원 V2 KG이니시스)
   const handlePayment = async () => {
     if (!user) {
       toast({ title: "로그인이 필요합니다.", variant: "destructive" })
@@ -471,8 +471,8 @@ export default function MembershipPage() {
       if (finalPaymentAmount > 0) {
         const billingKeyResponse = await PortOne.requestIssueBillingKey({
           storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
-          channelKey: "channel-key-6cb34a6a-ff25-4297-a3ad-036bdadfd2aa",
-          billingKeyMethod: "EASY_PAY",
+          channelKey: "channel-key-cf3ab2fe-e949-45df-80f4-3b7b57808ca6",
+          billingKeyMethod: "CARD",
           issueName: "피플앤아트 멤버십",
           customer: {
             customerId: user.id,
@@ -865,7 +865,7 @@ export default function MembershipPage() {
                     <CreditCard className="h-5 w-5 text-primary" />
                     <span className="text-sm text-muted-foreground">결제수단</span>
                   </div>
-                  <span className="font-medium text-foreground">카카오페이</span>
+                  <span className="font-medium text-foreground">신용카드/체크카드</span>
                 </div>
                 <div className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
@@ -1498,7 +1498,7 @@ export default function MembershipPage() {
                   <CardTitle className="text-lg">멤버십 결제</CardTitle>
                 </div>
                 <CardDescription>
-                  카카오페이 간편결제로 빠르게 시작하세요
+                  KG이니시스 카드결제로 안전하게 시작하세요
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -1603,11 +1603,11 @@ export default function MembershipPage() {
                 <Button
                   onClick={handlePayment}
                   disabled={isProcessing}
-                  className="w-full h-12 bg-[#FEE500] text-[#3C1E1E] hover:bg-[#FEE500]/90 text-base font-semibold"
+                  className="w-full h-12 text-base font-semibold"
                 >
                   {isProcessing
                     ? "결제 처리 중..."
-                    : `카카오페이로 ${finalPaymentAmount.toLocaleString()}원 결제하기`
+                    : `카드로 ${finalPaymentAmount.toLocaleString()}원 결제하기`
                   }
                 </Button>
                 {usePointsForPayment && usablePoints > 0 && (
