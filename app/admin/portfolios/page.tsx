@@ -153,8 +153,7 @@ export default function AdminPortfoliosPage() {
         <p className="text-sm text-gray-500 mt-1">배우 PDF 포트폴리오 목록 및 일괄 다운로드</p>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-col gap-3">
-        {/* 검색 행 */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
         <div className="flex gap-2">
           <Input
             placeholder="이름 / 활동명 / 이메일 검색"
@@ -170,24 +169,6 @@ export default function AdminPortfoliosPage() {
           >
             검색
           </Button>
-        </div>
-        {/* 일괄 다운로드 행 (우측 정렬) */}
-        <div className="flex flex-col items-end gap-0.5">
-          <Button
-            size="sm"
-            onClick={handleBulkDownload}
-            disabled={bulkLoading}
-            className="h-9 bg-blue-500 hover:bg-blue-600 text-white gap-1.5"
-          >
-            <Package className="w-4 h-4" />
-            {bulkLoading ? "다운로드 중..." : `일괄 다운로드 (신규 ${newCount}건)`}
-          </Button>
-          <div className="text-[11px] text-gray-400">
-            마지막 일괄 다운로드:{" "}
-            <span className="font-medium text-gray-600">
-              {lastBulkDownloadAt ? formatDate(lastBulkDownloadAt) : "기록 없음"}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -217,8 +198,24 @@ export default function AdminPortfoliosPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     최종 업데이트
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    다운로드
+                  <th className="text-right px-4 py-3 whitespace-nowrap">
+                    <div className="flex flex-col items-end gap-0.5">
+                      <Button
+                        size="sm"
+                        onClick={handleBulkDownload}
+                        disabled={bulkLoading}
+                        className="h-8 bg-blue-500 hover:bg-blue-600 text-white gap-1.5 text-xs"
+                      >
+                        <Package className="w-3.5 h-3.5" />
+                        {bulkLoading ? "다운로드 중..." : `일괄 다운로드 (신규 ${newCount}건)`}
+                      </Button>
+                      <div className="text-[10px] text-gray-400 font-normal normal-case tracking-normal">
+                        마지막:{" "}
+                        <span className="font-medium text-gray-500">
+                          {lastBulkDownloadAt ? formatDate(lastBulkDownloadAt) : "기록 없음"}
+                        </span>
+                      </div>
+                    </div>
                   </th>
                 </tr>
               </thead>
