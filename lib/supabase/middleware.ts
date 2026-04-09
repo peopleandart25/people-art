@@ -100,7 +100,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 온보딩 강제 (신규 유저만) — /onboarding/director·select, api/auth/login/admin 경로는 제외
-  const onboardingExempt = ['/onboarding/director', '/onboarding/select', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
+  const onboardingExempt = ['/onboarding/director', '/onboarding/select', '/onboarding', '/api/', '/auth/', '/login', '/admin', '/_next/', '/favicon']
   const isExempt = onboardingExempt.some(p => request.nextUrl.pathname.startsWith(p))
   // 이미 온보딩 완료된 사용자는 쿠키로 우회 (DB 쿼리 2개 절약)
   // 쿠키 형식: '<role>:<userId>' — 사용자 변경 시 자동으로 무효화됨
