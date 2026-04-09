@@ -83,39 +83,90 @@ export async function POST(request: Request) {
   }
 
   const customMessage = template?.message?.trim()
-  const contactBlock = `이름: ${name}${phone ? `\n연락처: ${phone}` : ""}${replyTo ? `\n이메일: ${replyTo}` : ""}`
-  const baseMessage = customMessage
-    ? `${customMessage}\n\n---\n${contactBlock}`
-    : `안녕하세요.\n\n피플앤아트(people-art.co.kr)를 통해 프로필을 지원드립니다.\n\n${contactBlock}`
+
+  function buildEmailHtml(): string {
+    const greeting = customMessage
+      ? customMessage.replace(/\n/g, "<br>")
+      : `안녕하세요.<br><br>피플앤아트(people-art.co.kr)를 통해 프로필을 지원드립니다.`
+
+    const includeProfile = (template?.include_profile_link ?? true) && profileUrl
+    const includePdf = (template?.include_pdf ?? true) && portfolioUrl
+    const includeVideos = (template?.include_videos ?? false) && videoLinks.length > 0
+    const includeCustom = !!template?.custom_attachment_url
+
+    const ctaButtons = [
+      includeProfile && `<a href="${profileUrl}" style="display:inline-block;padding:10px 20px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;margin:4px;">프로필 보기</a>`,
+      includePdf && `<a href="${portfolioUrl}" style="display:inline-block;padding:10px 20px;background:#ffffff;color:#f97316;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;border:1.5px solid #f97316;margin:4px;">PDF 다운로드</a>`,
+    ].filter(Boolean).join("\n")
+
+    const videoSection = includeVideos ? `
+      <tr><td style="padding:0 32px 16px;">
+        <p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;">영상 링크</p>
+        ${videoLinks.map(v => `<p style="margin:0 0 4px;font-size:14px;"><a href="${v.url}" style="color:#f97316;text-decoration:none;">▶ ${v.name}</a></p>`).join("")}
+      </td></tr>` : ""
+
+    const customSection = includeCustom ? `
+      <tr><td style="padding:0 32px 16px;">
+        <p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;">첨부파일</p>
+        <a href="${template.custom_attachment_url}" style="color:#f97316;font-size:14px;text-decoration:none;">📎 ${template.custom_attachment_name ?? "첨부파일"}</a>
+      </td></tr>` : ""
+
+    return `<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+
+        <!-- 헤더 -->
+        <tr><td style="background:#f97316;padding:20px 32px;">
+          <p style="margin:0;color:#ffffff;font-size:13px;font-weight:500;opacity:0.9;">People &amp; Art</p>
+          <p style="margin:4px 0 0;color:#ffffff;font-size:20px;font-weight:700;">${name} 배우 프로필 지원</p>
+        </td></tr>
+
+        <!-- 메시지 -->
+        <tr><td style="padding:28px 32px 20px;">
+          <p style="margin:0;font-size:15px;color:#111827;line-height:1.7;">${greeting}</p>
+        </td></tr>
+
+        <!-- 연락처 -->
+        <tr><td style="padding:0 32px 24px;">
+          <table style="background:#f9fafb;border-radius:8px;width:100%;padding:16px;" cellpadding="0" cellspacing="0">
+            <tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">이름</span>${name}</td></tr>
+            ${phone ? `<tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">연락처</span>${phone}</td></tr>` : ""}
+            ${replyTo ? `<tr><td style="font-size:13px;color:#374151;padding:2px 0;"><span style="color:#6b7280;width:60px;display:inline-block;">이메일</span>${replyTo}</td></tr>` : ""}
+          </table>
+        </td></tr>
+
+        <!-- CTA 버튼 -->
+        ${ctaButtons ? `<tr><td style="padding:0 32px 24px;">${ctaButtons}</td></tr>` : ""}
+
+        <!-- 영상 / 첨부파일 -->
+        ${videoSection}
+        ${customSection}
+
+        <!-- 푸터 -->
+        <tr><td style="padding:20px 32px;border-top:1px solid #f3f4f6;">
+          <p style="margin:0;font-size:12px;color:#9ca3af;">이 메일은 <a href="https://people-art.co.kr" style="color:#f97316;text-decoration:none;">People &amp; Art</a>를 통해 발송되었습니다.</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+  }
 
   // 이메일 병렬 발송
   const sendResults = await Promise.allSettled(
     validAgencies.map(async (agency) => {
-      let body = baseMessage + "\n\n"
-
-      if ((template?.include_profile_link ?? true) && profileUrl) {
-        body += `📋 프로필 페이지: ${profileUrl}\n`
-      }
-      if ((template?.include_pdf ?? true) && portfolioUrl) {
-        body += `📄 PDF 포트폴리오: ${portfolioUrl}\n`
-      }
-      if ((template?.include_videos ?? false) && videoLinks.length > 0) {
-        body += `🎬 영상 링크:\n`
-        videoLinks.forEach(v => { body += `  - ${v.name}: ${v.url}\n` })
-      }
-      if (template?.custom_attachment_url) {
-        const attachName = template.custom_attachment_name ?? "첨부파일"
-        body += `📎 첨부파일: ${attachName} - ${template.custom_attachment_url}\n`
-      }
-
-      body += "\n검토 부탁드립니다.\n감사합니다."
-
       await resend.emails.send({
         from: `${name} via People & Art <no-reply@people-art.co.kr>`,
         to: agency.email!,
         ...(replyTo ? { replyTo } : {}),
         subject: `[프로필 지원] ${name} 배우 프로필 제출`,
-        text: body,
+        html: buildEmailHtml(),
       })
     })
   )
