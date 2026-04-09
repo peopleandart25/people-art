@@ -447,11 +447,67 @@ export default function ArtistsPage() {
 
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
   const [inputValue, setInputValue] = useState(searchQuery)
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
+  const [bookmarkBusy, setBookmarkBusy] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(inputValue), 300)
     return () => clearTimeout(t)
   }, [inputValue, setSearchQuery])
+
+  // CD가 기존에 저장한 보관함을 로드해 카드 상태 동기화
+  useEffect(() => {
+    if (!isDirector) return
+    const ac = new AbortController()
+    fetch("/api/director/bookmarks", { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => {
+        if (ac.signal.aborted || !Array.isArray(list)) return
+        const ids = new Set<string>()
+        for (const b of list) {
+          const id = (b as { artist_profile_id?: string }).artist_profile_id
+          if (id) ids.add(id)
+        }
+        setBookmarkedIds(ids)
+      })
+      .catch(() => {})
+    return () => ac.abort()
+  }, [isDirector])
+
+  const handleToggleBookmark = useCallback(
+    async (artistProfileId: string) => {
+      if (!isDirector) return
+      setBookmarkBusy((prev) => new Set(prev).add(artistProfileId))
+      const isCurrentlyBookmarked = bookmarkedIds.has(artistProfileId)
+      try {
+        const res = await fetch("/api/director/bookmarks", {
+          method: isCurrentlyBookmarked ? "DELETE" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ artist_profile_id: artistProfileId }),
+        })
+        if (!res.ok) {
+          toast({ title: "실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" })
+          return
+        }
+        setBookmarkedIds((prev) => {
+          const next = new Set(prev)
+          if (isCurrentlyBookmarked) next.delete(artistProfileId)
+          else next.add(artistProfileId)
+          return next
+        })
+        toast({
+          title: isCurrentlyBookmarked ? "보관함에서 제거" : "보관함에 저장",
+        })
+      } finally {
+        setBookmarkBusy((prev) => {
+          const next = new Set(prev)
+          next.delete(artistProfileId)
+          return next
+        })
+      }
+    },
+    [isDirector, bookmarkedIds, toast],
+  )
 
   // Guest 상태에서 아티스트 상세 페이지 접근 차단
   const handleArtistClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -621,13 +677,15 @@ export default function ArtistsPage() {
             {filteredArtists.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-5">
                 {filteredArtists.map((artist) => {
-                  const birthYear = artist.birthDate 
+                  const birthYear = artist.birthDate
                     ? new Date(artist.birthDate).getFullYear().toString().slice(-2) + "년생"
                     : ""
-                  
+                  const isBookmarked = bookmarkedIds.has(artist.id)
+                  const isBookmarkBusy = bookmarkBusy.has(artist.id)
+
                   return (
-                    <Link 
-                      key={artist.id} 
+                    <Link
+                      key={artist.id}
                       href={`/artists/${artist.id}`}
                       onClick={handleArtistClick}
                     >
@@ -637,15 +695,20 @@ export default function ArtistsPage() {
                           {isDirector && (
                             <button
                               type="button"
+                              disabled={isBookmarkBusy}
                               onClick={(e) => {
                                 e.preventDefault()
                                 e.stopPropagation()
-                                toast({ title: "준비 중", description: "보관함 기능은 아티스트 상세 페이지에서 이용하세요." })
+                                void handleToggleBookmark(artist.id)
                               }}
-                              className="absolute top-2 right-2 z-10 bg-black/40 hover:bg-black/60 text-white rounded-full p-1.5 transition-colors"
-                              aria-label="보관함에 저장"
+                              className={`absolute top-2 right-2 z-10 rounded-full p-1.5 transition-colors ${
+                                isBookmarked
+                                  ? "bg-orange-500 text-white hover:bg-orange-600"
+                                  : "bg-black/40 text-white hover:bg-black/60"
+                              } ${isBookmarkBusy ? "opacity-60 cursor-wait" : ""}`}
+                              aria-label={isBookmarked ? "보관함에서 제거" : "보관함에 저장"}
                             >
-                              <Bookmark className="h-4 w-4" />
+                              <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
                             </button>
                           )}
                           {/* 이미지 영역 */}

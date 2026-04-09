@@ -99,7 +99,9 @@ export default function ArtistDetailPage({ params }: ArtistDetailPageProps) {
   const { toast } = useToast()
 
   const isCastingDirector = profile?.role === ROLE_CASTING_DIRECTOR
-  const canViewRestricted = isPremium || isAdmin || isCastingDirector
+  // 승인된 CD만 영상/PDF 열람 가능 (pending/rejected는 잠금)
+  const isApprovedCD = isCastingDirector && profile?.cd_approval_status === "approved"
+  const canViewRestricted = isPremium || isAdmin || isApprovedCD
 
   const [artist, setArtist] = useState<ArtistData | null>(null)
   const [loadingArtist, setLoadingArtist] = useState(true)

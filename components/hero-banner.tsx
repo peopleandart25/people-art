@@ -439,8 +439,12 @@ function CastingDirectorLinksGrid() {
             {link.lines.map((line, i) => (
               <span key={i} className="font-semibold text-foreground text-xs sm:text-sm leading-snug">{line}</span>
             ))}
-            {link.id === "cd-3" && activeCastingCount !== null && (
-              <span className="text-[11px] text-orange-500 font-medium mt-0.5">{activeCastingCount}건 진행중</span>
+            {link.id === "cd-3" && (
+              activeCastingCount === null ? (
+                <span className="mt-0.5 h-3 w-12 rounded bg-orange-100 animate-pulse" aria-hidden="true" />
+              ) : (
+                <span className="text-[11px] text-orange-500 font-medium mt-0.5">{activeCastingCount}건 진행중</span>
+              )
             )}
           </div>
         </Link>
