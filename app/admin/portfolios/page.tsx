@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Download, FileText, Package } from "lucide-react"
@@ -16,6 +16,11 @@ type PortfolioRow = {
   portfolio_updated_at: string | null
 }
 
+type PortfolioResponse = {
+  rows: PortfolioRow[]
+  last_bulk_download_at: string | null
+}
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "-"
   return new Date(dateStr).toLocaleString("ko-KR")
@@ -24,40 +29,58 @@ function formatDate(dateStr: string | null): string {
 export default function AdminPortfoliosPage() {
   const { toast } = useToast()
   const [rows, setRows] = useState<PortfolioRow[]>([])
-  const [filtered, setFiltered] = useState<PortfolioRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [lastBulkDownloadAt, setLastBulkDownloadAt] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 검색어 디바운스 (300ms)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
 
   async function fetchData() {
     setLoading(true)
-    const res = await fetch("/api/admin/portfolios")
-    if (res.ok) {
-      const data = (await res.json()) as PortfolioRow[]
-      setRows(data)
-      setFiltered(data)
-    } else {
+    try {
+      const res = await fetch("/api/admin/portfolios")
+      if (!res.ok) {
+        toast({ title: "조회 실패", variant: "destructive" })
+        return
+      }
+      const data = (await res.json()) as PortfolioResponse
+      setRows(data.rows ?? [])
+      setLastBulkDownloadAt(data.last_bulk_download_at ?? null)
+    } catch {
       toast({ title: "조회 실패", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
-  function handleSearch() {
-    const q = search.trim().toLowerCase()
-    if (!q) {
-      setFiltered(rows)
-      return
-    }
-    setFiltered(rows.filter(r =>
-      (r.name ?? "").toLowerCase().includes(q) ||
-      (r.activity_name ?? "").toLowerCase().includes(q) ||
-      (r.email ?? "").toLowerCase().includes(q)
-    ))
-  }
+  const filtered = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter(
+      (r) =>
+        (r.name ?? "").toLowerCase().includes(q) ||
+        (r.activity_name ?? "").toLowerCase().includes(q) ||
+        (r.email ?? "").toLowerCase().includes(q)
+    )
+  }, [rows, debouncedSearch])
+
+  // 마지막 다운로드 이후 업데이트된 건수 (신규 배지)
+  const newCount = useMemo(() => {
+    if (!lastBulkDownloadAt) return rows.length
+    return rows.filter((r) => r.portfolio_updated_at && r.portfolio_updated_at > lastBulkDownloadAt)
+      .length
+  }, [rows, lastBulkDownloadAt])
 
   async function handleBulkDownload() {
     setBulkLoading(true)
@@ -66,7 +89,10 @@ export default function AdminPortfoliosPage() {
       const contentType = res.headers.get("Content-Type") ?? ""
       if (contentType.includes("application/json")) {
         const data = await res.json()
-        toast({ title: data.message ?? data.error ?? "다운로드 실패", variant: data.error ? "destructive" : "default" })
+        toast({
+          title: data.message ?? data.error ?? "다운로드 실패",
+          variant: data.error ? "destructive" : "default",
+        })
         return
       }
       if (!res.ok) {
@@ -88,7 +114,7 @@ export default function AdminPortfoliosPage() {
       a.click()
       URL.revokeObjectURL(url)
 
-      // Blob 저장 완료 후 워터마크 advance (취소/크래시 시 다음 다운로드에 다시 포함됨)
+      // Blob 저장 완료 후 워터마크 advance
       if (watermark) {
         try {
           await fetch("/api/admin/portfolios/bulk-download/confirm", {
@@ -96,6 +122,7 @@ export default function AdminPortfoliosPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ watermark }),
           })
+          setLastBulkDownloadAt(watermark)
         } catch {
           toast({
             title: "워터마크 갱신 실패",
@@ -133,26 +160,26 @@ export default function AdminPortfoliosPage() {
               placeholder="이름 / 활동명 / 이메일 검색"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               className="h-9 text-sm"
             />
           </div>
-          <Button
-            size="sm"
-            onClick={handleSearch}
-            className="h-9 bg-orange-500 hover:bg-orange-600 text-white"
-          >
-            검색
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleBulkDownload}
-            disabled={bulkLoading}
-            className="h-9 bg-blue-500 hover:bg-blue-600 text-white gap-1.5 ml-auto"
-          >
-            <Package className="w-4 h-4" />
-            {bulkLoading ? "다운로드 중..." : "일괄 다운로드 (신규)"}
-          </Button>
+          <div className="flex flex-col items-end gap-1 ml-auto">
+            <Button
+              size="sm"
+              onClick={handleBulkDownload}
+              disabled={bulkLoading}
+              className="h-9 bg-blue-500 hover:bg-blue-600 text-white gap-1.5"
+            >
+              <Package className="w-4 h-4" />
+              {bulkLoading ? "다운로드 중..." : `일괄 다운로드 (신규 ${newCount}건)`}
+            </Button>
+            <div className="text-[11px] text-gray-500">
+              마지막 일괄 다운로드:{" "}
+              <span className="font-medium text-gray-700">
+                {lastBulkDownloadAt ? formatDate(lastBulkDownloadAt) : "기록 없음"}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -170,44 +197,71 @@ export default function AdminPortfoliosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">이름</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">이메일</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">포트폴리오 파일</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">최종 업데이트</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">다운로드</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    이름
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    이메일
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    포트폴리오 파일
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    최종 업데이트
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    다운로드
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((r) => (
-                  <tr key={r.user_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">
-                      {r.name ?? "-"}
-                      {r.activity_name && (
-                        <span className="ml-1 text-xs text-gray-400">({r.activity_name})</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.email ?? "-"}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[280px] truncate" title={r.portfolio_file_name ?? ""}>
-                      {r.portfolio_file_name ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(r.portfolio_updated_at)}</td>
-                    <td className="px-4 py-3">
-                      {r.portfolio_url ? (
-                        <a
-                          href={r.portfolio_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 text-xs font-medium"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          다운로드
-                        </a>
-                      ) : (
-                        <span className="text-xs text-gray-400">없음</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((r) => {
+                  const isNew =
+                    !lastBulkDownloadAt ||
+                    (r.portfolio_updated_at && r.portfolio_updated_at > lastBulkDownloadAt)
+                  return (
+                    <tr key={r.user_id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">
+                        {r.name ?? "-"}
+                        {r.activity_name && (
+                          <span className="ml-1 text-xs text-gray-400">({r.activity_name})</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{r.email ?? "-"}</td>
+                      <td
+                        className="px-4 py-3 text-gray-600 max-w-[280px] truncate"
+                        title={r.portfolio_file_name ?? ""}
+                      >
+                        {r.portfolio_file_name ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          {formatDate(r.portfolio_updated_at)}
+                          {isNew && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-semibold">
+                              NEW
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.portfolio_url ? (
+                          <a
+                            href={r.portfolio_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 text-xs font-medium"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            다운로드
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">없음</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
