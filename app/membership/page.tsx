@@ -477,6 +477,7 @@ export default function MembershipPage() {
           customer: {
             customerId: user.id,
             email: user.email ?? undefined,
+            phoneNumber: profile?.phone ?? undefined,
           },
         })
 
