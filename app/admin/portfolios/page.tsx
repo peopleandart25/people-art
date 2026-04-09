@@ -153,14 +153,15 @@ export default function AdminPortfoliosPage() {
         <p className="text-sm text-gray-500 mt-1">배우 PDF 포트폴리오 목록 및 일괄 다운로드</p>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-        <div className="flex flex-wrap gap-2 items-center">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-col gap-3">
+        {/* 검색 행 */}
+        <div className="flex gap-2">
           <Input
             placeholder="이름 / 활동명 / 이메일 검색"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && setDebouncedSearch(search)}
-            className="h-9 text-sm flex-1 min-w-[200px]"
+            className="h-9 text-sm flex-1"
           />
           <Button
             size="sm"
@@ -169,22 +170,23 @@ export default function AdminPortfoliosPage() {
           >
             검색
           </Button>
-          <div className="flex flex-col items-end gap-0.5 ml-auto">
-            <Button
-              size="sm"
-              onClick={handleBulkDownload}
-              disabled={bulkLoading}
-              className="h-9 bg-blue-500 hover:bg-blue-600 text-white gap-1.5"
-            >
-              <Package className="w-4 h-4" />
-              {bulkLoading ? "다운로드 중..." : `일괄 다운로드 (신규 ${newCount}건)`}
-            </Button>
-            <div className="text-[11px] text-gray-400 text-right">
-              마지막 일괄 다운로드:{" "}
-              <span className="font-medium text-gray-600">
-                {lastBulkDownloadAt ? formatDate(lastBulkDownloadAt) : "기록 없음"}
-              </span>
-            </div>
+        </div>
+        {/* 일괄 다운로드 행 (우측 정렬) */}
+        <div className="flex flex-col items-end gap-0.5">
+          <Button
+            size="sm"
+            onClick={handleBulkDownload}
+            disabled={bulkLoading}
+            className="h-9 bg-blue-500 hover:bg-blue-600 text-white gap-1.5"
+          >
+            <Package className="w-4 h-4" />
+            {bulkLoading ? "다운로드 중..." : `일괄 다운로드 (신규 ${newCount}건)`}
+          </Button>
+          <div className="text-[11px] text-gray-400">
+            마지막 일괄 다운로드:{" "}
+            <span className="font-medium text-gray-600">
+              {lastBulkDownloadAt ? formatDate(lastBulkDownloadAt) : "기록 없음"}
+            </span>
           </div>
         </div>
       </div>
