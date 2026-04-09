@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   function buildEmailHtml(): string {
     const greeting = customMessage
       ? customMessage.replace(/\n/g, "<br>")
-      : `안녕하세요, 배우 ${name} 입니다.<br>귀사에 지원드리기 위해 프로필 파일과 연기 영상 링크를 첨부드립니다.<br>긍정적으로 검토해주시면 감사하겠습니다.`
+      : `안녕하세요. 배우 ${name}입니다.<br><br>귀사에 제 프로필 파일과 연기 영상 링크를 첨부하여 보내드립니다.<br>바쁘시겠지만 긍정적으로 검토해 주시면 감사하겠습니다.<br><br>앞으로 좋은 인연으로 뵐 수 있기를 기대합니다. 감사합니다.`
 
     const includeProfile = (template?.include_profile_link ?? true) && profileUrl
     const includePdf = (template?.include_pdf ?? true) && portfolioUrl

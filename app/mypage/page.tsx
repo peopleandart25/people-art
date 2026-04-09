@@ -1081,7 +1081,7 @@ export default function MyPage() {
                     id="appTemplateMessage"
                     value={appTemplate.message}
                     onChange={e => setAppTemplate(p => ({ ...p, message: e.target.value }))}
-                    placeholder={`안녕하세요, 배우 OOO 입니다.\n귀사에 지원드리기 위해 프로필 파일과 연기 영상 링크를 첨부드립니다.\n긍정적으로 검토해주시면 감사하겠습니다.`}
+                    placeholder={`안녕하세요. 배우 OOO입니다.\n\n귀사에 제 프로필 파일과 연기 영상 링크를 첨부하여 보내드립니다.\n바쁘시겠지만 긍정적으로 검토해 주시면 감사하겠습니다.\n\n앞으로 좋은 인연으로 뵐 수 있기를 기대합니다. 감사합니다.`}
                     rows={6}
                     autoComplete="off"
                   />
