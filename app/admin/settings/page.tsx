@@ -112,7 +112,7 @@ export default function AdminSettingsPage() {
       {
         key: "membership_renewal_bonus",
         value: renewalBonus,
-        description: "멤버십 갱신 시 지급 포인트 (현금 결제 시에만)",
+        description: "멤버십 갱신 시 지급 포인트 (카드 결제 포함 시에만)",
         updated_at: now,
       },
       {
@@ -199,7 +199,7 @@ export default function AdminSettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="renewal_bonus" className="text-sm font-medium text-gray-700">갱신 보너스 (현금 결제 시)</Label>
+                <Label htmlFor="renewal_bonus" className="text-sm font-medium text-gray-700">갱신 보너스 (카드 결제 시)</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="renewal_bonus"

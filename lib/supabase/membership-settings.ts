@@ -20,8 +20,8 @@ export async function getMembershipSettings(): Promise<MembershipSettings> {
   const map = Object.fromEntries((data ?? []).map((s) => [s.key, s.value]))
 
   return {
-    membershipPrice: parseInt(map["membership_price"] ?? "0", 10),
-    signupBonus: parseInt(map["membership_signup_bonus"] ?? "0", 10),
-    renewalBonus: parseInt(map["membership_renewal_bonus"] ?? "0", 10),
+    membershipPrice: parseInt(map["membership_price"] ?? "0", 10) || 0,
+    signupBonus: parseInt(map["membership_signup_bonus"] ?? "0", 10) || 0,
+    renewalBonus: parseInt(map["membership_renewal_bonus"] ?? "0", 10) || 0,
   }
 }
