@@ -234,22 +234,30 @@ export function Header() {
                   {(profile?.points ?? 0).toLocaleString()}P
                 </span>
               </div>
-              {profile?.role === "casting_director" ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1 whitespace-nowrap text-xs px-2"
-                    onClick={() => router.push("/casting-director")}
-                    title={isCdApproved ? undefined : "관리자 승인 대기 중"}
-                  >
-                    <Briefcase className="h-3.5 w-3.5" />
-                    디렉터 대시보드
-                    {!isCdApproved && (
-                      <span className="ml-1 text-[10px] text-yellow-600">(승인 대기)</span>
-                    )}
-                  </Button>
-                </>
+              {isAdmin || profile?.role === "sub_admin" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 whitespace-nowrap text-xs px-2"
+                  onClick={() => router.push("/admin")}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  관리자 패널
+                </Button>
+              ) : profile?.role === "casting_director" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 whitespace-nowrap text-xs px-2"
+                  onClick={() => router.push("/casting-director")}
+                  title={isCdApproved ? undefined : "관리자 승인 대기 중"}
+                >
+                  <Briefcase className="h-3.5 w-3.5" />
+                  디렉터 대시보드
+                  {!isCdApproved && (
+                    <span className="ml-1 text-[10px] text-yellow-600">(승인 대기)</span>
+                  )}
+                </Button>
               ) : profile ? (
                 <Button
                   variant="ghost"
@@ -366,20 +374,27 @@ export function Header() {
                         </span>
                       </div>
                     </div>
-                    {profile?.role === "casting_director" ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-2"
-                          onClick={() => { setIsOpen(false); router.push("/casting-director") }}
-                        >
-                          <Briefcase className="h-4 w-4" />
-                          디렉터 대시보드
-                          {!isCdApproved && (
-                            <span className="ml-auto text-[10px] text-yellow-600">승인 대기</span>
-                          )}
-                        </Button>
-                      </>
+                    {isAdmin || profile?.role === "sub_admin" ? (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-2"
+                        onClick={() => { setIsOpen(false); router.push("/admin") }}
+                      >
+                        <Shield className="h-4 w-4" />
+                        관리자 패널
+                      </Button>
+                    ) : profile?.role === "casting_director" ? (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-2"
+                        onClick={() => { setIsOpen(false); router.push("/casting-director") }}
+                      >
+                        <Briefcase className="h-4 w-4" />
+                        디렉터 대시보드
+                        {!isCdApproved && (
+                          <span className="ml-auto text-[10px] text-yellow-600">승인 대기</span>
+                        )}
+                      </Button>
                     ) : profile ? (
                       <Button
                         variant="outline"
