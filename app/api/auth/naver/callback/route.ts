@@ -22,14 +22,16 @@ export async function GET(request: Request) {
   try {
     const parsed = JSON.parse(state ?? "{}") as { n?: string; r?: string }
     if (!expectedNonce || parsed.n !== expectedNonce) {
-      return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+      console.error("[naver/callback] nonce 불일치:", { expectedNonce, stateNonce: parsed.n })
+      return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("nonce_mismatch: expected=" + (expectedNonce ?? "null") + " got=" + (parsed.n ?? "null"))}`)
     }
     redirectTo = sanitizeRedirectTo(parsed.r)
-  } catch {
-    return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+  } catch (e) {
+    console.error("[naver/callback] state 파싱 실패:", String(e))
+    return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("state_parse_error: " + String(e))}`)
   }
 
-  if (!code) return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+  if (!code) return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=no_code`)
 
   try {
     // 2) 네이버 액세스 토큰 교환
