@@ -111,7 +111,7 @@ function LoginContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       }).then(r => r.json()).catch(() => ({ provider: null }))
-      if (checkRes.provider) {
+      if (checkRes.provider && checkRes.provider !== "email") {
         const label = providerLabels[checkRes.provider] ?? checkRes.provider
         toast({ title: "이미 가입된 이메일", description: `이 계정은 ${label}(으)로 가입된 계정입니다. ${label}로 로그인해주세요.`, variant: "destructive" })
       } else {

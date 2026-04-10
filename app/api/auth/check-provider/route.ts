@@ -15,11 +15,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ provider: null })
   }
 
-  const provider = user.app_metadata?.provider ?? user.identities?.[0]?.provider ?? null
-  // email provider는 소셜이 아니므로 null 반환
-  if (provider === "email") {
-    return NextResponse.json({ provider: null })
-  }
-
+  const provider = user.app_metadata?.provider ?? user.identities?.[0]?.provider ?? "email"
   return NextResponse.json({ provider })
 }
