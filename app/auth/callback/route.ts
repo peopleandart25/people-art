@@ -35,10 +35,13 @@ export async function GET(request: Request) {
               .maybeSingle()
 
             if (existingProfile) {
+              // 기존 계정의 provider 확인
+              const { data: { user: existingUser } } = await serviceClient.auth.admin.getUserById(existingProfile.id)
+              const existingProvider = existingUser?.app_metadata?.provider ?? existingUser?.identities?.[0]?.provider ?? "email"
               // 중복 계정 삭제 후 에러 안내
               await serviceClient.auth.admin.deleteUser(user.id)
               return NextResponse.redirect(
-                `${origin}/login?error=email_already_exists`
+                `${origin}/login?error=email_taken&provider=${encodeURIComponent(existingProvider)}`
               )
             }
           }

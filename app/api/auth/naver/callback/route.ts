@@ -83,17 +83,11 @@ export async function GET(request: Request) {
     })
 
     if (createRes.error) {
-      // 이미 가입된 이메일 → 기존 유저에게 magic link 발급
-      const { data: reLinkData, error: reLinkError } = await adminClient.auth.admin.generateLink({
-        type: "magiclink",
-        email: naverUser.email,
-        options: { redirectTo: `${origin}/auth/hash-callback?redirectTo=${encodeURIComponent(redirectTo)}` },
-      })
-      if (reLinkError || !reLinkData?.properties?.action_link) {
-        console.error("[naver/callback] 기존유저 magiclink 실패:", reLinkError?.message, createRes.error?.message)
-        return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("relink_failed: " + (reLinkError?.message ?? "no_action_link") + " / create: " + (createRes.error?.message ?? ""))}`)
-      }
-      return NextResponse.redirect(reLinkData.properties.action_link)
+      // 이미 가입된 이메일 → 기존 가입 provider 확인 후 안내
+      const { data: { users } } = await adminClient.auth.admin.listUsers()
+      const existingUser = users?.find(u => u.email === naverUser.email)
+      const existingProvider = existingUser?.app_metadata?.provider ?? existingUser?.identities?.[0]?.provider ?? "email"
+      return NextResponse.redirect(`${origin}/login?error=email_taken&provider=${encodeURIComponent(existingProvider)}`)
     }
 
     // 5) Magic link 생성으로 세션 발급
