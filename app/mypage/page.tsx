@@ -486,30 +486,30 @@ export default function MyPage() {
       {/* 헤더 */}
       <div className="border-b border-border bg-card sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="gap-2 shrink-0">
                   <ArrowLeft className="h-4 w-4" />홈으로
                 </Button>
               </Link>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl font-bold text-foreground">마이페이지</h1>
+              <div className="h-6 w-px bg-border shrink-0" />
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground whitespace-nowrap">마이페이지</h1>
                 {authProfile?.role === "admin" ? (
-                  <Badge className="bg-red-500 text-white gap-1 border-0 hover:bg-red-500"><Shield className="h-3 w-3" />관리자</Badge>
+                  <Badge className="bg-red-500 text-white gap-1 border-0 hover:bg-red-500 shrink-0"><Shield className="h-3 w-3" />관리자</Badge>
                 ) : authProfile?.role === "sub_admin" ? (
-                  <Badge className="bg-amber-500 text-white gap-1 border-0 hover:bg-amber-500"><Shield className="h-3 w-3" />서브관리자</Badge>
+                  <Badge className="bg-amber-500 text-white gap-1 border-0 hover:bg-amber-500 shrink-0"><Shield className="h-3 w-3" />서브관리자</Badge>
                 ) : authProfile?.role === "casting_director" ? (
-                  <Badge className="bg-blue-500 text-white gap-1 border-0 hover:bg-blue-500"><Briefcase className="h-3 w-3" />캐스팅 디렉터</Badge>
+                  <Badge className="bg-blue-500 text-white gap-1 border-0 hover:bg-blue-500 shrink-0"><Briefcase className="h-3 w-3" />캐스팅 디렉터</Badge>
                 ) : isPremium ? (
-                  <Badge className="gold-badge gap-1"><Crown className="h-3 w-3" />멤버십</Badge>
+                  <Badge className="gold-badge gap-1 shrink-0"><Crown className="h-3 w-3" />멤버십</Badge>
                 ) : (
-                  <Badge variant="secondary">일반회원</Badge>
+                  <Badge variant="secondary" className="shrink-0">일반회원</Badge>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {(authProfile?.role === "admin" || authProfile?.role === "sub_admin") && (
                 <Link href="/admin">
                   <Button variant="outline" size="sm" className="gap-2">
@@ -1250,18 +1250,18 @@ function AdminMyPageView({ profile }: { profile: { name: string | null; role: st
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="container mx-auto px-4 py-4 flex items-center gap-2 sm:gap-4">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className="gap-2 shrink-0">
               <ArrowLeft className="h-4 w-4" />홈으로
             </Button>
           </Link>
-          <div className="h-6 w-px bg-border" />
-          <h1 className="text-xl font-bold text-foreground">마이페이지</h1>
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${badgeColor}`}>
+          <div className="h-6 w-px bg-border shrink-0" />
+          <h1 className="text-lg sm:text-xl font-bold text-foreground whitespace-nowrap">마이페이지</h1>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border shrink-0 ${badgeColor}`}>
             <Shield className="h-3 w-3" />{roleLabel}
           </span>
-          <Link href="/admin" className="ml-auto">
+          <Link href="/admin" className="ml-auto shrink-0">
             <Button variant="outline" size="sm" className="gap-2">
               <Shield className="h-4 w-4" />관리자 패널
             </Button>
@@ -1309,15 +1309,15 @@ function CDMyPageView({
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b border-border bg-card sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="container mx-auto px-4 py-4 flex items-center gap-2 sm:gap-4">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className="gap-2 shrink-0">
               <ArrowLeft className="h-4 w-4" />홈으로
             </Button>
           </Link>
-          <div className="h-6 w-px bg-border" />
-          <h1 className="text-xl font-bold text-foreground">마이페이지</h1>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-blue-50 text-blue-600 border-blue-200">
+          <div className="h-6 w-px bg-border shrink-0" />
+          <h1 className="text-lg sm:text-xl font-bold text-foreground whitespace-nowrap">마이페이지</h1>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-blue-50 text-blue-600 border-blue-200 shrink-0">
             <Briefcase className="h-3 w-3" />캐스팅 디렉터
           </span>
         </div>
