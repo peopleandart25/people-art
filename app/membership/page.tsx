@@ -454,7 +454,7 @@ export default function MembershipPage() {
     }
   }
 
-  // 결제 처리 (포트원 V2 KG이니시스)
+  // 결제 처리 (포트원 V2)
   const handlePayment = async () => {
     if (!user) {
       toast({ title: "로그인이 필요합니다.", variant: "destructive" })
@@ -1502,7 +1502,7 @@ export default function MembershipPage() {
                   <CardTitle className="text-lg">멤버십 결제</CardTitle>
                 </div>
                 <CardDescription>
-                  KG이니시스 카드결제로 안전하게 시작하세요
+                  카드결제로 간편하게 시작하세요
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
