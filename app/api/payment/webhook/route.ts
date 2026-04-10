@@ -135,9 +135,9 @@ export async function POST(request: Request) {
     amount: actualAmount,
     points_used: pointsUsed,
     status: "completed",
-    pg_provider: payment.channel?.pgProvider ?? "kakaopay",
+    pg_provider: payment.channel?.pgProvider ?? "unknown",
     pg_transaction_id: paymentId,
-    payment_method: "kakao_pay",
+    payment_method: "card",
   })
 
   if (paymentError) {

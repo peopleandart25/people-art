@@ -65,6 +65,10 @@ export default function MyPage() {
   const { user, profile: authProfile, isLoggedIn, loading: authLoading, isPremium } = useAuth()
   const { toast } = useToast()
   const [referralCode, setReferralCode] = useState<string | null>(null)
+  const [cardInfo, setCardInfo] = useState<{ issuer: string | null; number: string | null; cardType: string | null } | null>(null)
+  const [cardAutoRenew, setCardAutoRenew] = useState(false)
+  const [cardLoading, setCardLoading] = useState(false)
+  const [cardActionLoading, setCardActionLoading] = useState(false)
 
   useEffect(() => {
     const ac = new AbortController()
@@ -78,6 +82,21 @@ export default function MyPage() {
       })
     return () => ac.abort()
   }, [])
+
+  // 등록된 카드 정보 조회
+  const fetchCardInfo = () => {
+    setCardLoading(true)
+    fetch("/api/billing/card")
+      .then(r => r.json())
+      .then(d => {
+        setCardInfo(d.card ?? null)
+        setCardAutoRenew(d.autoRenew ?? false)
+      })
+      .catch(() => {})
+      .finally(() => setCardLoading(false))
+  }
+  useEffect(() => { if (isPremium) fetchCardInfo() }, [isPremium])
+
   const { fullProfile, allTags, loading: profileLoading, uploadMainPhoto, uploadPortfolio, saveProfile } = useProfile()
 
   // 계정 전환/리패치 시에도 폼을 재동기화하려고 userId 기준으로 guard
@@ -649,6 +668,107 @@ export default function MyPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 결제수단 관리 (멤버십 회원만) */}
+            {isPremium && (
+              <Card className="border border-border">
+                <CardContent className="pt-5 pb-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                      결제수단
+                    </p>
+                    {cardAutoRenew && (
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-200 bg-green-50">자동갱신</Badge>
+                    )}
+                  </div>
+                  {cardLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                  ) : cardInfo ? (
+                    <>
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                        <p className="text-xs text-muted-foreground">{cardInfo.issuer ?? "카드"}{cardInfo.cardType === "DEBIT" ? " (체크)" : ""}</p>
+                        <p className="text-sm font-mono font-medium tracking-wider">{cardInfo.number ?? "****-****-****-****"}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          disabled={cardActionLoading}
+                          onClick={async () => {
+                            setCardActionLoading(true)
+                            try {
+                              const PortOne = await import("@portone/browser-sdk/v2")
+                              const res = await PortOne.requestIssueBillingKey({
+                                storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+                                channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+                                billingKeyMethod: "CARD",
+                                issueId: `change-${user!.id.slice(0, 8)}-${Date.now()}`,
+                                issueName: "피플앤아트 결제수단 변경",
+                                customer: { customerId: user!.id },
+                              })
+                              if (res?.code !== undefined || !res?.billingKey) {
+                                toast({ title: "카드 등록 실패", description: res?.message ?? "취소되었습니다.", variant: "destructive" })
+                                return
+                              }
+                              const putRes = await fetch("/api/billing/card", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ billingKey: res.billingKey }),
+                              })
+                              if (!putRes.ok) {
+                                toast({ title: "카드 변경 실패", variant: "destructive" })
+                                return
+                              }
+                              toast({ title: "카드가 변경되었습니다." })
+                              fetchCardInfo()
+                            } catch {
+                              toast({ title: "오류가 발생했습니다.", variant: "destructive" })
+                            } finally {
+                              setCardActionLoading(false)
+                            }
+                          }}
+                        >
+                          카드 변경
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs text-destructive hover:text-destructive"
+                          disabled={cardActionLoading}
+                          onClick={async () => {
+                            if (!confirm("등록된 카드를 제거하시겠습니까?\n자동갱신이 해지되며, 다음 결제 시 카드를 다시 등록해야 합니다.")) return
+                            setCardActionLoading(true)
+                            try {
+                              const res = await fetch("/api/billing/card", { method: "DELETE" })
+                              if (!res.ok) {
+                                toast({ title: "카드 제거 실패", variant: "destructive" })
+                                return
+                              }
+                              setCardInfo(null)
+                              setCardAutoRenew(false)
+                              toast({ title: "카드가 제거되었습니다.", description: "자동갱신이 해지되었습니다." })
+                            } catch {
+                              toast({ title: "오류가 발생했습니다.", variant: "destructive" })
+                            } finally {
+                              setCardActionLoading(false)
+                            }
+                          }}
+                        >
+                          카드 제거
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">등록된 결제수단이 없습니다.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* 메인 프로필 사진 */}
             <Card className="border border-border">

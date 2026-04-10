@@ -118,9 +118,9 @@ Deno.serve(async (_req) => {
         amount: MEMBERSHIP_PRICE,
         points_used: 0,
         status: "completed",
-        pg_provider: "kakaopay",
+        pg_provider: payment.channel?.pgProvider ?? "unknown",
         pg_transaction_id: paymentId,
-        payment_method: "kakao_pay",
+        payment_method: "card",
       })
 
       if (paymentInsertError) {

@@ -470,8 +470,8 @@ export default function MembershipPage() {
       // 포인트 전액 결제가 아닌 경우만 빌링키 발급
       if (finalPaymentAmount > 0) {
         const billingKeyResponse = await PortOne.requestIssueBillingKey({
-          storeId: "store-dabf3ae7-8dae-40f8-911c-cc1f578fbfbe",
-          channelKey: "channel-key-cf3ab2fe-e949-45df-80f4-3b7b57808ca6",
+          storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+          channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
           billingKeyMethod: "CARD",
           issueId: `b-${user.id.slice(0, 8)}-${Date.now()}`,
           issueName: "피플앤아트 멤버십",

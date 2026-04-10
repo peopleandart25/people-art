@@ -67,6 +67,7 @@ export async function POST(request: Request) {
 
   // 4. PortOne 결제 실행
   const paymentId = `billing-${user.id}-${Date.now()}`
+  let pgProvider = "points"
   let portoneCharged = false
 
   if (finalAmount > 0 && billingKey) {
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "결제가 완료되지 않았습니다.", details: paymentRes }, { status: 400 })
     }
 
+    pgProvider = paymentInfo.channel?.pgProvider ?? "unknown"
     portoneCharged = true
   }
 
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
       p_payment_id: paymentId,
       p_membership_price: MEMBERSHIP_PRICE,
       p_signup_bonus: signupBonus,
+      p_pg_provider: pgProvider,
     }
   ) as { data: { success: boolean; new_points: number; expires_at: string } | null; error: { message: string } | null }
 

@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "결제가 완료되지 않았습니다." }, { status: 400 })
     }
 
-    pgProvider = "kakaopay"
+    pgProvider = paymentInfo.channel?.pgProvider ?? "unknown"
     portoneCharged = true
   }
 
