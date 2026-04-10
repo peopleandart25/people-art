@@ -46,7 +46,8 @@ export async function GET(request: Request) {
     )
     const tokenData = await tokenRes.json()
     if (!tokenData.access_token) {
-      return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+      console.error("[naver/callback] 토큰 발급 실패:", tokenData)
+      return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("naver_token_failed: " + JSON.stringify(tokenData))}`)
     }
 
     // 3) 네이버 사용자 프로필 조회
@@ -58,7 +59,8 @@ export async function GET(request: Request) {
     const naverUser = profileData.response
 
     if (!naverUser?.email) {
-      return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+      console.error("[naver/callback] 이메일 없음:", profileData)
+      return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("naver_no_email")}`)
     }
 
     const adminClient = createAdminClient(
@@ -86,7 +88,8 @@ export async function GET(request: Request) {
         options: { redirectTo: `${origin}/auth/hash-callback?redirectTo=${encodeURIComponent(redirectTo)}` },
       })
       if (reLinkError || !reLinkData?.properties?.action_link) {
-        return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+        console.error("[naver/callback] 기존유저 magiclink 실패:", reLinkError?.message, createRes.error?.message)
+        return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("relink_failed: " + (reLinkError?.message ?? "no_action_link") + " / create: " + (createRes.error?.message ?? ""))}`)
       }
       return NextResponse.redirect(reLinkData.properties.action_link)
     }
@@ -100,12 +103,13 @@ export async function GET(request: Request) {
     })
 
     if (linkError || !linkData?.properties?.action_link) {
-      return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+      console.error("[naver/callback] 신규유저 magiclink 실패:", linkError?.message)
+      return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("magiclink_failed: " + (linkError?.message ?? "no_action_link"))}`)
     }
 
     return NextResponse.redirect(linkData.properties.action_link)
-  } catch {
-    // 에러 상세를 URL에 노출하지 않음 (PII/내부 오류 유출 방지)
-    return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+  } catch (e) {
+    console.error("[naver/callback] 예외:", String(e))
+    return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("exception: " + String(e))}`)
   }
 }

@@ -67,8 +67,7 @@ BEGIN
     + CASE WHEN p_final_amount > 0 THEN p_signup_bonus ELSE 0 END;
 
   UPDATE profiles
-  SET role   = 'premium',
-      points = v_new_points
+  SET points = v_new_points
   WHERE id = p_user_id;
 
   RETURN json_build_object(
