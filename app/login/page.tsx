@@ -105,7 +105,18 @@ function LoginContent() {
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      toast({ title: "로그인 실패", description: "이메일 또는 비밀번호를 확인해주세요.", variant: "destructive" })
+      // 소셜 로그인으로 가입된 계정인지 확인
+      const checkRes = await fetch("/api/auth/check-provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      }).then(r => r.json()).catch(() => ({ provider: null }))
+      if (checkRes.provider) {
+        const label = providerLabels[checkRes.provider] ?? checkRes.provider
+        toast({ title: "이미 가입된 이메일", description: `이 계정은 ${label}(으)로 가입된 계정입니다. ${label}로 로그인해주세요.`, variant: "destructive" })
+      } else {
+        toast({ title: "로그인 실패", description: "이메일 또는 비밀번호를 확인해주세요.", variant: "destructive" })
+      }
       setIsLoading(false)
     } else {
       window.location.href = redirectTo
@@ -175,8 +186,18 @@ function LoginContent() {
     if (error) {
       toast({ title: "가입 실패", description: error.message, variant: "destructive" })
     } else if (data.user && (data.user.identities?.length ?? 0) === 0) {
-      // 이미 가입된 이메일 — Supabase는 이메일 확인 활성화 시 에러 대신 빈 identities 반환
-      toast({ title: "이미 가입된 이메일", description: "해당 이메일로 이미 가입된 계정이 있습니다. 로그인을 시도해주세요.", variant: "destructive" })
+      // 이미 가입된 이메일 — 소셜 provider 확인
+      const checkRes = await fetch("/api/auth/check-provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      }).then(r => r.json()).catch(() => ({ provider: null }))
+      if (checkRes.provider) {
+        const label = providerLabels[checkRes.provider] ?? checkRes.provider
+        toast({ title: "이미 가입된 이메일", description: `이 계정은 ${label}(으)로 가입된 계정입니다. ${label}로 로그인해주세요.`, variant: "destructive" })
+      } else {
+        toast({ title: "이미 가입된 이메일", description: "해당 이메일로 이미 가입된 계정이 있습니다. 로그인을 시도해주세요.", variant: "destructive" })
+      }
     } else {
       toast({ title: "가입 완료!", description: "이메일을 확인하여 인증을 완료해주세요." })
       if (welcomeBonus && welcomeBonus > 0) {
