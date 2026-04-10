@@ -306,12 +306,12 @@ export function Header() {
               <span className="sr-only">메뉴 열기</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] bg-card">
+          <SheetContent side="right" className="w-[300px] bg-card flex flex-col p-0">
             <SheetTitle className="sr-only">메뉴</SheetTitle>
             <SheetDescription className="sr-only">
               사이트 네비게이션 메뉴입니다.
             </SheetDescription>
-            <div className="flex flex-col gap-6 pt-6">
+            <div className="flex flex-col gap-6 pt-6 px-6 pb-8 overflow-y-auto flex-1">
               <div className="flex items-center">
                 <Image
                   src="/images/logo.png"
