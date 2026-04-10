@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   let redirectTo = "/"
   try {
-    const parsed = JSON.parse(state ?? "{}") as { n?: string; r?: string }
+    const parsed = JSON.parse(atob(state ?? "")) as { n?: string; r?: string }
     if (!expectedNonce || parsed.n !== expectedNonce) {
       console.error("[naver/callback] nonce 불일치:", { expectedNonce, stateNonce: parsed.n })
       return NextResponse.redirect(`${origin}/login?error=auth_failed&detail=${encodeURIComponent("nonce_mismatch: expected=" + (expectedNonce ?? "null") + " got=" + (parsed.n ?? "null"))}`)

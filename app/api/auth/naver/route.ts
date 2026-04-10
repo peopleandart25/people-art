@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const redirectTo = sanitizeRedirectTo(searchParams.get("redirectTo"))
 
   const nonce = generateNonce()
-  const state = JSON.stringify({ n: nonce, r: redirectTo })
+  const state = btoa(JSON.stringify({ n: nonce, r: redirectTo }))
 
   const naverAuthUrl = new URL("https://nid.naver.com/oauth2.0/authorize")
   naverAuthUrl.searchParams.set("response_type", "code")
