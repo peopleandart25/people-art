@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Phone, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -32,6 +32,20 @@ function LoginContent() {
   const [signupPhone, setSignupPhone] = useState("")
   const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null)
   const [welcomeBonus, setWelcomeBonus] = useState<number | null>(null)
+
+  // 비밀번호 찾기
+  const [showResetDialog, setShowResetDialog] = useState(false)
+  const [resetEmail, setResetEmail] = useState("")
+  const [resetLoading, setResetLoading] = useState(false)
+
+  // 계정 찾기
+  const [showFindDialog, setShowFindDialog] = useState(false)
+  const [findPhone, setFindPhone] = useState("")
+  const [findPhoneOtp, setFindPhoneOtp] = useState("")
+  const [findPhoneOtpSent, setFindPhoneOtpSent] = useState(false)
+  const [findPhoneVerified, setFindPhoneVerified] = useState(false)
+  const [findPhoneVerifying, setFindPhoneVerifying] = useState(false)
+  const [findResult, setFindResult] = useState<{ maskedEmail: string; provider: string } | null>(null)
 
   const redirectTo = searchParams.get("redirectTo") ?? "/"
   const error = searchParams.get("error")
@@ -159,6 +173,80 @@ function LoginContent() {
       await supabase.auth.signOut()
     }
     setPhoneVerifying(false)
+  }
+
+  const handleResetPassword = async () => {
+    if (!resetEmail) {
+      toast({ title: "오류", description: "이메일을 입력해주세요.", variant: "destructive" })
+      return
+    }
+    setResetLoading(true)
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
+      })
+      if (res.ok) {
+        toast({ title: "발송 완료", description: "임시 비밀번호가 이메일로 발송되었습니다." })
+        setShowResetDialog(false)
+        setResetEmail("")
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast({ title: "발송 실패", description: data.error ?? "다시 시도해주세요.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "오류", description: "네트워크 오류가 발생했습니다.", variant: "destructive" })
+    }
+    setResetLoading(false)
+  }
+
+  const handleSendFindPhoneOtp = async () => {
+    if (!findPhone) {
+      toast({ title: "오류", description: "휴대폰 번호를 입력해주세요.", variant: "destructive" })
+      return
+    }
+    setFindPhoneVerifying(true)
+    const { error } = await supabase.auth.signInWithOtp({ phone: formatPhoneToE164(findPhone) })
+    if (error) {
+      toast({ title: "인증번호 발송 실패", description: error.message, variant: "destructive" })
+    } else {
+      setFindPhoneOtpSent(true)
+      toast({ title: "인증번호 발송", description: "휴대폰으로 인증번호가 발송되었습니다." })
+    }
+    setFindPhoneVerifying(false)
+  }
+
+  const handleVerifyFindPhoneOtp = async () => {
+    if (!findPhoneOtp) return
+    setFindPhoneVerifying(true)
+    const { error } = await supabase.auth.verifyOtp({ phone: formatPhoneToE164(findPhone), token: findPhoneOtp, type: "sms" })
+    if (error) {
+      toast({ title: "인증 실패", description: "인증번호가 올바르지 않습니다.", variant: "destructive" })
+      setFindPhoneVerifying(false)
+      return
+    }
+    await supabase.auth.signOut()
+    setFindPhoneVerified(true)
+    toast({ title: "인증 완료", description: "휴대폰 번호가 인증되었습니다." })
+    // 계정 찾기 API 호출
+    try {
+      const res = await fetch("/api/auth/find-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: findPhone }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFindResult({ maskedEmail: data.maskedEmail, provider: data.provider })
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast({ title: "계정 조회 실패", description: data.error ?? "계정을 찾을 수 없습니다.", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "오류", description: "네트워크 오류가 발생했습니다.", variant: "destructive" })
+    }
+    setFindPhoneVerifying(false)
   }
 
   const handleEmailSignup = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -341,6 +429,23 @@ function LoginContent() {
                       회원가입
                     </button>
                   </p>
+                  <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => { setShowResetDialog(true) }}
+                      className="hover:text-foreground hover:underline"
+                    >
+                      비밀번호 찾기
+                    </button>
+                    <span>|</span>
+                    <button
+                      type="button"
+                      onClick={() => { setShowFindDialog(true); setFindPhone(""); setFindPhoneOtp(""); setFindPhoneOtpSent(false); setFindPhoneVerified(false); setFindResult(null) }}
+                      className="hover:text-foreground hover:underline"
+                    >
+                      계정 찾기
+                    </button>
+                  </div>
                 </CardFooter>
               </form>
             )}
@@ -466,6 +571,112 @@ function LoginContent() {
             className="flex-1 w-full border-0"
             title={policyModal === "terms" ? "이용약관" : "개인정보처리방침"}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* 비밀번호 찾기 모달 */}
+      <Dialog open={showResetDialog} onOpenChange={(open) => { setShowResetDialog(open); if (!open) setResetEmail("") }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>비밀번호 찾기</DialogTitle>
+            <DialogDescription>가입한 이메일 주소를 입력하면 임시 비밀번호를 발송해드립니다.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="reset-email">이메일</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="example@email.com"
+                className="pl-10"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleResetPassword() } }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetDialog(false)} disabled={resetLoading}>취소</Button>
+            <Button onClick={handleResetPassword} disabled={resetLoading || !resetEmail}>
+              {resetLoading ? "발송 중..." : "임시 비밀번호 발급"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 계정 찾기 모달 */}
+      <Dialog open={showFindDialog} onOpenChange={(open) => { setShowFindDialog(open); if (!open) { setFindPhone(""); setFindPhoneOtp(""); setFindPhoneOtpSent(false); setFindPhoneVerified(false); setFindResult(null) } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>계정 찾기</DialogTitle>
+            <DialogDescription>가입 시 등록한 휴대폰 번호로 계정을 찾을 수 있습니다.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {!findResult ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="find-phone">휴대폰 번호</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="find-phone"
+                        type="tel"
+                        placeholder="010-1234-5678"
+                        className="pl-10"
+                        value={findPhone}
+                        onChange={(e) => { setFindPhone(e.target.value); setFindPhoneVerified(false); setFindPhoneOtpSent(false); setFindPhoneOtp("") }}
+                        disabled={findPhoneVerified}
+                      />
+                    </div>
+                    {!findPhoneVerified && (
+                      <Button type="button" variant="outline" onClick={handleSendFindPhoneOtp} disabled={findPhoneVerifying || !findPhone} className="shrink-0 text-xs">
+                        {findPhoneVerifying && !findPhoneOtpSent ? "발송 중..." : findPhoneOtpSent ? "재발송" : "인증번호 받기"}
+                      </Button>
+                    )}
+                    {findPhoneVerified && (
+                      <span className="flex items-center text-green-600 text-sm shrink-0 gap-1">
+                        <Check className="h-4 w-4" />인증완료
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {findPhoneOtpSent && !findPhoneVerified && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="인증번호 6자리"
+                      value={findPhoneOtp}
+                      onChange={(e) => setFindPhoneOtp(e.target.value)}
+                      maxLength={6}
+                      className="flex-1"
+                    />
+                    <Button type="button" onClick={handleVerifyFindPhoneOtp} disabled={findPhoneVerifying || findPhoneOtp.length < 6} className="shrink-0 text-xs bg-primary text-primary-foreground">
+                      {findPhoneVerifying ? "확인 중..." : "확인"}
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-3 text-center py-2">
+                <p className="text-sm text-muted-foreground">가입된 계정 정보를 확인했습니다.</p>
+                <div className="rounded-lg bg-muted px-4 py-3 space-y-1">
+                  <p className="text-sm font-medium">{findResult.maskedEmail}</p>
+                  <p className="text-xs text-muted-foreground">
+                    가입 방법: {providerLabels[findResult.provider] ?? findResult.provider}
+                  </p>
+                </div>
+                <Button className="w-full" onClick={() => { setShowFindDialog(false); setMode("login") }}>
+                  로그인하러 가기
+                </Button>
+              </div>
+            )}
+          </div>
+          {!findResult && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowFindDialog(false)}>닫기</Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

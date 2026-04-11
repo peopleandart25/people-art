@@ -69,6 +69,11 @@ export default function MyPage() {
   const [cardAutoRenew, setCardAutoRenew] = useState(false)
   const [cardLoading, setCardLoading] = useState(false)
   const [cardActionLoading, setCardActionLoading] = useState(false)
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const isEmailUser = user?.app_metadata?.provider === "email"
 
   useEffect(() => {
     const ac = new AbortController()
@@ -646,6 +651,21 @@ export default function MyPage() {
                 <p className="text-sm font-medium text-foreground">
                   {authProfile?.role === "admin" ? "관리자" : authProfile?.role === "sub_admin" ? "서브 관리자" : authProfile?.role === "casting_director" ? "캐스팅 디렉터" : isPremium ? "멤버십 회원" : "일반 회원"}
                 </p>
+                {isEmailUser && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <p className="text-xs text-muted-foreground">비밀번호</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-foreground tracking-wider">••••••••</p>
+                      <button
+                        onClick={() => { setShowPasswordDialog(true); setCurrentPassword(""); setNewPassword("") }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        변경
+                      </button>
+                    </div>
+                  </>
+                )}
                 {isPremium && (
                   <>
                     <div className="h-px bg-border my-1" />
@@ -1358,6 +1378,54 @@ export default function MyPage() {
           <DialogFooter><Button onClick={() => setErrorModal(false)}>확인</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>비밀번호 변경</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="pw-current">현재 비밀번호</Label>
+              <Input id="pw-current" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pw-new">새 비밀번호 (6자 이상)</Label>
+              <Input id="pw-new" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>취소</Button>
+            <Button
+              disabled={passwordLoading || !currentPassword || newPassword.length < 6}
+              onClick={async () => {
+                setPasswordLoading(true)
+                try {
+                  const res = await fetch("/api/auth/change-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ currentPassword, newPassword }),
+                  })
+                  if (res.ok) {
+                    toast({ title: "비밀번호가 변경되었습니다." })
+                    setShowPasswordDialog(false)
+                    setCurrentPassword("")
+                    setNewPassword("")
+                  } else {
+                    const data = await res.json().catch(() => ({}))
+                    toast({ title: "변경 실패", description: data.error ?? "다시 시도해주세요.", variant: "destructive" })
+                  }
+                } catch {
+                  toast({ title: "오류", description: "네트워크 오류가 발생했습니다.", variant: "destructive" })
+                }
+                setPasswordLoading(false)
+              }}
+            >
+              {passwordLoading ? "변경 중..." : "변경"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1471,6 +1539,7 @@ function CDMyPageView({
           email={email}
           initialCompany={initialCompany}
           initialJobTitle={initialJobTitle}
+          isEmailUser={isEmailUser}
         />
       </div>
     </div>
